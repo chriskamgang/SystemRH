@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class VacatairePayment extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'department_id',
+        'year',
+        'month',
+        'hourly_rate',
+        'days_worked',
+        'hours_worked',
+        'total_late_minutes',
+        'gross_amount',
+        'late_penalty',
+        'bonus',
+        'net_amount',
+        'status',
+        'validated_at',
+        'paid_at',
+        'validated_by',
+        'notes',
+    ];
+
+    protected $casts = [
+        'hourly_rate' => 'decimal:2',
+        'days_worked' => 'decimal:2',
+        'hours_worked' => 'decimal:2',
+        'total_late_minutes' => 'integer',
+        'gross_amount' => 'decimal:2',
+        'late_penalty' => 'decimal:2',
+        'bonus' => 'decimal:2',
+        'net_amount' => 'decimal:2',
+        'validated_at' => 'datetime',
+        'paid_at' => 'datetime',
+    ];
+
+    /**
+     * Relations
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function validatedBy()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
+    }
+}

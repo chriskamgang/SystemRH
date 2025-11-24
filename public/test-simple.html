@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Simple - Clic</title>
+    <style>
+        body {
+            background: white;
+            padding: 50px;
+            font-family: Arial, sans-serif;
+        }
+        .box {
+            background: #00ff00;
+            color: black;
+            padding: 30px;
+            margin: 20px 0;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+            border: 3px solid black;
+            text-align: center;
+        }
+        .box:hover {
+            background: #00cc00;
+        }
+        #result {
+            background: #ffff00;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 100px;
+            border: 2px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>TEST ULTRA-SIMPLE - CLIQUEZ SUR LES BOUTONS</h1>
+
+    <div class="box" onclick="alert('CLIC FONCTIONNE!')">
+        CLIQUEZ ICI - Test 1
+    </div>
+
+    <div class="box" onclick="document.getElementById('result').innerHTML += '<p>✅ Bouton 2 cliqué à ' + new Date().toLocaleTimeString() + '</p>'">
+        CLIQUEZ ICI - Test 2
+    </div>
+
+    <button style="font-size: 20px; padding: 20px; background: red; color: white; cursor: pointer;" onclick="alert('Bouton HTML cliqué!')">
+        BOUTON HTML STANDARD
+    </button>
+
+    <div id="result">
+        <strong>Résultats des clics apparaîtront ici...</strong>
+    </div>
+
+    <h2>INSTRUCTIONS:</h2>
+    <ol>
+        <li>Si vous voyez une alerte popup quand vous cliquez sur "Test 1" = CLICS FONCTIONNENT</li>
+        <li>Si du texte vert apparaît quand vous cliquez sur "Test 2" = CLICS FONCTIONNENT</li>
+        <li>Si RIEN ne se passe = Problème navigateur/système</li>
+    </ol>
+
+    <p style="color: red; font-size: 18px;">
+        <strong>Si RIEN n'est cliquable sur cette page, le problème vient de votre navigateur ou système, PAS du code!</strong>
+    </p>
+</body>
+</html>

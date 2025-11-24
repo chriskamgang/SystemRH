@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic - Overlay Blocking</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        .result {
+            background: #000;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnostic de l'Overlay Bloquant</h1>
+
+    <button onclick="runDiagnostic()">Lancer le Diagnostic</button>
+    <button onclick="findBlockingElements()">Trouver Éléments Bloquants</button>
+    <button onclick="removeBlockingElements()">Supprimer Overlays (TEST)</button>
+
+    <div id="results"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'result ' + type;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function runDiagnostic() {
+            document.getElementById('results').innerHTML = '';
+            log('<h2>🚀 Début du Diagnostic...</h2>');
+
+            // 1. Vérifier les overlays/modals cachés
+            log('<h3>1️⃣ Recherche d\'overlays/modals...</h3>');
+            const overlays = document.querySelectorAll('[class*="overlay"], [class*="modal"], [class*="backdrop"]');
+            if (overlays.length > 0) {
+                log(`⚠️ Trouvé ${overlays.length} overlay(s)/modal(s):`, 'warning');
+                overlays.forEach((el, i) => {
+                    const isHidden = el.classList.contains('hidden') ||
+                                   window.getComputedStyle(el).display === 'none' ||
+                                   window.getComputedStyle(el).visibility === 'hidden';
+                    log(`  ${i+1}. ${el.tagName} - Classes: ${el.className} - Caché: ${isHidden ? '✅' : '❌ PROBLÈME!'}`);
+                });
+            } else {
+                log('✅ Aucun overlay/modal trouvé');
+            }
+
+            // 2. Vérifier les éléments avec z-index élevé
+            log('<h3>2️⃣ Recherche d\'éléments avec z-index élevé...</h3>');
+            const highZIndex = Array.from(document.querySelectorAll('*')).filter(el => {
+                const style = window.getComputedStyle(el);
+                const zIndex = parseInt(style.zIndex) || 0;
+                return zIndex > 40;
+            });
+
+            if (highZIndex.length > 0) {
+                log(`⚠️ Trouvé ${highZIndex.length} élément(s) avec z-index > 40:`, 'warning');
+                highZIndex.forEach((el, i) => {
+                    const style = window.getComputedStyle(el);
+                    log(`  ${i+1}. ${el.tagName}.${el.className} - z-index: ${style.zIndex}, position: ${style.position}, visible: ${style.visibility}, display: ${style.display}`);
+                });
+            } else {
+                log('✅ Aucun z-index élevé problématique');
+            }
+
+            // 3. Vérifier les éléments fixed/absolute qui couvrent toute la page
+            log('<h3>3️⃣ Recherche d\'éléments fixed/absolute couvrant la page...</h3>');
+            const covering = Array.from(document.querySelectorAll('*')).filter(el => {
+                const style = window.getComputedStyle(el);
+                const position = style.position;
+                if (position === 'fixed' || position === 'absolute') {
+                    const rect = el.getBoundingClientRect();
+                    return rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.8;
+                }
+                return false;
+            });
+
+            if (covering.length > 0) {
+                log(`⚠️ Trouvé ${covering.length} élément(s) couvrant la page:`, 'warning');
+                covering.forEach((el, i) => {
+                    const style = window.getComputedStyle(el);
+                    const rect = el.getBoundingClientRect();
+                    log(`  ${i+1}. ${el.tagName}.${el.className} - ${rect.width}x${rect.height}px, z-index: ${style.zIndex}, bg: ${style.backgroundColor}`);
+                });
+            } else {
+                log('✅ Aucun élément couvrant trouvé');
+            }
+
+            // 4. Vérifier pointer-events
+            log('<h3>4️⃣ Vérification pointer-events sur body...</h3>');
+            const bodyStyle = window.getComputedStyle(document.body);
+            if (bodyStyle.pointerEvents === 'none') {
+                log('❌ PROBLÈME: pointer-events: none sur body!', 'error');
+            } else {
+                log(`✅ pointer-events: ${bodyStyle.pointerEvents}`);
+            }
+
+            log('<h2>✅ Diagnostic terminé!</h2>');
+        }
+
+        function findBlockingElements() {
+            document.getElementById('results').innerHTML = '';
+            log('<h2>🎯 Recherche des éléments bloquants au centre de la page...</h2>');
+
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            const elementAtCenter = document.elementFromPoint(centerX, centerY);
+
+            if (elementAtCenter) {
+                log(`<h3>Élément au centre de la page (${centerX}, ${centerY}):</h3>`);
+                log(`Tag: <strong>${elementAtCenter.tagName}</strong>`);
+                log(`Classes: <strong>${elementAtCenter.className}</strong>`);
+                log(`ID: <strong>${elementAtCenter.id || 'aucun'}</strong>`);
+
+                const style = window.getComputedStyle(elementAtCenter);
+                log(`<strong>Styles:</strong><br>
+                    - position: ${style.position}<br>
+                    - z-index: ${style.zIndex}<br>
+                    - background: ${style.backgroundColor}<br>
+                    - opacity: ${style.opacity}<br>
+                    - pointer-events: ${style.pointerEvents}<br>
+                    - display: ${style.display}<br>
+                    - visibility: ${style.visibility}
+                `);
+
+                // Mettre en évidence l'élément
+                elementAtCenter.style.outline = '5px solid red';
+                elementAtCenter.style.outlineOffset = '-5px';
+
+                log(`<span class="warning">⚠️ L'élément a été mis en évidence avec un contour rouge!</span>`);
+            } else {
+                log('❌ Aucun élément trouvé au centre', 'error');
+            }
+        }
+
+        function removeBlockingElements() {
+            document.getElementById('results').innerHTML = '';
+            log('<h2>🧹 Suppression des overlays bloquants (TEST)...</h2>');
+
+            let removed = 0;
+
+            // Supprimer les éléments avec classe modal/overlay non cachés
+            document.querySelectorAll('[class*="modal"], [class*="overlay"], [class*="backdrop"]').forEach(el => {
+                const isHidden = el.classList.contains('hidden') ||
+                               window.getComputedStyle(el).display === 'none';
+                if (!isHidden) {
+                    log(`Suppression: ${el.tagName}.${el.className}`, 'warning');
+                    el.remove();
+                    removed++;
+                }
+            });
+
+            // Supprimer les éléments fixed avec z-index très élevé et fond sombre
+            Array.from(document.querySelectorAll('*')).forEach(el => {
+                const style = window.getComputedStyle(el);
+                const zIndex = parseInt(style.zIndex) || 0;
+                if (style.position === 'fixed' && zIndex > 100 &&
+                    (style.backgroundColor.includes('rgba(0, 0, 0') || style.backgroundColor === 'transparent')) {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width > window.innerWidth * 0.8) {
+                        log(`Suppression overlay suspect: ${el.tagName}.${el.className}`, 'warning');
+                        el.remove();
+                        removed++;
+                    }
+                }
+            });
+
+            if (removed === 0) {
+                log('ℹ️ Aucun overlay bloquant trouvé à supprimer');
+            } else {
+                log(`✅ ${removed} élément(s) supprimé(s)! Essayez de cliquer maintenant.`);
+            }
+        }
+
+        // Auto-run au chargement
+        window.addEventListener('load', function() {
+            log('<p style="color: #ffaa00;">Page chargée. Cliquez sur "Lancer le Diagnostic" pour commencer.</p>');
+        });
+    </script>
+</body>
+</html>
