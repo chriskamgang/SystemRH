@@ -10,17 +10,29 @@ Artisan::command('inspire', function () {
 
 // ========== SCHEDULED TASKS ==========
 
-// Envoyer les notifications de présence toutes les minutes
-// (le service vérifie en interne si c'est l'heure configurée)
-Schedule::command('presence:send-notifications')
-    ->everyMinute()
-    ->name('send-presence-notifications')
-    ->withoutOverlapping()
-    ->onOneServer();
+// Notifications de présence à heures configurables
+// L'admin peut modifier les heures depuis le dashboard
 
-// Traiter les incidents expirés toutes les minutes
-Schedule::command('presence:process-expired')
-    ->everyMinute()
-    ->name('process-expired-incidents')
-    ->withoutOverlapping()
-    ->onOneServer();
+// Vérifier toutes les minutes si c'est l'heure d'envoyer une notification
+Schedule::call(function () {
+    $enabled = \App\Models\Setting::get('notification_enabled', '1');
+
+    if ($enabled != '1') {
+        return; // Notifications désactivées
+    }
+
+    $currentTime = now()->format('H:i');
+
+    // Récupérer les 5 heures configurées
+    for ($i = 1; $i <= 5; $i++) {
+        $configuredTime = \App\Models\Setting::get("notification_time_{$i}");
+
+        if ($configuredTime && $configuredTime === $currentTime) {
+            \Illuminate\Support\Facades\Log::info("🔔 Déclenchement notification #{$i} à {$currentTime}");
+            \App\Services\PresenceNotificationService::sendPresenceCheckNotifications();
+            break; // Une seule notification par minute
+        }
+    }
+})->everyMinute()
+  ->name('presence-check-dynamic')
+  ->withoutOverlapping();

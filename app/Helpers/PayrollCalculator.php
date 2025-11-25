@@ -75,23 +75,35 @@ class PayrollCalculator
             ->orderBy('timestamp', 'asc')
             ->get();
 
-        // Grouper par date
-        $groupedByDate = $attendances->groupBy(function ($attendance) {
-            return $attendance->timestamp->format('Y-m-d');
+        // Grouper par date ET par plage (matin/soir)
+        $groupedByDateShift = $attendances->groupBy(function ($attendance) {
+            $shift = $attendance->shift ?? 'morning'; // Par défaut morning pour anciennes données
+            return $attendance->timestamp->format('Y-m-d') . '_' . $shift;
         });
 
         $daysWorked = 0;
         $totalLateMinutes = 0;
         $daysWithoutCheckout = 0;
 
-        foreach ($groupedByDate as $date => $dayAttendances) {
-            $checkIn = $dayAttendances->where('type', 'check-in')->first();
-            $checkOut = $dayAttendances->where('type', 'check-out')->first();
+        foreach ($groupedByDateShift as $dateShift => $shiftAttendances) {
+            list($date, $shift) = explode('_', $dateShift);
+
+            $checkIn = $shiftAttendances->where('type', 'check-in')->first();
+            $checkOut = $shiftAttendances->where('type', 'check-out')->first();
 
             if ($checkIn) {
-                // Déterminer si c'est un samedi (0.5 jour) ou jour normal (1 jour)
+                // Déterminer la valeur du jour selon la plage et le jour de la semaine
                 $carbonDate = Carbon::parse($date);
-                $dayValue = $carbonDate->dayOfWeek == 6 ? 0.5 : 1;
+
+                // Pour le matin: jour complet ou demi-journée selon le jour
+                // Pour le soir: toujours compter comme présence (valeur à définir)
+                if ($shift === 'morning') {
+                    $dayValue = $carbonDate->dayOfWeek == 6 ? 0.5 : 1;
+                } else {
+                    // Soir: compter comme 0.5 jour par exemple
+                    $dayValue = 0.5;
+                }
+
                 $daysWorked += $dayValue;
 
                 // Compter les retards (ignorer les valeurs négatives = bug d'anciennes données)
@@ -99,7 +111,7 @@ class PayrollCalculator
                     $totalLateMinutes += $checkIn->late_minutes;
                 }
 
-                // Compter les jours sans checkout
+                // Compter les plages sans checkout
                 if (!$checkOut) {
                     $daysWithoutCheckout++;
                 }
@@ -287,31 +299,40 @@ class PayrollCalculator
             ->orderBy('timestamp', 'asc')
             ->get();
 
-        $groupedByDate = $attendances->groupBy(function ($attendance) {
-            return $attendance->timestamp->format('Y-m-d');
+        // Grouper par date ET par plage (matin/soir)
+        $groupedByDateShift = $attendances->groupBy(function ($attendance) {
+            $shift = $attendance->shift ?? 'morning';
+            return $attendance->timestamp->format('Y-m-d') . '_' . $shift;
         });
 
         $totalHours = 0;
         $totalLateMinutes = 0;
         $daysWorked = 0;
 
-        foreach ($groupedByDate as $date => $dayAttendances) {
-            $checkIn = $dayAttendances->where('type', 'check-in')->first();
-            $checkOut = $dayAttendances->where('type', 'check-out')->first();
+        foreach ($groupedByDateShift as $dateShift => $shiftAttendances) {
+            list($date, $shift) = explode('_', $dateShift);
+
+            $checkIn = $shiftAttendances->where('type', 'check-in')->first();
+            $checkOut = $shiftAttendances->where('type', 'check-out')->first();
 
             if ($checkIn && $checkOut) {
                 $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
                 $totalHours += $hoursWorked;
 
                 $carbonDate = Carbon::parse($date);
-                $dayValue = $carbonDate->dayOfWeek == 6 ? 0.5 : 1;
+                // Chaque plage (matin ou soir) compte comme 0.5 jour
+                $dayValue = 0.5;
                 $daysWorked += $dayValue;
             } elseif ($checkIn) {
-                // Si pas de checkout, compter 8h par défaut
-                $totalHours += 8;
+                // Si pas de checkout, compter les heures par défaut selon la plage
+                if ($shift === 'morning') {
+                    $totalHours += 8; // 8h pour le matin
+                } else {
+                    $totalHours += 3.5; // 3h30 pour le soir
+                }
 
                 $carbonDate = Carbon::parse($date);
-                $dayValue = $carbonDate->dayOfWeek == 6 ? 0.5 : 1;
+                $dayValue = 0.5;
                 $daysWorked += $dayValue;
             }
 

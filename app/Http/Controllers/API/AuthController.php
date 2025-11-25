@@ -65,6 +65,13 @@ class AuthController extends Controller
             ]);
         }
 
+        // Mettre à jour les informations de l'appareil de l'utilisateur
+        $user->update([
+            'device_id' => $request->device_id,
+            'device_model' => $request->device_model,
+            'device_os' => $request->device_os,
+        ]);
+
         // Créer un token
         $token = $user->createToken('mobile-app')->plainTextToken;
 

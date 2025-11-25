@@ -14,6 +14,7 @@ class Attendance extends Model
         'campus_id',
         'unite_enseignement_id',
         'type',
+        'shift', // Plage horaire: morning ou evening
         'timestamp',
         'latitude',
         'longitude',

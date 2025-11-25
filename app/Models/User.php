@@ -28,6 +28,8 @@ class User extends Authenticatable
         'monthly_salary',
         'photo',
         'employee_type',
+        'volume_horaire_hebdomadaire',
+        'jours_travail',
         'department_id',
         'role_id',
         'is_active',
@@ -59,6 +61,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'jours_travail' => 'array',
+            'volume_horaire_hebdomadaire' => 'decimal:2',
         ];
     }
 
@@ -149,23 +153,23 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
-    // Unités d'enseignement (pour les enseignants vacataires)
+    // Unités d'enseignement (pour les enseignants vacataires et semi-permanents)
     public function unitesEnseignement()
     {
-        return $this->hasMany(UniteEnseignement::class, 'vacataire_id');
+        return $this->hasMany(UniteEnseignement::class, 'enseignant_id');
     }
 
     // UE activées uniquement
     public function unitesEnseignementActivees()
     {
-        return $this->hasMany(UniteEnseignement::class, 'vacataire_id')
+        return $this->hasMany(UniteEnseignement::class, 'enseignant_id')
             ->where('statut', 'activee');
     }
 
     // UE non activées uniquement
     public function unitesEnseignementNonActivees()
     {
-        return $this->hasMany(UniteEnseignement::class, 'vacataire_id')
+        return $this->hasMany(UniteEnseignement::class, 'enseignant_id')
             ->where('statut', 'non_activee');
     }
 
@@ -190,5 +194,49 @@ class User extends Authenticatable
     public function isAdmin()
     {
         return $this->role->name === 'admin';
+    }
+
+    /**
+     * Helper methods pour les semi-permanents
+     */
+    public function isSemiPermanent()
+    {
+        return $this->employee_type === 'semi_permanent';
+    }
+
+    public function isVacataire()
+    {
+        return $this->employee_type === 'enseignant_vacataire';
+    }
+
+    public function isTitulaire()
+    {
+        return $this->employee_type === 'enseignant_titulaire';
+    }
+
+    public function getVolumeHoraireHebdomadaire()
+    {
+        return $this->volume_horaire_hebdomadaire ?? 0;
+    }
+
+    public function getJoursTravail()
+    {
+        return $this->jours_travail ?? [];
+    }
+
+    public function travailleJour($jour)
+    {
+        // $jour peut être 'lundi', 'mardi', etc.
+        $joursTravail = $this->getJoursTravail();
+        return in_array(strtolower($jour), array_map('strtolower', $joursTravail));
+    }
+
+    public function getJoursTravailFormatte()
+    {
+        $jours = $this->getJoursTravail();
+        if (empty($jours)) {
+            return 'Non défini';
+        }
+        return implode(', ', array_map('ucfirst', $jours));
     }
 }

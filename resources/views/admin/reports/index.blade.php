@@ -15,7 +15,7 @@
 
     <!-- Filtres -->
     <div class="bg-white rounded-lg shadow p-6">
-        <form method="GET" action="{{ route('admin.reports.index') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form method="GET" action="{{ route('admin.reports.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Date de début -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Date début</label>
@@ -38,6 +38,16 @@
                 >
             </div>
 
+            <!-- Plage horaire -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Plage horaire</label>
+                <select name="shift" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Toutes les plages</option>
+                    <option value="morning" {{ request('shift') == 'morning' ? 'selected' : '' }}>Matin (avant 17h00)</option>
+                    <option value="evening" {{ request('shift') == 'evening' ? 'selected' : '' }}>Soir (après 17h00)</option>
+                </select>
+            </div>
+
             <!-- Boutons -->
             <div class="flex items-end gap-2">
                 <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
@@ -46,13 +56,28 @@
                 <a href="{{ route('admin.reports.index') }}" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition">
                     <i class="fas fa-redo mr-2"></i> Réinitialiser
                 </a>
-                <a href="{{ route('admin.reports.export', ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d')]) }}" 
+                <a href="{{ route('admin.reports.export', ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d'), 'shift' => request('shift')]) }}"
                    class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
                     <i class="fas fa-download mr-2"></i> Exporter CSV
                 </a>
             </div>
         </form>
     </div>
+
+    <!-- Indicateur de filtre actif -->
+    @if(request('shift'))
+    <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
+        <p class="text-blue-800">
+            <i class="fas fa-filter mr-2"></i>
+            <strong>Filtre actif :</strong>
+            @if(request('shift') == 'morning')
+                Plage horaire <strong>MATIN</strong> (avant 17h00)
+            @elseif(request('shift') == 'evening')
+                Plage horaire <strong>SOIR</strong> (après 17h00)
+            @endif
+        </p>
+    </div>
+    @endif
 
     <!-- Statistiques globales -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">

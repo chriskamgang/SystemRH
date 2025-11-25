@@ -5,16 +5,22 @@
 
 @section('content')
 <div class="space-y-6">
-    <!-- Header avec bouton d'ajout -->
+    <!-- Header avec boutons d'action -->
     <div class="flex justify-between items-center">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Liste des Employés</h2>
             <p class="text-gray-600 mt-1">Gérez les employés et leurs accès</p>
         </div>
-        <a href="{{ route('admin.employees.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-            <i class="fas fa-plus mr-2"></i>
-            Nouvel Employé
-        </a>
+        <div class="flex gap-3">
+            <a href="{{ route('admin.employees.import-form') }}" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
+                <i class="fas fa-file-import mr-2"></i>
+                Importer CSV/Excel
+            </a>
+            <a href="{{ route('admin.employees.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
+                <i class="fas fa-plus mr-2"></i>
+                Nouvel Employé
+            </a>
+        </div>
     </div>
 
     <!-- Filtres et Recherche -->

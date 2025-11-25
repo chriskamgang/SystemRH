@@ -126,6 +126,31 @@
                     </div>
                 </div>
 
+                <!-- Semi-permanents Section with Submenu -->
+                <div x-data="{ open: {{ request()->routeIs('admin.semi-permanents.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.semi-permanents.*') ? 'bg-blue-600' : '' }}">
+                        <div class="flex items-center">
+                            <i class="fas fa-user-tie w-5"></i>
+                            <span class="ml-3">Semi-permanents</span>
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{'rotate-180': open}"></i>
+                    </button>
+                    <div x-show="open" x-transition class="ml-4 space-y-1">
+                        <a href="{{ route('admin.semi-permanents.index') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.semi-permanents.index') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-list w-4"></i>
+                            <span class="ml-2">Liste</span>
+                        </a>
+                        <a href="{{ route('admin.semi-permanents.payments') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.semi-permanents.payments') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-money-check-alt w-4"></i>
+                            <span class="ml-2">Gestion des paiements</span>
+                        </a>
+                        <a href="{{ route('admin.semi-permanents.report') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.semi-permanents.report') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-chart-bar w-4"></i>
+                            <span class="ml-2">Rapport</span>
+                        </a>
+                    </div>
+                </div>
+
                 <a href="{{ route('admin.realtime') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.realtime') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-map w-5"></i>
                     <span class="ml-3">Carte en temps réel</span>
@@ -140,6 +165,12 @@
                 <a href="{{ route('admin.payroll.report') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.payroll.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-dollar-sign w-5"></i>
                     <span class="ml-3">Rapport sur la paie</span>
+                </a>
+
+                <!-- Calculateur de Paie Manuelle -->
+                <a href="{{ route('admin.manual-payroll.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.manual-payroll.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-calculator w-5"></i>
+                    <span class="ml-3">Calculateur de Paie</span>
                 </a>
 
                 <!-- Déductions Manuelles -->

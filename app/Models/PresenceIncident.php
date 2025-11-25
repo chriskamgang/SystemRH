@@ -12,6 +12,8 @@ class PresenceIncident extends Model
         'attendance_id',
         'unite_enseignement_id',
         'incident_date',
+        'check_in_time',
+        'check_out_time',
         'notification_sent_at',
         'response_deadline',
         'has_responded',

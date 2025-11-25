@@ -25,6 +25,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::resource('employees', EmployeeController::class);
     Route::post('employees/{id}/reset-device', [EmployeeController::class, 'resetDevice'])->name('employees.reset-device');
 
+    // Import/Export Employees
+    Route::get('employees-import', [EmployeeController::class, 'showImportForm'])->name('employees.import-form');
+    Route::post('employees-import', [EmployeeController::class, 'import'])->name('employees.import');
+    Route::get('employees-template', [EmployeeController::class, 'downloadTemplate'])->name('employees.download-template');
+
     // Campus
     Route::resource('campuses', CampusController::class);
 
@@ -65,6 +70,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::delete('/{id}', [App\Http\Controllers\Admin\VacataireController::class, 'destroy'])->name('destroy');
     });
 
+    // Semi-permanents
+    Route::prefix('semi-permanents')->name('semi-permanents.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\SemiPermanentController::class, 'index'])->name('index');
+
+        // Gestion des paiements (AVANT les routes dynamiques)
+        Route::get('/payments', [App\Http\Controllers\Admin\SemiPermanentController::class, 'payments'])->name('payments');
+
+        // Rapport semi-permanents (AVANT les routes dynamiques)
+        Route::get('/report', [App\Http\Controllers\Admin\SemiPermanentController::class, 'report'])->name('report');
+        Route::get('/report/export', [App\Http\Controllers\Admin\SemiPermanentController::class, 'exportReport'])->name('report.export');
+
+        // Gestion des UE d'un semi-permanent (AVANT les routes dynamiques)
+        Route::get('/{id}/unites', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'vacataireUnites'])->name('unites');
+
+        // Rapport hebdomadaire détaillé (AVANT les routes dynamiques)
+        Route::get('/{id}/weekly-report', [App\Http\Controllers\Admin\SemiPermanentController::class, 'weeklyReport'])->name('weekly-report');
+
+        // Routes CRUD dynamiques (APRÈS les routes spécifiques)
+        Route::get('/{id}', [App\Http\Controllers\Admin\SemiPermanentController::class, 'show'])->name('show');
+    });
+
     // Unités d'Enseignement (UE)
     Route::prefix('unites-enseignement')->name('unites-enseignement.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'index'])->name('index');
@@ -84,6 +110,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/justify', [App\Http\Controllers\Admin\PayrollReportController::class, 'justify'])->name('justify');
         Route::post('/apply-deduction', [App\Http\Controllers\Admin\PayrollReportController::class, 'applyDeduction'])->name('apply-deduction');
         Route::get('/report/export', [App\Http\Controllers\Admin\PayrollReportController::class, 'export'])->name('report.export');
+    });
+
+    // Paie Manuelle
+    Route::prefix('manual-payroll')->name('manual-payroll.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ManualPayrollController::class, 'index'])->name('index');
+        Route::post('/calculate', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculate'])->name('calculate');
+        Route::post('/calculate-bulk', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculateBulk'])->name('calculate-bulk');
     });
 
     // Déductions manuelles

@@ -26,15 +26,28 @@ class ReportController extends Controller
             ? Carbon::parse($request->end_date)
             : now()->endOfMonth();
 
+        // Filtre par plage horaire
+        $shift = $request->get('shift');
+
         // Get attendance statistics by employee
         $employeeStats = User::where('role_id', '!=', 1)
             ->with(['role']) // Remove campus relation as it doesn't exist on User model
             ->get()
-            ->map(function ($user) use ($startDate, $endDate) {
-                $checkins = Attendance::where('user_id', $user->id)
+            ->map(function ($user) use ($startDate, $endDate, $shift) {
+                $checkinsQuery = Attendance::where('user_id', $user->id)
                     ->where('type', 'check-in')
-                    ->whereBetween('timestamp', [$startDate, $endDate])
-                    ->get();
+                    ->whereBetween('timestamp', [$startDate, $endDate]);
+
+                // Appliquer le filtre de plage horaire
+                if ($shift === 'morning') {
+                    // Matin: avant 17h00
+                    $checkinsQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+                } elseif ($shift === 'evening') {
+                    // Soir: après 17h00
+                    $checkinsQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+                }
+
+                $checkins = $checkinsQuery->get();
 
                 $totalDays = $checkins->count();
                 $lateDays = $checkins->where('is_late', true)->count();
@@ -44,10 +57,18 @@ class ReportController extends Controller
                 $avgLateMinutes = $checkins->where('is_late', true)->avg('late_minutes') ?? 0;
 
                 // Calculate work hours
-                $checkouts = Attendance::where('user_id', $user->id)
+                $checkoutsQuery = Attendance::where('user_id', $user->id)
                     ->where('type', 'check-out')
-                    ->whereBetween('timestamp', [$startDate, $endDate])
-                    ->get();
+                    ->whereBetween('timestamp', [$startDate, $endDate]);
+
+                // Appliquer le même filtre de plage horaire
+                if ($shift === 'morning') {
+                    $checkoutsQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+                } elseif ($shift === 'evening') {
+                    $checkoutsQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+                }
+
+                $checkouts = $checkoutsQuery->get();
 
                 $totalWorkHours = 0;
                 foreach ($checkins as $checkin) {
@@ -73,11 +94,19 @@ class ReportController extends Controller
             });
 
         // Get campus statistics
-        $campusStats = Campus::all()->map(function ($campus) use ($startDate, $endDate) {
-            $checkins = Attendance::where('campus_id', $campus->id)
+        $campusStats = Campus::all()->map(function ($campus) use ($startDate, $endDate, $shift) {
+            $checkinsQuery = Attendance::where('campus_id', $campus->id)
                 ->where('type', 'check-in')
-                ->whereBetween('timestamp', [$startDate, $endDate])
-                ->get();
+                ->whereBetween('timestamp', [$startDate, $endDate]);
+
+            // Appliquer le filtre de plage horaire
+            if ($shift === 'morning') {
+                $checkinsQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+            } elseif ($shift === 'evening') {
+                $checkinsQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+            }
+
+            $checkins = $checkinsQuery->get();
 
             $totalCheckins = $checkins->count();
             $lateCheckins = $checkins->where('is_late', true)->count();
@@ -91,18 +120,29 @@ class ReportController extends Controller
         });
 
         // Overall statistics
+        $totalCheckinsQuery = Attendance::where('type', 'check-in')
+            ->whereBetween('timestamp', [$startDate, $endDate]);
+        $totalLateQuery = Attendance::where('type', 'check-in')
+            ->where('is_late', true)
+            ->whereBetween('timestamp', [$startDate, $endDate]);
+        $uniqueEmployeesQuery = Attendance::where('type', 'check-in')
+            ->whereBetween('timestamp', [$startDate, $endDate]);
+
+        // Appliquer le filtre de plage horaire
+        if ($shift === 'morning') {
+            $totalCheckinsQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+            $totalLateQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+            $uniqueEmployeesQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+        } elseif ($shift === 'evening') {
+            $totalCheckinsQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+            $totalLateQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+            $uniqueEmployeesQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+        }
+
         $overallStats = [
-            'total_checkins' => Attendance::where('type', 'check-in')
-                ->whereBetween('timestamp', [$startDate, $endDate])
-                ->count(),
-            'total_late' => Attendance::where('type', 'check-in')
-                ->where('is_late', true)
-                ->whereBetween('timestamp', [$startDate, $endDate])
-                ->count(),
-            'unique_employees' => Attendance::where('type', 'check-in')
-                ->whereBetween('timestamp', [$startDate, $endDate])
-                ->distinct('user_id')
-                ->count(),
+            'total_checkins' => $totalCheckinsQuery->count(),
+            'total_late' => $totalLateQuery->count(),
+            'unique_employees' => $uniqueEmployeesQuery->distinct('user_id')->count(),
         ];
 
         $overallStats['punctuality_rate'] = $overallStats['total_checkins'] > 0
@@ -131,13 +171,21 @@ class ReportController extends Controller
             ? Carbon::parse($request->end_date)
             : now()->endOfMonth();
 
+        $shift = $request->get('shift');
         $format = $request->get('format', 'csv');
 
         // Get attendance data
-        $attendances = Attendance::with(['user', 'campus'])
-            ->whereBetween('timestamp', [$startDate, $endDate])
-            ->orderBy('timestamp', 'desc')
-            ->get();
+        $attendancesQuery = Attendance::with(['user', 'campus'])
+            ->whereBetween('timestamp', [$startDate, $endDate]);
+
+        // Appliquer le filtre de plage horaire
+        if ($shift === 'morning') {
+            $attendancesQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+        } elseif ($shift === 'evening') {
+            $attendancesQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+        }
+
+        $attendances = $attendancesQuery->orderBy('timestamp', 'desc')->get();
 
         if ($format === 'csv') {
             return $this->exportCsv($attendances, $startDate, $endDate);
@@ -168,6 +216,7 @@ class ReportController extends Controller
             fputcsv($file, [
                 'Date',
                 'Heure',
+                'Plage horaire',
                 'Employé',
                 'Campus',
                 'Type',
@@ -179,9 +228,14 @@ class ReportController extends Controller
 
             // Data
             foreach ($attendances as $attendance) {
+                // Déterminer la plage horaire
+                $hour = (int) $attendance->timestamp->format('H');
+                $shiftLabel = $hour < 17 ? 'Matin' : 'Soir';
+
                 fputcsv($file, [
                     $attendance->timestamp->format('Y-m-d'),
                     $attendance->timestamp->format('H:i:s'),
+                    $shiftLabel,
                     $attendance->user->full_name,
                     $attendance->campus->name,
                     $attendance->type === 'check-in' ? 'Entrée' : 'Sortie',

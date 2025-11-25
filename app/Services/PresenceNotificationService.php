@@ -5,260 +5,215 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Campus;
 use App\Models\Attendance;
-use App\Models\PresenceIncident;
-use App\Models\NotificationSetting;
+use App\Models\PresenceCheck;
+use App\Models\Notification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
+use Kreait\Firebase\Factory;
 
 class PresenceNotificationService
 {
-    protected $pushService;
-
-    public function __construct(PushNotificationService $pushService)
-    {
-        $this->pushService = $pushService;
-    }
 
     /**
-     * Envoyer les notifications de présence selon l'heure configurée
-     * Cette méthode est appelée par le Cron Job
+     * Envoyer les notifications de présence à tous ceux qui ont check-in
+     * Appelé par le Cron Job selon les heures configurées dans les settings
      */
-    public function sendPresenceCheckNotifications()
+    public static function sendPresenceCheckNotifications(): array
     {
-        $settings = NotificationSetting::getSettings();
+        $now = Carbon::now();
+        $today = $now->toDateString();
 
-        if (!$settings->is_active) {
-            Log::info('Presence notification system is disabled');
-            return;
+        Log::info("📱 Envoi des notifications de présence - " . $now->format('H:i'));
+
+        // Récupérer tous les employés qui ont un check-in actif aujourd'hui
+        $activeCheckIns = self::getActiveCheckIns($today);
+
+        if (empty($activeCheckIns)) {
+            Log::info("Aucun employé actif trouvé pour les notifications");
+            return [
+                'total' => 0,
+                'sent' => 0,
+                'failed' => 0,
+                'results' => [],
+            ];
         }
 
-        $currentTime = Carbon::now()->format('H:i:s');
+        $sent = 0;
+        $failed = 0;
+        $results = [];
 
-        // Vérifier si c'est l'heure d'envoi pour les permanents/semi-permanents
-        if ($currentTime >= $settings->permanent_semi_permanent_time &&
-            $currentTime < Carbon::parse($settings->permanent_semi_permanent_time)->addMinute()->format('H:i:s')) {
-            $this->sendForEmployeeTypes(['enseignant_titulaire', 'administratif', 'technique', 'direction']);
-        }
+        foreach ($activeCheckIns as $checkIn) {
+            try {
+                $user = $checkIn->user;
 
-        // Vérifier si c'est l'heure d'envoi pour les temporaires
-        if ($currentTime >= $settings->temporary_time &&
-            $currentTime < Carbon::parse($settings->temporary_time)->addMinute()->format('H:i:s')) {
-            $this->sendForEmployeeTypes(['enseignant_vacataire']);
-        }
-    }
+                // Créer l'enregistrement de vérification de présence
+                $presenceCheck = PresenceCheck::create([
+                    'user_id' => $user->id,
+                    'campus_id' => $checkIn->campus_id,
+                    'check_time' => $now,
+                    'response' => 'no_response',
+                    'notification_sent' => false,
+                ]);
 
-    /**
-     * Envoyer les notifications pour des types d'employés spécifiques
-     */
-    protected function sendForEmployeeTypes(array $employeeTypes)
-    {
-        $settings = NotificationSetting::getSettings();
+                // Envoyer la notification FCM si l'utilisateur a un token
+                $notificationSent = false;
+                if ($user->fcm_token) {
+                    $notificationSent = self::sendFCMNotification($user, $presenceCheck);
 
-        // Récupérer les utilisateurs qui ont check-in aujourd'hui
-        $usersWithCheckin = $this->getUsersWithTodayCheckin($employeeTypes);
+                    if ($notificationSent) {
+                        $presenceCheck->update(['notification_sent' => true]);
+                        $sent++;
+                    } else {
+                        $failed++;
+                    }
+                } else {
+                    Log::warning("⚠️ User {$user->id} ({$user->full_name}) n'a pas de FCM token");
+                    $failed++;
+                }
 
-        $sentCount = 0;
-        foreach ($usersWithCheckin as $userData) {
-            $user = $userData['user'];
-            $campus = $userData['campus'];
-            $attendance = $userData['attendance'];
+                // Créer une notification dans la DB
+                Notification::create([
+                    'user_id' => $user->id,
+                    'type' => 'presence_check',
+                    'title' => 'Vérification de présence',
+                    'body' => 'Êtes-vous toujours présent sur le site ?',
+                    'is_read' => false,
+                    'sent_at' => $now,
+                    'delivery_status' => $notificationSent ? 'sent' : 'failed',
+                    'data' => json_encode([
+                        'presence_check_id' => $presenceCheck->id,
+                        'check_time' => $now->toIso8601String(),
+                    ]),
+                ]);
 
-            // Vérifier si l'utilisateur est dans la zone du campus
-            $isInZone = $this->checkUserInCampusZone($user, $campus);
-
-            if (!$isInZone) {
-                Log::info("User {$user->id} is not in campus {$campus->id} zone, skipping notification");
-                continue;
-            }
-
-            // Vérifier s'il n'y a pas déjà un incident en attente aujourd'hui
-            $existingIncident = PresenceIncident::where('user_id', $user->id)
-                ->whereDate('incident_date', today())
-                ->where('status', 'pending')
-                ->first();
-
-            if ($existingIncident) {
-                Log::info("User {$user->id} already has a pending incident today");
-                continue;
-            }
-
-            // Créer l'incident de présence
-            $incident = $this->createPresenceIncident($user, $campus, $attendance, $settings);
-
-            // Envoyer la notification push
-            $sent = $this->pushService->sendPresenceCheckNotification($user, $incident->id, $campus);
-
-            if ($sent) {
-                $sentCount++;
-                Log::info("Presence check notification sent to user {$user->id} at campus {$campus->id}");
-            }
-        }
-
-        Log::info("Sent {$sentCount} presence check notifications");
-        return $sentCount;
-    }
-
-    /**
-     * Récupérer les utilisateurs qui ont check-in aujourd'hui
-     */
-    protected function getUsersWithTodayCheckin(array $employeeTypes)
-    {
-        $users = [];
-
-        // Récupérer tous les check-in d'aujourd'hui qui n'ont pas de check-out
-        $attendances = Attendance::with(['user', 'campus'])
-            ->where('type', 'check-in')
-            ->whereDate('timestamp', today())
-            ->whereHas('user', function($query) use ($employeeTypes) {
-                $query->whereIn('employee_type', $employeeTypes)
-                      ->where('is_active', true)
-                      ->whereNotNull('fcm_token');
-            })
-            ->get();
-
-        foreach ($attendances as $attendance) {
-            // Vérifier si l'utilisateur n'a pas déjà fait check-out
-            $hasCheckOut = Attendance::where('user_id', $attendance->user_id)
-                ->where('campus_id', $attendance->campus_id)
-                ->where('type', 'check-out')
-                ->whereDate('timestamp', today())
-                ->where('timestamp', '>', $attendance->timestamp)
-                ->exists();
-
-            if (!$hasCheckOut) {
-                $users[] = [
-                    'user' => $attendance->user,
-                    'campus' => $attendance->campus,
-                    'attendance' => $attendance,
+                $results[] = [
+                    'user_id' => $user->id,
+                    'user_name' => $user->full_name,
+                    'campus' => $checkIn->campus->name,
+                    'presence_check_id' => $presenceCheck->id,
+                    'status' => $notificationSent ? 'sent' : 'failed',
                 ];
+
+            } catch (\Exception $e) {
+                Log::error("❌ Erreur notification pour user {$user->id}: " . $e->getMessage());
+                $failed++;
             }
         }
 
-        return $users;
-    }
-
-    /**
-     * Vérifier si un utilisateur est dans la zone d'un campus
-     * Note: Cette méthode nécessiterait la localisation en temps réel
-     * Pour l'instant, on simule avec la dernière position connue
-     */
-    protected function checkUserInCampusZone(User $user, Campus $campus)
-    {
-        // TODO: Implémenter la vérification avec la position en temps réel
-        // Pour l'instant, on suppose que l'utilisateur est dans la zone s'il a check-in
-
-        // On pourrait ajouter une table user_locations avec la dernière position
-        // et vérifier avec la méthode isUserInZone() du Campus
-
-        return true; // Temporaire
-    }
-
-    /**
-     * Créer un incident de présence
-     */
-    protected function createPresenceIncident(User $user, Campus $campus, Attendance $attendance, NotificationSetting $settings)
-    {
-        $notificationTime = Carbon::now();
-        $responseDeadline = $notificationTime->copy()->addMinutes($settings->response_delay_minutes);
-
-        return PresenceIncident::create([
-            'user_id' => $user->id,
-            'campus_id' => $campus->id,
-            'attendance_id' => $attendance->id,
-            'incident_date' => today(),
-            'notification_sent_at' => $notificationTime->format('H:i:s'),
-            'response_deadline' => $responseDeadline->format('H:i:s'),
-            'penalty_hours' => $settings->penalty_hours,
-            'status' => 'pending',
-        ]);
-    }
-
-    /**
-     * Créer automatiquement les incidents pour les non-réponses
-     * Appelé par le Cron Job toutes les minutes
-     */
-    public function createIncidentsForNonResponses()
-    {
-        $settings = NotificationSetting::getSettings();
-
-        if (!$settings->is_active) {
-            return;
-        }
-
-        $currentTime = Carbon::now();
-
-        // Récupérer les incidents en attente dont le délai est dépassé
-        $expiredIncidents = PresenceIncident::where('status', 'pending')
-            ->where('has_responded', false)
-            ->whereDate('incident_date', today())
-            ->where('response_deadline', '<', $currentTime->format('H:i:s'))
-            ->get();
-
-        $count = 0;
-        foreach ($expiredIncidents as $incident) {
-            // L'incident reste en status 'pending' pour que l'admin le valide
-            // On ne fait que logger
-            Log::info("Incident {$incident->id} expired - User {$incident->user_id} did not respond");
-            $count++;
-        }
-
-        if ($count > 0) {
-            Log::info("Found {$count} expired presence incidents waiting for admin validation");
-        }
-
-        return $count;
-    }
-
-    /**
-     * Envoyer une notification "Vous pouvez scanner"
-     */
-    public function sendScanAvailableNotification(User $user, Campus $campus)
-    {
-        // Vérifier si l'utilisateur n'a pas déjà check-in dans ce campus aujourd'hui
-        $hasCheckedIn = Attendance::where('user_id', $user->id)
-            ->where('campus_id', $campus->id)
-            ->where('type', 'check-in')
-            ->whereDate('timestamp', today())
-            ->exists();
-
-        if ($hasCheckedIn) {
-            return false; // Déjà check-in
-        }
-
-        return $this->pushService->sendScanAvailableNotification($user, $campus);
-    }
-
-    /**
-     * Répondre à une notification de présence (appelé depuis l'API mobile)
-     */
-    public function respondToPresenceCheck($incidentId, User $user, $latitude, $longitude)
-    {
-        $incident = PresenceIncident::findOrFail($incidentId);
-
-        // Vérifier que c'est bien l'utilisateur concerné
-        if ($incident->user_id !== $user->id) {
-            throw new \Exception('Unauthorized');
-        }
-
-        // Vérifier si le délai n'est pas expiré
-        $deadline = Carbon::parse($incident->incident_date->format('Y-m-d') . ' ' . $incident->response_deadline);
-        if (Carbon::now()->gt($deadline)) {
-            throw new \Exception('Response deadline expired');
-        }
-
-        // Vérifier si l'utilisateur est dans la zone
-        $campus = $incident->campus;
-        $wasInZone = $campus->isUserInZone($latitude, $longitude);
-
-        // Marquer comme répondu
-        $incident->markAsResponded($latitude, $longitude, $wasInZone);
-
-        Log::info("User {$user->id} responded to presence incident {$incidentId}");
+        Log::info("✅ Notifications: {$sent} envoyées, {$failed} échecs sur " . count($activeCheckIns) . " employés");
 
         return [
-            'success' => true,
-            'was_in_zone' => $wasInZone,
-            'message' => 'Présence confirmée avec succès',
+            'total' => count($activeCheckIns),
+            'sent' => $sent,
+            'failed' => $failed,
+            'results' => $results,
+        ];
+    }
+
+    /**
+     * Récupérer tous les check-ins actifs (sans check-out) d'aujourd'hui
+     */
+    private static function getActiveCheckIns(string $date): array
+    {
+        $checkIns = Attendance::where('type', 'check-in')
+            ->whereDate('timestamp', $date)
+            ->with(['user', 'campus'])
+            ->get();
+
+        $activeCheckIns = [];
+
+        foreach ($checkIns as $checkIn) {
+            // Vérifier si l'utilisateur est actif
+            if (!$checkIn->user || !$checkIn->user->is_active) {
+                continue;
+            }
+
+            // Vérifier s'il existe un check-out correspondant
+            $hasCheckOut = Attendance::where('user_id', $checkIn->user_id)
+                ->where('campus_id', $checkIn->campus_id)
+                ->where('type', 'check-out')
+                ->where('shift', $checkIn->shift)
+                ->where('timestamp', '>', $checkIn->timestamp)
+                ->whereDate('timestamp', $date)
+                ->exists();
+
+            // Si pas de check-out, l'employé est toujours actif
+            if (!$hasCheckOut) {
+                $activeCheckIns[] = $checkIn;
+            }
+        }
+
+        return $activeCheckIns;
+    }
+
+    /**
+     * Envoyer une notification FCM à un utilisateur
+     */
+    private static function sendFCMNotification(User $user, PresenceCheck $presenceCheck): bool
+    {
+        try {
+            // Vérifier si Firebase est configuré
+            $firebaseCredentials = env('FIREBASE_CREDENTIALS');
+
+            if (!$firebaseCredentials || !file_exists($firebaseCredentials)) {
+                Log::warning("Firebase credentials non configuré");
+                return false;
+            }
+
+            $factory = (new Factory)->withServiceAccount($firebaseCredentials);
+            $messaging = $factory->createMessaging();
+
+            $notification = FirebaseNotification::create(
+                'Vérification de présence',
+                'Êtes-vous toujours présent sur le site ?'
+            );
+
+            $message = CloudMessage::withTarget('token', $user->fcm_token)
+                ->withNotification($notification)
+                ->withData([
+                    'type' => 'presence_check',
+                    'presence_check_id' => (string) $presenceCheck->id,
+                    'check_time' => $presenceCheck->check_time->toIso8601String(),
+                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                ]);
+
+            $messaging->send($message);
+
+            Log::info("✅ Notification FCM envoyée à {$user->full_name} (ID: {$user->id})");
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error("❌ Erreur FCM pour {$user->full_name} (ID: {$user->id}): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Récupérer les statistiques des notifications du jour
+     */
+    public static function getTodayStats(): array
+    {
+        $today = Carbon::today();
+
+        $total = PresenceCheck::whereDate('check_time', $today)->count();
+        $sent = PresenceCheck::whereDate('check_time', $today)
+            ->where('notification_sent', true)
+            ->count();
+        $responded = PresenceCheck::whereDate('check_time', $today)
+            ->where('response', '!=', 'no_response')
+            ->count();
+        $noResponse = PresenceCheck::whereDate('check_time', $today)
+            ->where('response', 'no_response')
+            ->count();
+
+        return [
+            'total' => $total,
+            'sent' => $sent,
+            'responded' => $responded,
+            'no_response' => $noResponse,
+            'response_rate' => $total > 0 ? round(($responded / $total) * 100, 2) : 0,
         ];
     }
 }

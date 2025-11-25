@@ -8,32 +8,38 @@
     <div class="bg-white rounded-lg shadow">
         <div class="px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-semibold text-gray-800">Nouvelle Unité d'Enseignement</h3>
-            <p class="text-sm text-gray-600 mt-1">Attribuer une UE à un enseignant vacataire</p>
+            <p class="text-sm text-gray-600 mt-1">Attribuer une UE à un enseignant (vacataire ou semi-permanent)</p>
         </div>
 
         <form action="{{ route('admin.unites-enseignement.store') }}" method="POST" class="p-6 space-y-6">
             @csrf
 
-            <!-- Sélection du vacataire -->
+            <!-- Sélection de l'enseignant -->
             <div>
                 <label for="vacataire_id" class="block text-sm font-medium text-gray-700 mb-2">
-                    Enseignant Vacataire <span class="text-red-500">*</span>
+                    Enseignant <span class="text-red-500">*</span>
                 </label>
                 <select
                     name="vacataire_id"
                     id="vacataire_id"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('vacataire_id') border-red-500 @enderror"
                     required
-                    onchange="updateTauxHoraire()"
+                    onchange="updateEnseignantInfo()"
                 >
-                    <option value="">Sélectionner un vacataire</option>
+                    <option value="">Sélectionner un enseignant</option>
                     @foreach($vacataires as $vac)
                         <option
                             value="{{ $vac->id }}"
-                            data-taux="{{ $vac->hourly_rate }}"
+                            data-taux="{{ $vac->hourly_rate ?? 0 }}"
+                            data-type="{{ $vac->employee_type }}"
                             {{ old('vacataire_id', $vacataireId) == $vac->id ? 'selected' : '' }}
                         >
-                            {{ $vac->full_name }} ({{ $vac->email }})
+                            {{ $vac->full_name }} -
+                            @if($vac->employee_type === 'enseignant_vacataire')
+                                <span class="text-blue-600">Vacataire</span>
+                            @else
+                                <span class="text-green-600">Semi-permanent</span>
+                            @endif
                         </option>
                     @endforeach
                 </select>
@@ -41,10 +47,21 @@
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
 
+                <!-- Info pour vacataire -->
                 <div id="tauxInfo" class="hidden mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <p class="text-sm text-blue-800">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Taux horaire: <strong id="tauxValue">0</strong> FCFA/h
+                        <i class="fas fa-money-bill-wave mr-1"></i>
+                        <strong>Vacataire</strong> - Taux horaire: <strong id="tauxValue">0</strong> FCFA/h
+                        <br><small>Les heures seront payées selon ce taux</small>
+                    </p>
+                </div>
+
+                <!-- Info pour semi-permanent -->
+                <div id="semiPermanentInfo" class="hidden mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <p class="text-sm text-green-800">
+                        <i class="fas fa-user-check mr-1"></i>
+                        <strong>Semi-permanent</strong> - Salaire fixe mensuel
+                        <br><small>Les heures sont suivies pour le monitoring uniquement (pas de paiement horaire)</small>
                     </p>
                 </div>
             </div>
@@ -201,20 +218,30 @@
 
 @push('scripts')
 <script>
-function updateTauxHoraire() {
+function updateEnseignantInfo() {
     const select = document.getElementById('vacataire_id');
     const selectedOption = select.options[select.selectedIndex];
     const taux = selectedOption.getAttribute('data-taux');
+    const type = selectedOption.getAttribute('data-type');
 
     const tauxInfo = document.getElementById('tauxInfo');
+    const semiPermanentInfo = document.getElementById('semiPermanentInfo');
     const tauxValue = document.getElementById('tauxValue');
 
-    if (taux && taux > 0) {
+    // Cacher tous les infos d'abord
+    tauxInfo.classList.add('hidden');
+    semiPermanentInfo.classList.add('hidden');
+
+    if (type === 'enseignant_vacataire' && taux && taux > 0) {
+        // Afficher info vacataire
         tauxValue.textContent = new Intl.NumberFormat('fr-FR').format(taux);
         tauxInfo.classList.remove('hidden');
         calculerMontantMax();
-    } else {
-        tauxInfo.classList.add('hidden');
+    } else if (type === 'semi_permanent') {
+        // Afficher info semi-permanent
+        semiPermanentInfo.classList.remove('hidden');
+        // Pas de calcul de montant pour semi-permanent
+        document.getElementById('montantMaxInfo')?.classList.add('hidden');
     }
 }
 
@@ -242,7 +269,7 @@ function calculerMontantMax() {
 document.addEventListener('DOMContentLoaded', function() {
     const vacataireSelect = document.getElementById('vacataire_id');
     if (vacataireSelect.value) {
-        updateTauxHoraire();
+        updateEnseignantInfo();
     }
 });
 </script>

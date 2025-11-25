@@ -193,6 +193,18 @@ class DashboardController extends Controller
             'penalty_per_second' => 'sometimes|numeric|min:0',
             'working_hours_per_day' => 'sometimes|numeric|min:1|max:24',
             'saturday_working_hours' => 'sometimes|numeric|min:0|max:12',
+            // Paramètres de notifications de présence
+            'notification_enabled' => 'sometimes|boolean',
+            'notification_time_1' => 'sometimes|date_format:H:i',
+            'notification_time_2' => 'sometimes|date_format:H:i',
+            'notification_time_3' => 'sometimes|date_format:H:i',
+            'notification_time_4' => 'sometimes|date_format:H:i',
+            'notification_time_5' => 'sometimes|date_format:H:i',
+            'presence_check_hours' => 'sometimes|array',
+            'presence_check_hours.*' => 'required|date_format:H:i',
+            // Paramètres de géofencing
+            'geofence_notification_enabled' => 'sometimes|boolean',
+            'geofence_notification_cooldown_minutes' => 'sometimes|integer|min:30|max:1440',
         ]);
 
         // Save map provider
@@ -205,8 +217,27 @@ class DashboardController extends Controller
             \App\Models\Setting::set('google_maps_api_key', $request->google_maps_api_key);
         }
 
+        // Save presence check hours as JSON
+        if ($request->has('presence_check_hours')) {
+            $hours = array_values(array_filter($request->presence_check_hours));
+            $setting = \App\Models\Setting::where('key_name', 'presence_check_hours')->first();
+            if ($setting) {
+                $setting->update([
+                    'value' => json_encode($hours),
+                    'type' => 'json'
+                ]);
+            } else {
+                \App\Models\Setting::create([
+                    'key_name' => 'presence_check_hours',
+                    'value' => json_encode($hours),
+                    'type' => 'json',
+                    'description' => 'Heures d\'envoi des notifications de vérification de présence'
+                ]);
+            }
+        }
+
         // Save other settings
-        foreach ($request->except(['_token', '_method', 'map_provider', 'google_maps_api_key']) as $key => $value) {
+        foreach ($request->except(['_token', '_method', 'map_provider', 'google_maps_api_key', 'presence_check_hours']) as $key => $value) {
             if ($value !== null) {
                 \App\Models\Setting::set($key, $value);
             }

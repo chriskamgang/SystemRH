@@ -143,6 +143,175 @@
             });
         </script>
 
+        <!-- Configuration des Notifications de Présence -->
+        <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                <i class="fas fa-bell text-purple-600 mr-2"></i>
+                Notifications de Vérification de Présence
+            </h3>
+
+            <form method="POST" action="{{ route('admin.settings.update') }}" id="presence-form">
+                @csrf
+                @method('PUT')
+
+                <div class="space-y-6">
+                    <!-- Heures de vérification -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                            Heures d'envoi des notifications "Êtes-vous en place?"
+                        </label>
+
+                        <div id="presence-hours-container" class="space-y-2">
+                            @php
+                                $hours = \App\Models\Setting::get('presence_check_hours', ['10:00', '15:00', '18:30', '20:45', '21:00']);
+                            @endphp
+
+                            @foreach($hours as $index => $hour)
+                            <div class="flex items-center gap-2 hour-row">
+                                <input type="time"
+                                       name="presence_check_hours[]"
+                                       value="{{ $hour }}"
+                                       class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                       required>
+                                <button type="button"
+                                        onclick="removeHourRow(this)"
+                                        class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        <button type="button"
+                                onclick="addHourRow()"
+                                class="mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">
+                            <i class="fas fa-plus mr-2"></i>
+                            Ajouter une heure
+                        </button>
+
+                        <p class="mt-3 text-sm text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Les employés qui ont un check-in actif recevront une notification aux heures configurées.
+                        </p>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-6">
+                        <button type="submit" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition">
+                            <i class="fas fa-save mr-2"></i>
+                            Enregistrer les heures
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Configuration du Géofencing -->
+        <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                <i class="fas fa-map-marker-alt text-indigo-600 mr-2"></i>
+                Notifications de Géofencing (Entrée en Zone)
+            </h3>
+
+            <form method="POST" action="{{ route('admin.settings.update') }}">
+                @csrf
+                @method('PUT')
+
+                <div class="space-y-6">
+                    <!-- Activer le géofencing -->
+                    <div class="flex items-center justify-between p-4 bg-indigo-50 rounded-lg">
+                        <div>
+                            <h4 class="font-medium text-gray-900">Activer les notifications d'entrée en zone</h4>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Envoyer une notification quand un employé entre dans la zone d'un campus
+                            </p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox"
+                                   name="geofence_notification_enabled"
+                                   value="1"
+                                   {{ \App\Models\Setting::get('geofence_notification_enabled', true) ? 'checked' : '' }}
+                                   class="sr-only peer">
+                            <div class="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <!-- Cooldown -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Délai anti-spam (minutes)
+                            <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number"
+                               name="geofence_notification_cooldown_minutes"
+                               value="{{ \App\Models\Setting::get('geofence_notification_cooldown_minutes', 360) }}"
+                               min="30"
+                               max="1440"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               required>
+                        <p class="mt-2 text-sm text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Temps minimum entre deux notifications pour le même campus (recommandé: 360 minutes = 6 heures)
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <h4 class="font-medium text-yellow-800 mb-2">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Comment ça marche ?
+                        </h4>
+                        <ul class="text-sm text-yellow-700 space-y-1">
+                            <li>✓ L'application détecte automatiquement l'entrée dans la zone d'un campus</li>
+                            <li>✓ Une notification "Vous êtes dans le Campus X" apparaît</li>
+                            <li>✓ L'employé peut faire check-in en 1 clic depuis la notification</li>
+                            <li>✓ Fonctionne même quand l'application est fermée (géofencing natif)</li>
+                        </ul>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-6">
+                        <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition">
+                            <i class="fas fa-save mr-2"></i>
+                            Enregistrer la configuration
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <script>
+            // Gestion des heures de vérification de présence
+            function addHourRow() {
+                const container = document.getElementById('presence-hours-container');
+                const newRow = document.createElement('div');
+                newRow.className = 'flex items-center gap-2 hour-row';
+                newRow.innerHTML = `
+                    <input type="time"
+                           name="presence_check_hours[]"
+                           value="09:00"
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           required>
+                    <button type="button"
+                            onclick="removeHourRow(this)"
+                            class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                container.appendChild(newRow);
+            }
+
+            function removeHourRow(button) {
+                const container = document.getElementById('presence-hours-container');
+                const rows = container.querySelectorAll('.hour-row');
+
+                // Ne pas supprimer s'il ne reste qu'une seule heure
+                if (rows.length <= 1) {
+                    alert('Vous devez conserver au moins une heure de vérification.');
+                    return;
+                }
+
+                button.closest('.hour-row').remove();
+            }
+        </script>
+
         <!-- Paramètres de Paie -->
         <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
             <h3 class="text-lg font-medium text-gray-900 mb-4">
@@ -409,6 +578,154 @@
                 }
             });
         </script>
+
+        <!-- Configuration des Plages Horaires (Matin/Soir) -->
+        <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                <i class="fas fa-clock text-indigo-600 mr-2"></i>
+                Configuration des Plages Horaires (Matin/Soir)
+            </h3>
+
+            <div class="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                <p class="text-sm text-indigo-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Pour les permanents enseignants:</strong> Ils peuvent travailler le matin ET/OU le soir. Chaque plage est enregistrée séparément.
+                </p>
+            </div>
+
+            <form method="POST" action="{{ route('admin.settings.update') }}">
+                @csrf
+                @method('PUT')
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Plage MATIN -->
+                    <div class="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                        <h4 class="font-medium text-blue-900 mb-4 flex items-center">
+                            <i class="fas fa-sun mr-2"></i>
+                            Plage MATIN
+                        </h4>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Heure de début (retard après cette heure)
+                                    <span class="text-red-500">*</span>
+                                </label>
+                                <input type="time" name="morning_start_time"
+                                       value="{{ \App\Models\Setting::get('morning_start_time', '08:15') }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-600">
+                                    Défaut: 8h15 - Si arrivée après = RETARD
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Heure de fin
+                                    <span class="text-red-500">*</span>
+                                </label>
+                                <input type="time" name="morning_end_time"
+                                       value="{{ \App\Models\Setting::get('morning_end_time', '17:00') }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-600">
+                                    Défaut: 17h00
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plage SOIR -->
+                    <div class="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
+                        <h4 class="font-medium text-orange-900 mb-4 flex items-center">
+                            <i class="fas fa-moon mr-2"></i>
+                            Plage SOIR
+                        </h4>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Heure de début (retard après cette heure)
+                                    <span class="text-red-500">*</span>
+                                </label>
+                                <input type="time" name="evening_start_time"
+                                       value="{{ \App\Models\Setting::get('evening_start_time', '17:30') }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-600">
+                                    Défaut: 17h30 - Si arrivée après = RETARD
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Heure de fin
+                                    <span class="text-red-500">*</span>
+                                </label>
+                                <input type="time" name="evening_end_time"
+                                       value="{{ \App\Models\Setting::get('evening_end_time', '21:00') }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-600">
+                                    Défaut: 21h00
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Heure de séparation -->
+                <div class="mt-6 p-4 border-2 border-purple-200 rounded-lg bg-purple-50">
+                    <h4 class="font-medium text-purple-900 mb-3 flex items-center">
+                        <i class="fas fa-exchange-alt mr-2"></i>
+                        Heure de séparation automatique
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Check-in avant cette heure = MATIN / Après = SOIR
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="time" name="shift_separator_time"
+                                   value="{{ \App\Models\Setting::get('shift_separator_time', '17:00') }}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   required>
+                            <p class="mt-1 text-xs text-gray-600">
+                                Défaut: 17h00
+                            </p>
+                        </div>
+                        <div class="text-sm text-purple-700">
+                            <i class="fas fa-lightbulb mr-2"></i>
+                            <strong>Exemple:</strong> Si réglé sur 17h00<br>
+                            • Check-in à 16h59 → Plage MATIN<br>
+                            • Check-in à 17h01 → Plage SOIR
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info box -->
+                <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 class="font-medium text-green-800 mb-2">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Comment ça fonctionne
+                    </h4>
+                    <ul class="text-sm text-green-700 space-y-1">
+                        <li><strong>Détection automatique:</strong> Le système détecte automatiquement si c'est matin ou soir selon l'heure du check-in</li>
+                        <li><strong>Deux présences séparées:</strong> Un permanent qui travaille matin + soir aura 2 enregistrements distincts</li>
+                        <li><strong>Retards indépendants:</strong> Le retard du matin et du soir sont calculés séparément</li>
+                        <li><strong>Exemple:</strong> Arrivée matin à 8h30 (retard 15 min) + Arrivée soir à 17h45 (retard 15 min) = 30 min de retard total</li>
+                    </ul>
+                </div>
+
+                <div class="mt-6">
+                    <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Enregistrer les horaires
+                    </button>
+                </div>
+            </form>
+        </div>
 
         <!-- Paramètres généraux -->
         <div class="bg-white rounded-lg shadow p-6">

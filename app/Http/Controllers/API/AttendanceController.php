@@ -65,11 +65,11 @@ class AttendanceController extends Controller
         $user = $request->user();
         $campus = Campus::findOrFail($request->campus_id);
 
-        // Si enseignant vacataire, vérifier l'UE
-        if ($user->employee_type === 'enseignant_vacataire' && $request->unite_enseignement_id) {
+        // Si enseignant vacataire ou semi-permanent, vérifier l'UE
+        if (($user->employee_type === 'enseignant_vacataire' || $user->employee_type === 'semi_permanent') && $request->unite_enseignement_id) {
             $ue = \App\Models\UniteEnseignement::find($request->unite_enseignement_id);
 
-            // Vérifier que l'UE appartient au vacataire
+            // Vérifier que l'UE appartient à l'enseignant
             if (!$ue || $ue->vacataire_id !== $user->id) {
                 return response()->json([
                     'message' => 'Cette UE ne vous appartient pas.',
@@ -208,8 +208,8 @@ class AttendanceController extends Controller
             'status' => 'valid',
         ];
 
-        // Ajouter l'UE si vacataire
-        if ($user->employee_type === 'enseignant_vacataire' && $request->unite_enseignement_id) {
+        // Ajouter l'UE si vacataire ou semi-permanent
+        if (($user->employee_type === 'enseignant_vacataire' || $user->employee_type === 'semi_permanent') && $request->unite_enseignement_id) {
             $attendanceData['unite_enseignement_id'] = $request->unite_enseignement_id;
         }
 
@@ -222,7 +222,7 @@ class AttendanceController extends Controller
                 'campus_id' => $campus->id,
                 'attendance_id' => $attendance->id,
                 'date' => $now->toDateString(),
-                'scheduled_time' => $campus->start_time,
+                'scheduled_time' => $shiftTimes['start'],
                 'actual_time' => $now->format('H:i:s'),
                 'late_minutes' => $lateMinutes,
                 'status' => 'pending',
@@ -231,11 +231,18 @@ class AttendanceController extends Controller
 
         $attendance->load(['campus', 'tardiness']);
 
+        $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+        $message = $isLate
+            ? "Check-in enregistré pour la plage du {$shiftLabel} avec retard de {$lateMinutes} minutes."
+            : "Check-in enregistré avec succès pour la plage du {$shiftLabel}.";
+
         return response()->json([
-            'message' => $isLate
-                ? 'Check-in enregistré avec retard de ' . $lateMinutes . ' minutes.'
-                : 'Check-in enregistré avec succès.',
+            'message' => $message,
             'attendance' => $attendance,
+            'shift' => $shift,
+            'shift_label' => $shiftLabel,
+            'shift_start_time' => $shiftTimes['start'],
+            'shift_end_time' => $shiftTimes['end'],
             'is_late' => $isLate,
             'late_minutes' => $lateMinutes,
             'timestamp' => $now,
@@ -265,18 +272,24 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Vérifier s'il y a un check-in sans check-out
-        $todayCheckIns = Attendance::where('user_id', $user->id)
+        // Détecter automatiquement la plage horaire
+        $now = now();
+        $shift = $this->detectShift($now);
+
+        // Vérifier s'il y a un check-in sans check-out pour CETTE plage
+        $todayCheckInsThisShift = Attendance::where('user_id', $user->id)
             ->where('campus_id', $campus->id)
             ->where('type', 'check-in')
+            ->where('shift', $shift)
             ->whereDate('timestamp', today())
             ->orderBy('timestamp', 'desc')
             ->get();
 
         $checkIn = null;
-        foreach ($todayCheckIns as $ci) {
+        foreach ($todayCheckInsThisShift as $ci) {
             $hasCheckOut = Attendance::where('user_id', $user->id)
                 ->where('campus_id', $campus->id)
+                ->where('shift', $shift)
                 ->where('type', 'check-out')
                 ->where('timestamp', '>', $ci->timestamp)
                 ->whereDate('timestamp', today())
@@ -289,18 +302,19 @@ class AttendanceController extends Controller
         }
 
         if (!$checkIn) {
+            $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
             return response()->json([
-                'message' => 'Aucun check-in actif trouvé pour ce campus aujourd\'hui.',
+                'message' => "Aucun check-in actif trouvé pour la plage du {$shiftLabel} sur ce campus aujourd'hui.",
+                'shift' => $shift,
             ], 400);
         }
-
-        $now = now();
 
         // Créer le check-out
         $checkout = Attendance::create([
             'user_id' => $user->id,
             'campus_id' => $campus->id,
             'type' => 'check-out',
+            'shift' => $shift, // Ajouter la plage horaire
             'timestamp' => $now,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
@@ -314,10 +328,14 @@ class AttendanceController extends Controller
 
         $checkout->load('campus');
 
+        $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+
         return response()->json([
-            'message' => 'Check-out enregistré avec succès.',
+            'message' => "Check-out enregistré avec succès pour la plage du {$shiftLabel}.",
             'checkout' => $checkout,
             'checkin' => $checkIn,
+            'shift' => $shift,
+            'shift_label' => $shiftLabel,
             'duration_minutes' => $duration,
             'duration_formatted' => $this->formatDuration($duration),
         ], 201);

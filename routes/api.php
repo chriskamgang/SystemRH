@@ -30,6 +30,23 @@ Route::get('/', function () {
 // Routes publiques
 Route::post('/login', [AuthController::class, 'login']);
 
+// ========== ROUTE DE TEST (À SUPPRIMER EN PRODUCTION) ==========
+Route::get('/test-notifications', function () {
+    $result = \App\Services\PresenceNotificationService::sendPresenceCheckNotifications();
+    return response()->json([
+        'message' => 'Test des notifications de présence',
+        'result' => $result,
+    ]);
+});
+
+Route::get('/test-stats', function () {
+    $stats = \App\Services\PresenceNotificationService::getTodayStats();
+    return response()->json([
+        'message' => 'Statistiques des notifications du jour',
+        'stats' => $stats,
+    ]);
+});
+
 // Routes protégées par Sanctum
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -100,6 +117,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/actives', [\App\Http\Controllers\API\UniteEnseignementController::class, 'actives']);
         Route::get('/statistiques', [\App\Http\Controllers\API\UniteEnseignementController::class, 'statistiques']);
         Route::get('/{id}', [\App\Http\Controllers\API\UniteEnseignementController::class, 'show']);
+    });
+
+    // ========== GÉOFENCING (Notifications d'entrée en zone) ==========
+    Route::prefix('geofencing')->group(function () {
+        Route::post('/entry', [\App\Http\Controllers\API\GeofencingController::class, 'onGeofenceEntry']);
+        Route::post('/clicked', [\App\Http\Controllers\API\GeofencingController::class, 'markAsClicked']);
+        Route::post('/ignored', [\App\Http\Controllers\API\GeofencingController::class, 'markAsIgnored']);
+        Route::get('/status', [\App\Http\Controllers\API\GeofencingController::class, 'getStatus']);
     });
 
     // Test route

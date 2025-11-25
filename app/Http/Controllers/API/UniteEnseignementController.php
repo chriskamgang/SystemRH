@@ -10,18 +10,18 @@ use Illuminate\Support\Facades\Auth;
 class UniteEnseignementController extends Controller
 {
     /**
-     * Liste des UE du vacataire connecté
+     * Liste des UE du vacataire ou semi-permanent connecté
      * GET /api/unites-enseignement
      */
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        // Vérifier que c'est un enseignant vacataire
-        if ($user->employee_type !== 'enseignant_vacataire') {
+        // Vérifier que c'est un enseignant vacataire ou semi-permanent
+        if ($user->employee_type !== 'enseignant_vacataire' && $user->employee_type !== 'semi_permanent') {
             return response()->json([
                 'success' => false,
-                'message' => 'Accès réservé aux enseignants vacataires'
+                'message' => 'Accès réservé aux enseignants vacataires et semi-permanents'
             ], 403);
         }
 
@@ -154,11 +154,11 @@ class UniteEnseignementController extends Controller
     {
         $user = Auth::user();
 
-        // Vérifier que c'est un enseignant vacataire
-        if ($user->employee_type !== 'enseignant_vacataire') {
+        // Vérifier que c'est un enseignant vacataire ou semi-permanent
+        if ($user->employee_type !== 'enseignant_vacataire' && $user->employee_type !== 'semi_permanent') {
             return response()->json([
                 'success' => false,
-                'message' => 'Accès réservé aux enseignants vacataires'
+                'message' => 'Accès réservé aux enseignants vacataires et semi-permanents'
             ], 403);
         }
 

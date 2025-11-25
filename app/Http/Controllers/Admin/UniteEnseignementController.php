@@ -23,9 +23,10 @@ class UniteEnseignementController extends Controller
             $query->where('statut', $request->statut);
         }
 
-        // Filtre par vacataire
-        if ($request->has('vacataire_id')) {
-            $query->where('vacataire_id', $request->vacataire_id);
+        // Filtre par enseignant (vacataire ou semi-permanent)
+        if ($request->has('vacataire_id') || $request->has('enseignant_id')) {
+            $enseignantId = $request->get('enseignant_id', $request->get('vacataire_id'));
+            $query->where('enseignant_id', $enseignantId);
         }
 
         // Filtre par année académique
@@ -39,19 +40,19 @@ class UniteEnseignementController extends Controller
     }
 
     /**
-     * Liste des UE d'un vacataire spécifique
+     * Liste des UE d'un enseignant spécifique (vacataire ou semi-permanent)
      */
     public function vacataireUnites($vacataireId)
     {
-        $vacataire = User::where('employee_type', 'enseignant_vacataire')
+        $vacataire = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
             ->findOrFail($vacataireId);
 
-        $unitesActivees = UniteEnseignement::where('vacataire_id', $vacataireId)
+        $unitesActivees = UniteEnseignement::where('enseignant_id', $vacataireId)
             ->where('statut', 'activee')
             ->with(['presenceIncidents'])
             ->get();
 
-        $unitesNonActivees = UniteEnseignement::where('vacataire_id', $vacataireId)
+        $unitesNonActivees = UniteEnseignement::where('enseignant_id', $vacataireId)
             ->where('statut', 'non_activee')
             ->get();
 
@@ -79,7 +80,8 @@ class UniteEnseignementController extends Controller
     public function create(Request $request)
     {
         $vacataireId = $request->get('vacataire_id');
-        $vacataires = User::where('employee_type', 'enseignant_vacataire')
+        // Récupérer les vacataires ET les semi-permanents
+        $vacataires = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
             ->where('is_active', true)
             ->orderBy('first_name')
             ->get();
@@ -102,6 +104,16 @@ class UniteEnseignementController extends Controller
             'activer_immediatement' => 'boolean',
         ]);
 
+        // Valider que l'utilisateur est bien un enseignant (vacataire ou semi-permanent)
+        $enseignant = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+            ->find($request->vacataire_id);
+
+        if (!$enseignant) {
+            return redirect()->back()
+                ->withErrors(['vacataire_id' => 'Cet employé doit être un enseignant (vacataire ou semi-permanent)'])
+                ->withInput();
+        }
+
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
@@ -109,6 +121,9 @@ class UniteEnseignementController extends Controller
         }
 
         $data = $request->except('activer_immediatement');
+        // Renommer vacataire_id en enseignant_id pour la base de données
+        $data['enseignant_id'] = $data['vacataire_id'];
+        unset($data['vacataire_id']);
         $data['created_by'] = Auth::id();
         $data['date_attribution'] = now();
 
@@ -122,7 +137,7 @@ class UniteEnseignementController extends Controller
         $ue = UniteEnseignement::create($data);
 
         return redirect()
-            ->route('admin.vacataires.unites', $ue->vacataire_id)
+            ->route('admin.vacataires.unites', $ue->enseignant_id)
             ->with('success', 'Unité d\'enseignement attribuée avec succès');
     }
 
@@ -166,7 +181,7 @@ class UniteEnseignementController extends Controller
         ]));
 
         return redirect()
-            ->route('admin.vacataires.unites', $ue->vacataire_id)
+            ->route('admin.vacataires.unites', $ue->enseignant_id)
             ->with('success', 'Unité d\'enseignement modifiée avec succès');
     }
 
@@ -185,7 +200,7 @@ class UniteEnseignementController extends Controller
         $ue->activer(Auth::id());
 
         return redirect()->back()
-            ->with('success', 'UE activée avec succès. Le vacataire peut maintenant pointer pour cette matière.');
+            ->with('success', 'UE activée avec succès. L\'enseignant peut maintenant pointer pour cette matière.');
     }
 
     /**
@@ -225,11 +240,11 @@ class UniteEnseignementController extends Controller
                 ->with('error', 'Impossible de supprimer une UE avec des heures déjà pointées');
         }
 
-        $vacataireId = $ue->vacataire_id;
+        $enseignantId = $ue->enseignant_id;
         $ue->delete();
 
         return redirect()
-            ->route('admin.vacataires.unites', $vacataireId)
+            ->route('admin.vacataires.unites', $enseignantId)
             ->with('success', 'UE supprimée avec succès');
     }
 

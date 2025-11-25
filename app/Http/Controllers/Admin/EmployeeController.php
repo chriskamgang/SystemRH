@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Campus;
+use App\Models\UserCampusShift;
+use App\Imports\EmployeesImport;
+use App\Exports\EmployeesTemplateExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EmployeeController extends Controller
 {
@@ -83,6 +87,11 @@ class EmployeeController extends Controller
             'is_active' => 'boolean',
             'monthly_salary' => 'nullable|numeric|min:0',
             'hourly_rate' => 'nullable|numeric|min:0',
+            'volume_horaire_hebdomadaire' => 'nullable|numeric|min:0|max:168',
+            'jours_travail' => 'nullable|array',
+            'jours_travail.*' => 'string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
+        ], [
+            'volume_horaire_hebdomadaire.max' => 'Le volume horaire hebdomadaire ne peut pas dépasser 168 heures (nombre d\'heures dans une semaine).',
         ]);
 
         // Si pas de role_id fourni, assigner le rôle "Employé Standard" par défaut
@@ -96,7 +105,15 @@ class EmployeeController extends Controller
             $request->validate([
                 'hourly_rate' => 'required|numeric|min:0',
             ]);
+        } elseif ($request->employee_type === 'semi_permanent') {
+            // Semi-permanent : salaire mensuel + volume horaire + jours de travail OBLIGATOIRES
+            $request->validate([
+                'monthly_salary' => 'required|numeric|min:0',
+                'volume_horaire_hebdomadaire' => 'required|numeric|min:0',
+                'jours_travail' => 'required|array|min:1',
+            ]);
         } else {
+            // Autres types : salaire mensuel uniquement
             $request->validate([
                 'monthly_salary' => 'required|numeric|min:0',
             ]);
@@ -120,6 +137,20 @@ class EmployeeController extends Controller
         // Attacher les campus
         if ($request->has('campuses')) {
             $employee->campuses()->attach($request->campuses);
+        }
+
+        // Gérer les plages horaires pour les permanents enseignants
+        if ($request->employee_type === 'enseignant_titulaire' && $request->has('shifts')) {
+            foreach ($request->shifts as $campusId => $shifts) {
+                if (isset($shifts['morning']) || isset($shifts['evening'])) {
+                    UserCampusShift::create([
+                        'user_id' => $employee->id,
+                        'campus_id' => $campusId,
+                        'works_morning' => isset($shifts['morning']) && $shifts['morning'] == '1',
+                        'works_evening' => isset($shifts['evening']) && $shifts['evening'] == '1',
+                    ]);
+                }
+            }
         }
 
         return redirect()
@@ -170,6 +201,13 @@ class EmployeeController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        \Log::info('=== UPDATE EMPLOYEE START ===', [
+            'employee_id' => $id,
+            'employee_type' => $request->employee_type,
+            'has_jours_travail' => $request->has('jours_travail'),
+            'jours_travail' => $request->jours_travail,
+        ]);
+
         $employee = User::findOrFail($id);
 
         $validated = $request->validate([
@@ -185,6 +223,11 @@ class EmployeeController extends Controller
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'monthly_salary' => 'nullable|numeric|min:0',
             'hourly_rate' => 'nullable|numeric|min:0',
+            'volume_horaire_hebdomadaire' => 'nullable|numeric|min:0|max:168',
+            'jours_travail' => 'nullable|array',
+            'jours_travail.*' => 'string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
+        ], [
+            'volume_horaire_hebdomadaire.max' => 'Le volume horaire hebdomadaire ne peut pas dépasser 168 heures (nombre d\'heures dans une semaine).',
         ]);
 
         // Si pas de role_id fourni, assigner le rôle "Employé Standard" par défaut
@@ -198,7 +241,15 @@ class EmployeeController extends Controller
             $request->validate([
                 'hourly_rate' => 'required|numeric|min:0',
             ]);
+        } elseif ($request->employee_type === 'semi_permanent') {
+            // Semi-permanent : salaire mensuel + volume horaire + jours de travail OBLIGATOIRES
+            $request->validate([
+                'monthly_salary' => 'required|numeric|min:0',
+                'volume_horaire_hebdomadaire' => 'required|numeric|min:0',
+                'jours_travail' => 'required|array|min:1',
+            ]);
         } else {
+            // Autres types : salaire mensuel uniquement
             $request->validate([
                 'monthly_salary' => 'required|numeric|min:0',
             ]);
@@ -224,8 +275,22 @@ class EmployeeController extends Controller
             unset($validated['password']);
         }
 
+        // Nettoyer les champs selon le type d'employé
+        if ($request->employee_type !== 'semi_permanent') {
+            // Si ce n'est pas un semi-permanent, nettoyer les champs spécifiques
+            $validated['volume_horaire_hebdomadaire'] = null;
+            $validated['jours_travail'] = null;
+        }
+
+        if ($request->employee_type !== 'enseignant_vacataire') {
+            // Si ce n'est pas un vacataire, nettoyer le taux horaire
+            $validated['hourly_rate'] = null;
+        }
+
         // Mettre à jour l'employé
+        \Log::info('Updating employee with data:', $validated);
         $employee->update($validated);
+        \Log::info('Employee updated successfully');
 
         // Synchroniser les campus
         if ($request->has('campuses')) {
@@ -233,6 +298,26 @@ class EmployeeController extends Controller
         } else {
             $employee->campuses()->detach();
         }
+
+        // Gérer les plages horaires pour les permanents enseignants
+        if ($request->employee_type === 'enseignant_titulaire' && $request->has('shifts')) {
+            // Supprimer toutes les anciennes assignations de plages
+            UserCampusShift::where('user_id', $employee->id)->delete();
+
+            // Ajouter les nouvelles assignations
+            foreach ($request->shifts as $campusId => $shifts) {
+                if (isset($shifts['morning']) || isset($shifts['evening'])) {
+                    UserCampusShift::create([
+                        'user_id' => $employee->id,
+                        'campus_id' => $campusId,
+                        'works_morning' => isset($shifts['morning']) && $shifts['morning'] == '1',
+                        'works_evening' => isset($shifts['evening']) && $shifts['evening'] == '1',
+                    ]);
+                }
+            }
+        }
+
+        \Log::info('=== UPDATE EMPLOYEE SUCCESS ===');
 
         return redirect()
             ->route('admin.employees.index')
@@ -301,5 +386,73 @@ class EmployeeController extends Controller
 
         // Formater avec des zéros devant (0001, 0002, etc.)
         return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Afficher la page d'import
+     */
+    public function showImportForm()
+    {
+        return view('admin.employees.import');
+    }
+
+    /**
+     * Télécharger le template CSV/Excel
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new EmployeesTemplateExport, 'template_import_employes.xlsx');
+    }
+
+    /**
+     * Importer des employés depuis un fichier CSV/Excel
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:5120', // 5MB max
+        ], [
+            'file.required' => 'Veuillez sélectionner un fichier à importer',
+            'file.mimes' => 'Le fichier doit être au format Excel (.xlsx, .xls) ou CSV (.csv)',
+            'file.max' => 'Le fichier ne doit pas dépasser 5 Mo',
+        ]);
+
+        try {
+            $import = new EmployeesImport();
+            Excel::import($import, $request->file('file'));
+
+            $successCount = $import->getSuccessCount();
+            $skipCount = $import->getSkipCount();
+            $errors = $import->getErrors();
+
+            // Préparer le message de résultat
+            $message = '';
+
+            if ($successCount > 0) {
+                $message .= "{$successCount} employé(s) importé(s) avec succès. ";
+            }
+
+            if ($skipCount > 0) {
+                $message .= "{$skipCount} ligne(s) ignorée(s) (emails déjà existants). ";
+            }
+
+            if (!empty($errors)) {
+                $message .= "Erreurs rencontrées : " . implode(' | ', $errors);
+                return redirect()->route('admin.employees.import-form')
+                    ->with('warning', $message);
+            }
+
+            if ($successCount == 0) {
+                return redirect()->route('admin.employees.import-form')
+                    ->with('error', 'Aucun employé n\'a été importé. Vérifiez le format du fichier.');
+            }
+
+            return redirect()->route('admin.employees.index')
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->route('admin.employees.import-form')
+                ->with('error', 'Erreur lors de l\'import : ' . $e->getMessage());
+        }
     }
 }

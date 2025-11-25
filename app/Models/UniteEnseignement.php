@@ -11,7 +11,7 @@ class UniteEnseignement extends Model
     protected $table = 'unites_enseignement';
 
     protected $fillable = [
-        'vacataire_id',
+        'enseignant_id',
         'code_ue',
         'nom_matiere',
         'volume_horaire_total',
@@ -35,10 +35,16 @@ class UniteEnseignement extends Model
      * Relations
      */
 
-    // Vacataire (enseignant) à qui l'UE est attribuée
+    // Enseignant (vacataire ou semi-permanent) à qui l'UE est attribuée
+    public function enseignant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'enseignant_id');
+    }
+
+    // Alias pour rétrocompatibilité
     public function vacataire(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'vacataire_id');
+        return $this->enseignant();
     }
 
     // Admin qui a créé/attribué l'UE
@@ -75,10 +81,16 @@ class UniteEnseignement extends Model
         return $query->where('statut', 'non_activee');
     }
 
-    // Filtre par vacataire
+    // Filtre par enseignant (vacataire ou semi-permanent)
+    public function scopeForEnseignant($query, $enseignantId)
+    {
+        return $query->where('enseignant_id', $enseignantId);
+    }
+
+    // Alias pour rétrocompatibilité
     public function scopeForVacataire($query, $vacataireId)
     {
-        return $query->where('vacataire_id', $vacataireId);
+        return $this->scopeForEnseignant($query, $vacataireId);
     }
 
     // Filtre par année académique
@@ -123,11 +135,11 @@ class UniteEnseignement extends Model
         ]);
     }
 
-    // Calculer les heures effectuées par le vacataire pour cette UE
+    // Calculer les heures effectuées par l'enseignant pour cette UE
     public function getHeuresEffectueesAttribute(): float
     {
         // Calculer à partir des attendances (check-in/check-out)
-        $attendances = \App\Models\Attendance::where('user_id', $this->vacataire_id)
+        $attendances = \App\Models\Attendance::where('user_id', $this->enseignant_id)
             ->where('unite_enseignement_id', $this->id)
             ->where('type', 'check-in')
             ->where('status', 'valid')
@@ -136,7 +148,7 @@ class UniteEnseignement extends Model
         $totalHours = 0;
         foreach ($attendances as $checkIn) {
             // Trouver le check-out correspondant
-            $checkOut = \App\Models\Attendance::where('user_id', $this->vacataire_id)
+            $checkOut = \App\Models\Attendance::where('user_id', $this->enseignant_id)
                 ->where('unite_enseignement_id', $this->id)
                 ->where('type', 'check-out')
                 ->where('timestamp', '>', $checkIn->timestamp)
@@ -166,24 +178,46 @@ class UniteEnseignement extends Model
         return min(100, ($this->heures_effectuees / $this->volume_horaire_total) * 100);
     }
 
-    // Calculer le montant payé (heures effectuées × taux horaire du vacataire)
+    // Calculer le montant payé (heures effectuées × taux horaire)
+    // Note: Seulement pour les vacataires, pas pour les semi-permanents
     public function getMontantPayeAttribute(): float
     {
-        $tauxHoraire = $this->vacataire->hourly_rate ?? 0;
+        $enseignant = $this->enseignant;
+
+        // Si c'est un semi-permanent, ne pas calculer de montant (salaire fixe)
+        if ($enseignant && $enseignant->isSemiPermanent()) {
+            return 0;
+        }
+
+        $tauxHoraire = $enseignant->hourly_rate ?? 0;
         return $this->heures_effectuees * $tauxHoraire;
     }
 
     // Calculer le montant potentiel restant
     public function getMontantRestantAttribute(): float
     {
-        $tauxHoraire = $this->vacataire->hourly_rate ?? 0;
+        $enseignant = $this->enseignant;
+
+        // Si c'est un semi-permanent, ne pas calculer de montant (salaire fixe)
+        if ($enseignant && $enseignant->isSemiPermanent()) {
+            return 0;
+        }
+
+        $tauxHoraire = $enseignant->hourly_rate ?? 0;
         return $this->heures_restantes * $tauxHoraire;
     }
 
     // Calculer le montant maximum possible
     public function getMontantMaxAttribute(): float
     {
-        $tauxHoraire = $this->vacataire->hourly_rate ?? 0;
+        $enseignant = $this->enseignant;
+
+        // Si c'est un semi-permanent, ne pas calculer de montant (salaire fixe)
+        if ($enseignant && $enseignant->isSemiPermanent()) {
+            return 0;
+        }
+
+        $tauxHoraire = $enseignant->hourly_rate ?? 0;
         return $this->volume_horaire_total * $tauxHoraire;
     }
 }
