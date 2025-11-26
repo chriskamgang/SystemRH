@@ -2,6 +2,11 @@
 
 @section('title', 'Configuration Firebase')
 
+@push('styles')
+<!-- Bootstrap 5 CSS (pour cette page uniquement) -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <!-- Header -->
@@ -275,27 +280,42 @@
 </div>
 
 @push('scripts')
+<!-- Bootstrap 5 JS (pour cette page uniquement) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 // Désactiver le bouton pendant l'upload
 document.getElementById('uploadForm')?.addEventListener('submit', function() {
     const btn = document.getElementById('uploadBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Upload en cours...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Upload en cours...';
+    }
 });
 
 // Désactiver le bouton pendant le test
 document.getElementById('testForm')?.addEventListener('submit', function() {
     const btn = document.getElementById('testBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+    }
 });
 
 // Auto-dismiss alerts after 5 seconds
 setTimeout(function() {
     const alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(alert => {
-        const bsAlert = new bootstrap.Alert(alert);
-        bsAlert.close();
+        // Use Bootstrap Alert if available
+        if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        } else {
+            // Fallback: fade out and remove
+            alert.style.transition = 'opacity 0.5s';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        }
     });
 }, 5000);
 </script>

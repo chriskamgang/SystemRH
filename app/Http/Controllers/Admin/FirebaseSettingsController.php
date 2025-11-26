@@ -42,7 +42,7 @@ class FirebaseSettingsController extends Controller
             $json = json_decode($content, true);
 
             if (!$json || !isset($json['project_id']) || !isset($json['private_key'])) {
-                return back()->with('error', 'Le fichier JSON n\'est pas un fichier de credentials Firebase valide.');
+                return redirect()->route('admin.firebase.index')->with('error', 'Le fichier JSON n\'est pas un fichier de credentials Firebase valide.');
             }
 
             // Créer le répertoire storage si nécessaire
@@ -64,18 +64,12 @@ class FirebaseSettingsController extends Controller
             file_put_contents($fullPath, $content);
 
             // Mettre à jour le .env
+            $envUpdated = false;
             try {
                 $this->updateEnvFile('FIREBASE_CREDENTIALS', $fullPath);
+                $envUpdated = true;
             } catch (\Exception $e) {
                 Log::warning('Could not update .env file', ['error' => $e->getMessage()]);
-                // Continue anyway, manual update required
-            }
-
-            // Nettoyer le cache
-            try {
-                \Illuminate\Support\Facades\Artisan::call('config:clear');
-            } catch (\Exception $e) {
-                Log::warning('Could not clear config cache', ['error' => $e->getMessage()]);
             }
 
             Log::info('Firebase credentials uploaded successfully', [
@@ -83,7 +77,14 @@ class FirebaseSettingsController extends Controller
                 'uploaded_by' => auth()->id(),
             ]);
 
-            return back()->with('success', 'Fichier Firebase uploadé avec succès ! Configuration mise à jour.');
+            $message = 'Fichier Firebase uploadé avec succès ! ';
+            if ($envUpdated) {
+                $message .= 'Le fichier .env a été mis à jour automatiquement. Veuillez redémarrer le serveur Laravel pour appliquer les changements.';
+            } else {
+                $message .= 'Veuillez ajouter manuellement cette ligne dans votre .env : FIREBASE_CREDENTIALS=' . $fullPath;
+            }
+
+            return redirect()->route('admin.firebase.index')->with('success', $message);
 
         } catch (\Exception $e) {
             Log::error('Failed to upload Firebase credentials', [
@@ -91,7 +92,7 @@ class FirebaseSettingsController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->with('error', 'Erreur lors de l\'upload : ' . $e->getMessage());
+            return redirect()->route('admin.firebase.index')->with('error', 'Erreur lors de l\'upload : ' . $e->getMessage());
         }
     }
 
@@ -101,14 +102,14 @@ class FirebaseSettingsController extends Controller
             $credentialsPath = config('firebase.credentials');
 
             if (!$credentialsPath || !file_exists($credentialsPath)) {
-                return back()->with('error', 'Aucun fichier Firebase configuré.');
+                return redirect()->route('admin.firebase.index')->with('error', 'Aucun fichier Firebase configuré.');
             }
 
             // Tester en récupérant un utilisateur avec FCM token
             $user = User::whereNotNull('fcm_token')->first();
 
             if (!$user) {
-                return back()->with('warning', 'Configuration Firebase valide, mais aucun utilisateur avec FCM token trouvé pour tester l\'envoi.');
+                return redirect()->route('admin.firebase.index')->with('warning', 'Configuration Firebase valide, mais aucun utilisateur avec FCM token trouvé pour tester l\'envoi.');
             }
 
             // Créer une notification de test
@@ -140,7 +141,7 @@ class FirebaseSettingsController extends Controller
                 'message_id' => $result,
             ]);
 
-            return back()->with('success', "Notification de test envoyée avec succès à {$user->full_name} ! Vérifiez le téléphone.");
+            return redirect()->route('admin.firebase.index')->with('success', "Notification de test envoyée avec succès à {$user->full_name} ! Vérifiez le téléphone.");
 
         } catch (MessagingException $e) {
             Log::error('Firebase test failed (Messaging)', [
@@ -153,7 +154,7 @@ class FirebaseSettingsController extends Controller
                 $errorMessage .= ' (Le token FCM est invalide ou expiré)';
             }
 
-            return back()->with('error', $errorMessage);
+            return redirect()->route('admin.firebase.index')->with('error', $errorMessage);
 
         } catch (\Exception $e) {
             Log::error('Firebase test failed', [
@@ -161,7 +162,7 @@ class FirebaseSettingsController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->with('error', 'Erreur lors du test : ' . $e->getMessage());
+            return redirect()->route('admin.firebase.index')->with('error', 'Erreur lors du test : ' . $e->getMessage());
         }
     }
 
@@ -170,7 +171,7 @@ class FirebaseSettingsController extends Controller
         $credentialsPath = config('firebase.credentials');
 
         if (!$credentialsPath || !file_exists($credentialsPath)) {
-            return back()->with('error', 'Aucun fichier Firebase configuré.');
+            return redirect()->route('admin.firebase.index')->with('error', 'Aucun fichier Firebase configuré.');
         }
 
         return response()->download($credentialsPath, 'firebase-credentials.json');

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Kreait\Firebase\Factory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,7 +12,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register Firebase Messaging service
+        $this->app->singleton('firebase.messaging', function ($app) {
+            $credentialsPath = config('firebase.credentials');
+
+            if (!$credentialsPath || !file_exists($credentialsPath)) {
+                throw new \RuntimeException('Firebase credentials file not found. Please configure FIREBASE_CREDENTIALS in your .env file.');
+            }
+
+            $factory = (new Factory)->withServiceAccount($credentialsPath);
+
+            return $factory->createMessaging();
+        });
     }
 
     /**

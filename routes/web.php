@@ -185,7 +185,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // ========== FIREBASE SETTINGS ==========
     Route::prefix('firebase')->name('firebase.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'index'])->name('index');
-        Route::post('/upload', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'upload'])->name('upload');
+        Route::match(['get', 'post'], '/upload', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'upload'])->name('upload');
         Route::post('/test', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'test'])->name('test');
         Route::get('/download', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'download'])->name('download');
     });
