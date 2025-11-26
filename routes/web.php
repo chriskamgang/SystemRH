@@ -182,6 +182,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::get('/api/presence-alerts/incidents', [App\Http\Controllers\Admin\PresenceAlertController::class, 'apiGetIncidents'])->name('api.presence-alerts.incidents');
     Route::get('/api/presence-alerts/pending-count', [App\Http\Controllers\Admin\PresenceAlertController::class, 'apiGetPendingCount'])->name('api.presence-alerts.pending-count');
 
+    // ========== FIREBASE SETTINGS ==========
+    Route::prefix('firebase')->name('firebase.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'index'])->name('index');
+        Route::post('/upload', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'upload'])->name('upload');
+        Route::post('/test', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'test'])->name('test');
+        Route::get('/download', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'download'])->name('download');
+    });
+
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 

@@ -224,6 +224,11 @@
                 </a>
                 --}}
 
+                <a href="{{ route('admin.firebase.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.firebase.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-fire w-5 text-orange-500"></i>
+                    <span class="ml-3">Firebase</span>
+                </a>
+
                 <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.settings') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-cog w-5"></i>
                     <span class="ml-3">Paramètres</span>
