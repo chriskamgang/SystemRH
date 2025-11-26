@@ -64,10 +64,19 @@ class FirebaseSettingsController extends Controller
             file_put_contents($fullPath, $content);
 
             // Mettre à jour le .env
-            $this->updateEnvFile('FIREBASE_CREDENTIALS', $fullPath);
+            try {
+                $this->updateEnvFile('FIREBASE_CREDENTIALS', $fullPath);
+            } catch (\Exception $e) {
+                Log::warning('Could not update .env file', ['error' => $e->getMessage()]);
+                // Continue anyway, manual update required
+            }
 
             // Nettoyer le cache
-            \Artisan::call('config:clear');
+            try {
+                \Illuminate\Support\Facades\Artisan::call('config:clear');
+            } catch (\Exception $e) {
+                Log::warning('Could not clear config cache', ['error' => $e->getMessage()]);
+            }
 
             Log::info('Firebase credentials uploaded successfully', [
                 'project_id' => $json['project_id'],
