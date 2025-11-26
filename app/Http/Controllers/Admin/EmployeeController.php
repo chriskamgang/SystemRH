@@ -455,4 +455,164 @@ class EmployeeController extends Controller
                 ->with('error', 'Erreur lors de l\'import : ' . $e->getMessage());
         }
     }
+
+    // ===== NOUVEAUX IMPORTS SPÉCIFIQUES PAR TYPE =====
+
+    /**
+     * Télécharger le template pour PERMANENTS
+     */
+    public function downloadPermanentTemplate()
+    {
+        return Excel::download(new \App\Exports\PermanentEmployeesTemplateExport, 'template_employes_permanents.xlsx');
+    }
+
+    /**
+     * Importer des employés PERMANENTS
+     */
+    public function importPermanent(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:5120',
+        ], [
+            'file.required' => 'Veuillez sélectionner un fichier à importer',
+            'file.mimes' => 'Le fichier doit être au format Excel (.xlsx, .xls) ou CSV (.csv)',
+            'file.max' => 'Le fichier ne doit pas dépasser 5 Mo',
+        ]);
+
+        try {
+            $import = new \App\Imports\PermanentEmployeesImport();
+            Excel::import($import, $request->file('file'));
+
+            $results = $import->getResults();
+            $message = $this->formatImportMessage($results, 'permanents');
+
+            if (!empty($results['errors'])) {
+                return redirect()->route('admin.employees.import-form')
+                    ->with('warning', $message);
+            }
+
+            if ($results['success'] == 0) {
+                return redirect()->route('admin.employees.import-form')
+                    ->with('error', 'Aucun employé permanent n\'a été importé.');
+            }
+
+            return redirect()->route('admin.employees.index')
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->route('admin.employees.import-form')
+                ->with('error', 'Erreur lors de l\'import des permanents : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Télécharger le template pour SEMI-PERMANENTS
+     */
+    public function downloadSemiPermanentTemplate()
+    {
+        return Excel::download(new \App\Exports\SemiPermanentEmployeesTemplateExport, 'template_employes_semi_permanents.xlsx');
+    }
+
+    /**
+     * Importer des employés SEMI-PERMANENTS
+     */
+    public function importSemiPermanent(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        try {
+            $import = new \App\Imports\SemiPermanentEmployeesImport();
+            Excel::import($import, $request->file('file'));
+
+            $results = $import->getResults();
+            $message = $this->formatImportMessage($results, 'semi-permanents');
+
+            if (!empty($results['errors'])) {
+                return redirect()->route('admin.employees.import-form')
+                    ->with('warning', $message);
+            }
+
+            if ($results['success'] == 0) {
+                return redirect()->route('admin.employees.import-form')
+                    ->with('error', 'Aucun employé semi-permanent n\'a été importé.');
+            }
+
+            return redirect()->route('admin.employees.index')
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->route('admin.employees.import-form')
+                ->with('error', 'Erreur lors de l\'import des semi-permanents : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Télécharger le template pour VACATAIRES
+     */
+    public function downloadVacataireTemplate()
+    {
+        return Excel::download(new \App\Exports\VacataireEmployeesTemplateExport, 'template_employes_vacataires.xlsx');
+    }
+
+    /**
+     * Importer des employés VACATAIRES
+     */
+    public function importVacataire(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        try {
+            $import = new \App\Imports\VacataireEmployeesImport();
+            Excel::import($import, $request->file('file'));
+
+            $results = $import->getResults();
+            $message = $this->formatImportMessage($results, 'vacataires');
+
+            if (!empty($results['errors'])) {
+                return redirect()->route('admin.employees.import-form')
+                    ->with('warning', $message);
+            }
+
+            if ($results['success'] == 0) {
+                return redirect()->route('admin.employees.import-form')
+                    ->with('error', 'Aucun employé vacataire n\'a été importé.');
+            }
+
+            return redirect()->route('admin.employees.index')
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->route('admin.employees.import-form')
+                ->with('error', 'Erreur lors de l\'import des vacataires : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Formater le message de résultat d'import
+     */
+    private function formatImportMessage(array $results, string $type): string
+    {
+        $message = '';
+
+        if ($results['success'] > 0) {
+            $message .= "{$results['success']} employé(s) {$type} importé(s) avec succès. ";
+        }
+
+        if ($results['skipped'] > 0) {
+            $message .= "{$results['skipped']} ligne(s) ignorée(s) (emails déjà existants). ";
+        }
+
+        if (!empty($results['errors'])) {
+            $message .= "Erreurs : " . implode(' | ', array_slice($results['errors'], 0, 5));
+            if (count($results['errors']) > 5) {
+                $message .= " (et " . (count($results['errors']) - 5) . " autres erreurs)";
+            }
+        }
+
+        return $message;
+    }
 }

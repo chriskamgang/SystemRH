@@ -25,10 +25,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::resource('employees', EmployeeController::class);
     Route::post('employees/{id}/reset-device', [EmployeeController::class, 'resetDevice'])->name('employees.reset-device');
 
-    // Import/Export Employees
+    // Import/Export Employees (ancien système global)
     Route::get('employees-import', [EmployeeController::class, 'showImportForm'])->name('employees.import-form');
     Route::post('employees-import', [EmployeeController::class, 'import'])->name('employees.import');
     Route::get('employees-template', [EmployeeController::class, 'downloadTemplate'])->name('employees.download-template');
+
+    // Import/Export Employees par type (nouveau système)
+    // PERMANENTS
+    Route::get('employees-permanent-template', [EmployeeController::class, 'downloadPermanentTemplate'])->name('employees.download-permanent-template');
+    Route::post('employees-import-permanent', [EmployeeController::class, 'importPermanent'])->name('employees.import-permanent');
+
+    // SEMI-PERMANENTS
+    Route::get('employees-semi-permanent-template', [EmployeeController::class, 'downloadSemiPermanentTemplate'])->name('employees.download-semi-permanent-template');
+    Route::post('employees-import-semi-permanent', [EmployeeController::class, 'importSemiPermanent'])->name('employees.import-semi-permanent');
+
+    // VACATAIRES
+    Route::get('employees-vacataire-template', [EmployeeController::class, 'downloadVacataireTemplate'])->name('employees.download-vacataire-template');
+    Route::post('employees-import-vacataire', [EmployeeController::class, 'importVacataire'])->name('employees.import-vacataire');
 
     // Campus
     Route::resource('campuses', CampusController::class);
