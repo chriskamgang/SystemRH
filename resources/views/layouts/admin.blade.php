@@ -44,6 +44,31 @@
 
     <style>
         [x-cloak] { display: none !important; }
+
+        /* Scrollbar personnalisée pour le sidebar */
+        nav::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        nav::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+
+        nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Pour Firefox */
+        nav {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) rgba(0, 0, 0, 0.1);
+        }
     </style>
 
     <!-- Alpine.js Plugins -->
@@ -73,16 +98,16 @@
         <!-- Sidebar -->
         <aside
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-            class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0"
+            class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 flex flex-col"
         >
             <!-- Logo -->
-            <div class="flex items-center justify-center h-16 bg-gray-800">
+            <div class="flex items-center justify-center h-16 bg-gray-800 flex-shrink-0">
                 <i class="fas fa-map-marker-alt text-2xl text-blue-500"></i>
                 <span class="ml-3 text-xl font-bold">Attendance</span>
             </div>
 
             <!-- Navigation -->
-            <nav class="mt-8 px-4">
+            <nav class="flex-1 overflow-y-auto mt-8 px-4 pb-24">
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.dashboard') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-home w-5"></i>
                     <span class="ml-3">Dashboard</span>
