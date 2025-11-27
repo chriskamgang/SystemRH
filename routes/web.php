@@ -106,6 +106,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
     // Unités d'Enseignement (UE)
     Route::prefix('unites-enseignement')->name('unites-enseignement.')->group(function () {
+        // Gestion centralisée des UE (bibliothèque)
+        Route::get('/catalog', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'catalog'])->name('catalog');
+        Route::get('/create-standalone', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'createStandalone'])->name('create-standalone');
+        Route::post('/store-standalone', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'storeStandalone'])->name('store-standalone');
+
+        // Attribution rapide par code UE
+        Route::get('/assign', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'assignForm'])->name('assign');
+        Route::post('/assign', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'assignToTeacher'])->name('assign.store');
+        Route::get('/search-by-code', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'searchByCode'])->name('search-by-code');
+        Route::post('/search-multiple-codes', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'searchMultipleCodes'])->name('search-multiple-codes');
+
+        // Import/Export
+        Route::get('/import', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'importForm'])->name('import');
+        Route::post('/import', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'import'])->name('import.store');
+        Route::get('/download-template', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'downloadTemplate'])->name('download-template');
+
+        // Routes existantes
         Route::get('/', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'store'])->name('store');
@@ -181,6 +198,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // API pour les alertes de présence (AJAX)
     Route::get('/api/presence-alerts/incidents', [App\Http\Controllers\Admin\PresenceAlertController::class, 'apiGetIncidents'])->name('api.presence-alerts.incidents');
     Route::get('/api/presence-alerts/pending-count', [App\Http\Controllers\Admin\PresenceAlertController::class, 'apiGetPendingCount'])->name('api.presence-alerts.pending-count');
+
+    // ========== REAL-TIME TRACKING (Suivi en Temps Réel) ==========
+    Route::prefix('real-time-tracking')->name('real-time-tracking.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\RealTimeTrackingController::class, 'index'])->name('index');
+        Route::get('/get-locations', [App\Http\Controllers\Admin\RealTimeTrackingController::class, 'getLocations'])->name('get-locations');
+        Route::get('/get-stats', [App\Http\Controllers\Admin\RealTimeTrackingController::class, 'getStats'])->name('get-stats');
+    });
 
     // ========== FIREBASE SETTINGS ==========
     Route::prefix('firebase')->name('firebase.')->group(function () {

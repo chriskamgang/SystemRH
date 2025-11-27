@@ -30,6 +30,9 @@ class User extends Authenticatable
         'employee_type',
         'volume_horaire_hebdomadaire',
         'jours_travail',
+        'custom_start_time',
+        'custom_end_time',
+        'custom_late_tolerance',
         'department_id',
         'role_id',
         'is_active',
@@ -147,6 +150,12 @@ class User extends Authenticatable
         return $this->hasMany(Absence::class);
     }
 
+    // Localisation en temps réel
+    public function location()
+    {
+        return $this->hasOne(UserLocation::class);
+    }
+
     // Notifications
     public function notifications()
     {
@@ -238,5 +247,46 @@ class User extends Authenticatable
             return 'Non défini';
         }
         return implode(', ', array_map('ucfirst', $jours));
+    }
+
+    /**
+     * Vérifier si l'utilisateur a des horaires personnalisés
+     */
+    public function hasCustomWorkHours()
+    {
+        return !empty($this->custom_start_time) && !empty($this->custom_end_time);
+    }
+
+    /**
+     * Obtenir l'heure de début (personnalisée ou du campus)
+     */
+    public function getStartTime($campus = null)
+    {
+        if ($this->hasCustomWorkHours()) {
+            return $this->custom_start_time;
+        }
+        return $campus ? $campus->start_time : null;
+    }
+
+    /**
+     * Obtenir l'heure de fin (personnalisée ou du campus)
+     */
+    public function getEndTime($campus = null)
+    {
+        if ($this->hasCustomWorkHours()) {
+            return $this->custom_end_time;
+        }
+        return $campus ? $campus->end_time : null;
+    }
+
+    /**
+     * Obtenir la tolérance de retard (personnalisée ou du campus)
+     */
+    public function getLateTolerance($campus = null)
+    {
+        if ($this->custom_late_tolerance !== null) {
+            return $this->custom_late_tolerance;
+        }
+        return $campus ? $campus->late_tolerance : 15; // 15 minutes par défaut
     }
 }

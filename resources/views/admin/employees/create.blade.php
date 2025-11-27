@@ -258,6 +258,82 @@
                         </p>
                     </div>
 
+                    <!-- Horaires Personnalisés (Pour agents, gardiens, etc.) -->
+                    <div id="custom_hours_section" class="md:col-span-2" style="display: none;">
+                        <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 mb-4">
+                            <p class="text-sm text-yellow-700">
+                                <i class="fas fa-clock mr-2"></i>
+                                <strong>Horaires Personnalisés</strong> - Pour les agents avec des horaires spécifiques (gardiens de nuit, personnel d'entretien, etc.)
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Heure de Début -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Heure de Début</label>
+                                <input
+                                    type="time"
+                                    name="custom_start_time"
+                                    id="custom_start_time"
+                                    value="{{ old('custom_start_time') }}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('custom_start_time') border-red-500 @enderror"
+                                >
+                                @error('custom_start_time')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Ex: 22:00 pour gardien de nuit
+                                </p>
+                            </div>
+
+                            <!-- Heure de Fin -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Heure de Fin</label>
+                                <input
+                                    type="time"
+                                    name="custom_end_time"
+                                    id="custom_end_time"
+                                    value="{{ old('custom_end_time') }}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('custom_end_time') border-red-500 @enderror"
+                                >
+                                @error('custom_end_time')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Ex: 06:00 pour gardien de nuit
+                                </p>
+                            </div>
+
+                            <!-- Tolérance de Retard -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tolérance Retard (min)</label>
+                                <input
+                                    type="number"
+                                    name="custom_late_tolerance"
+                                    id="custom_late_tolerance"
+                                    value="{{ old('custom_late_tolerance', 15) }}"
+                                    min="0"
+                                    max="60"
+                                    placeholder="15"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('custom_late_tolerance') border-red-500 @enderror"
+                                >
+                                @error('custom_late_tolerance')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Minutes de tolérance avant retard
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-xs text-blue-700">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Si défini, ces horaires <strong>prennent priorité</strong> sur les horaires du campus pour la détection de retard et le calcul de salaire.
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Statut -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
@@ -386,6 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const hourlyRateField = document.getElementById('hourly_rate_field');
     const volumeHoraireField = document.getElementById('volume_horaire_field');
     const joursTravailField = document.getElementById('jours_travail_field');
+    const customHoursSection = document.getElementById('custom_hours_section');
     const monthlySalaryInput = document.getElementById('monthly_salary');
     const hourlyRateInput = document.getElementById('hourly_rate');
     const volumeHoraireInput = document.getElementById('volume_horaire_hebdomadaire');
@@ -398,6 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
         hourlyRateField.style.display = 'none';
         volumeHoraireField.style.display = 'none';
         joursTravailField.style.display = 'none';
+        customHoursSection.style.display = 'none';
         monthlySalaryInput.removeAttribute('required');
         hourlyRateInput.removeAttribute('required');
         volumeHoraireInput.removeAttribute('required');
@@ -414,6 +492,11 @@ document.addEventListener('DOMContentLoaded', function() {
             joursTravailField.style.display = 'block';
             monthlySalaryInput.setAttribute('required', 'required');
             volumeHoraireInput.setAttribute('required', 'required');
+        } else if (employeeType === 'technique' || employeeType === 'administratif') {
+            // Technique ou Administratif : salaire mensuel + horaires personnalisés (optionnels)
+            monthlySalaryField.style.display = 'block';
+            customHoursSection.style.display = 'block';
+            monthlySalaryInput.setAttribute('required', 'required');
         } else if (employeeType && employeeType !== '') {
             // Autres types : salaire mensuel
             monthlySalaryField.style.display = 'block';

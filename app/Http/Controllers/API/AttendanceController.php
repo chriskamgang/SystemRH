@@ -175,11 +175,26 @@ class AttendanceController extends Controller
             }
         }
 
-        // Obtenir les horaires de la plage détectée
-        $shiftTimes = $this->getShiftTimes($shift);
+        // Obtenir les horaires : d'abord personnalisés, sinon ceux de la plage
         $currentTime = Carbon::parse($now->format('H:i:s'));
-        $shiftStartTime = Carbon::parse($shiftTimes['start']);
-        $toleranceTime = $shiftStartTime->copy()->addMinutes($campus->late_tolerance ?? 5);
+
+        // Si l'utilisateur a des horaires personnalisés, les utiliser
+        if ($user->hasCustomWorkHours()) {
+            $shiftStartTime = Carbon::parse($user->custom_start_time);
+            $shiftEndTime = Carbon::parse($user->custom_end_time);
+            $lateTolerance = $user->getLateTolerance($campus);
+            $shiftTimes = [
+                'start' => $user->custom_start_time,
+                'end' => $user->custom_end_time,
+            ];
+        } else {
+            // Sinon utiliser les horaires de la plage détectée
+            $shiftTimes = $this->getShiftTimes($shift);
+            $shiftStartTime = Carbon::parse($shiftTimes['start']);
+            $lateTolerance = $campus->late_tolerance ?? 5;
+        }
+
+        $toleranceTime = $shiftStartTime->copy()->addMinutes($lateTolerance);
 
         // Déterminer si en retard
         // Pour les vacataires: pas de calcul de retard (payés à l'heure effectuée)
@@ -187,7 +202,7 @@ class AttendanceController extends Controller
             $isLate = false;
             $lateMinutes = 0;
         } else {
-            // Pour personnel permanent/semi-permanent: calcul selon la plage
+            // Pour personnel permanent/semi-permanent/agents: calcul du retard
             $isLate = $currentTime->gt($toleranceTime);
             $lateMinutes = $isLate ? $shiftStartTime->diffInMinutes($currentTime) : 0;
         }

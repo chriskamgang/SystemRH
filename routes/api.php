@@ -127,6 +127,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/status', [\App\Http\Controllers\API\GeofencingController::class, 'getStatus']);
     });
 
+    // ========== LOCATION TRACKING (Suivi en temps réel) ==========
+    Route::prefix('location')->group(function () {
+        Route::post('/update', [\App\Http\Controllers\API\LocationController::class, 'updateLocation']);
+        Route::post('/deactivate', [\App\Http\Controllers\API\LocationController::class, 'deactivateLocation']);
+        Route::get('/active-users', [\App\Http\Controllers\API\LocationController::class, 'getActiveUsers']);
+        Route::get('/user/{userId}', [\App\Http\Controllers\API\LocationController::class, 'getUserLocation']);
+    });
+
     // Test route
     Route::get('/test', function () {
         return response()->json([

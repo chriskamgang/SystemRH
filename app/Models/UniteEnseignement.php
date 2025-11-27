@@ -18,6 +18,8 @@ class UniteEnseignement extends Model
         'statut',
         'annee_academique',
         'semestre',
+        'specialite',
+        'niveau',
         'date_attribution',
         'date_activation',
         'created_by',

@@ -103,6 +103,35 @@
                     <span class="ml-3">Présences</span>
                 </a>
 
+                <!-- Unités d'Enseignement (UE) Section with Submenu -->
+                <div x-data="{ open: {{ request()->routeIs('admin.unites-enseignement.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.unites-enseignement.*') ? 'bg-blue-600' : '' }}">
+                        <div class="flex items-center">
+                            <i class="fas fa-book w-5"></i>
+                            <span class="ml-3">Unités d'Enseignement</span>
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{'rotate-180': open}"></i>
+                    </button>
+                    <div x-show="open" x-transition class="ml-4 space-y-1">
+                        <a href="{{ route('admin.unites-enseignement.catalog') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.unites-enseignement.catalog') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-list w-4"></i>
+                            <span class="ml-2">Bibliothèque des UE</span>
+                        </a>
+                        <a href="{{ route('admin.unites-enseignement.create-standalone') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.unites-enseignement.create-standalone') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-plus w-4"></i>
+                            <span class="ml-2">Créer une UE</span>
+                        </a>
+                        <a href="{{ route('admin.unites-enseignement.assign') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.unites-enseignement.assign') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-user-tag w-4"></i>
+                            <span class="ml-2">Attribuer une UE</span>
+                        </a>
+                        <a href="{{ route('admin.unites-enseignement.import') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.unites-enseignement.import') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-file-import w-4"></i>
+                            <span class="ml-2">Importer des UE</span>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Vacataires Section with Submenu -->
                 <div x-data="{ open: {{ request()->routeIs('admin.vacataires.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.vacataires.*') ? 'bg-blue-600' : '' }}">
@@ -225,6 +254,15 @@
                     <span class="ml-3">Utilisateurs</span>
                 </a>
                 --}}
+
+                <!-- Suivi en Temps Réel -->
+                <a href="{{ route('admin.real-time-tracking.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.real-time-tracking.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-map-marked-alt w-5 text-green-500"></i>
+                    <span class="ml-3">Suivi en Temps Réel</span>
+                    <span class="ml-auto">
+                        <span class="px-2 py-1 text-xs font-bold text-white bg-green-500 rounded-full animate-pulse">LIVE</span>
+                    </span>
+                </a>
 
                 <a href="{{ route('admin.firebase.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.firebase.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-fire w-5 text-orange-500"></i>

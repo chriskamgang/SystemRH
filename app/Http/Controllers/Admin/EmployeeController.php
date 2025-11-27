@@ -90,8 +90,13 @@ class EmployeeController extends Controller
             'volume_horaire_hebdomadaire' => 'nullable|numeric|min:0|max:168',
             'jours_travail' => 'nullable|array',
             'jours_travail.*' => 'string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
+            'custom_start_time' => 'nullable|date_format:H:i',
+            'custom_end_time' => 'nullable|date_format:H:i',
+            'custom_late_tolerance' => 'nullable|integer|min:0|max:60',
         ], [
             'volume_horaire_hebdomadaire.max' => 'Le volume horaire hebdomadaire ne peut pas dépasser 168 heures (nombre d\'heures dans une semaine).',
+            'custom_start_time.date_format' => 'L\'heure de début doit être au format HH:MM',
+            'custom_end_time.date_format' => 'L\'heure de fin doit être au format HH:MM',
         ]);
 
         // Si pas de role_id fourni, assigner le rôle "Employé Standard" par défaut

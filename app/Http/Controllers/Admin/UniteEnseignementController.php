@@ -263,4 +263,288 @@ class UniteEnseignementController extends Controller
 
         return view('admin.unites-enseignement.show', compact('ue'));
     }
+
+    /**
+     * ===========================================================
+     * NOUVELLE FONCTIONNALITÉ : GESTION CENTRALISÉE DES UE
+     * ===========================================================
+     */
+
+    /**
+     * Liste des UE dans la bibliothèque (non attribuées ou toutes)
+     */
+    public function catalog(Request $request)
+    {
+        $query = UniteEnseignement::query();
+
+        // Filtre par spécialité
+        if ($request->has('specialite') && $request->specialite) {
+            $query->where('specialite', $request->specialite);
+        }
+
+        // Filtre par niveau
+        if ($request->has('niveau') && $request->niveau) {
+            $query->where('niveau', $request->niveau);
+        }
+
+        // Filtre par année académique
+        if ($request->has('annee_academique') && $request->annee_academique) {
+            $query->where('annee_academique', $request->annee_academique);
+        }
+
+        // Filtre par semestre
+        if ($request->has('semestre') && $request->semestre !== '') {
+            $query->where('semestre', $request->semestre);
+        }
+
+        // Recherche par code ou nom
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('code_ue', 'like', "%{$search}%")
+                  ->orWhere('nom_matiere', 'like', "%{$search}%");
+            });
+        }
+
+        $unites = $query->with(['enseignant'])
+            ->orderBy('code_ue')
+            ->paginate(20);
+
+        // Récupérer les valeurs uniques pour les filtres
+        $specialites = UniteEnseignement::distinct()->pluck('specialite')->filter();
+        $niveaux = UniteEnseignement::distinct()->pluck('niveau')->filter();
+        $anneesAcademiques = UniteEnseignement::distinct()->pluck('annee_academique')->filter();
+
+        return view('admin.unites-enseignement.catalog', compact(
+            'unites',
+            'specialites',
+            'niveaux',
+            'anneesAcademiques'
+        ));
+    }
+
+    /**
+     * Formulaire de création d'UE (sans enseignant)
+     */
+    public function createStandalone()
+    {
+        return view('admin.unites-enseignement.create-standalone');
+    }
+
+    /**
+     * Enregistrer une UE dans la bibliothèque (sans enseignant)
+     */
+    public function storeStandalone(Request $request)
+    {
+        $validated = $request->validate([
+            'code_ue' => 'required|string|max:50|unique:unites_enseignement,code_ue',
+            'nom_matiere' => 'required|string|max:255',
+            'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
+            'annee_academique' => 'required|string|max:20',
+            'semestre' => 'nullable|integer|in:1,2',
+            'specialite' => 'nullable|string|max:255',
+            'niveau' => 'nullable|string|max:255',
+        ]);
+
+        $validated['statut'] = 'non_activee';
+        $validated['created_by'] = Auth::id();
+
+        UniteEnseignement::create($validated);
+
+        return redirect()
+            ->route('admin.unites-enseignement.catalog')
+            ->with('success', 'UE créée avec succès dans la bibliothèque');
+    }
+
+    /**
+     * API : Rechercher une UE par code (pour l'auto-complétion)
+     */
+    public function searchByCode(Request $request)
+    {
+        $code = $request->get('code');
+
+        if (!$code) {
+            return response()->json(['success' => false, 'message' => 'Code requis']);
+        }
+
+        $ue = UniteEnseignement::where('code_ue', $code)
+            ->whereNull('enseignant_id')
+            ->first();
+
+        if (!$ue) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucune UE trouvée avec ce code ou UE déjà attribuée'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'ue' => [
+                'id' => $ue->id,
+                'code_ue' => $ue->code_ue,
+                'nom_matiere' => $ue->nom_matiere,
+                'volume_horaire_total' => $ue->volume_horaire_total,
+                'annee_academique' => $ue->annee_academique,
+                'semestre' => $ue->semestre,
+                'specialite' => $ue->specialite,
+                'niveau' => $ue->niveau,
+            ]
+        ]);
+    }
+
+    /**
+     * API : Rechercher plusieurs UE par codes (pour l'attribution multiple)
+     */
+    public function searchMultipleCodes(Request $request)
+    {
+        $codes = $request->get('codes'); // Array de codes
+
+        if (!$codes || !is_array($codes)) {
+            return response()->json(['success' => false, 'message' => 'Codes requis']);
+        }
+
+        $ues = UniteEnseignement::whereIn('code_ue', $codes)
+            ->whereNull('enseignant_id')
+            ->get();
+
+        $found = $ues->pluck('code_ue')->toArray();
+        $notFound = array_diff($codes, $found);
+
+        return response()->json([
+            'success' => true,
+            'ues' => $ues->map(function($ue) {
+                return [
+                    'id' => $ue->id,
+                    'code_ue' => $ue->code_ue,
+                    'nom_matiere' => $ue->nom_matiere,
+                    'volume_horaire_total' => $ue->volume_horaire_total,
+                    'annee_academique' => $ue->annee_academique,
+                    'semestre' => $ue->semestre,
+                    'specialite' => $ue->specialite,
+                    'niveau' => $ue->niveau,
+                ];
+            }),
+            'not_found' => $notFound,
+        ]);
+    }
+
+    /**
+     * Formulaire d'attribution rapide (par code UE)
+     */
+    public function assignForm()
+    {
+        // Récupérer les vacataires ET les semi-permanents
+        $enseignants = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+            ->where('is_active', true)
+            ->orderBy('first_name')
+            ->get();
+
+        return view('admin.unites-enseignement.assign', compact('enseignants'));
+    }
+
+    /**
+     * Attribuer une ou plusieurs UE à un enseignant (par codes)
+     */
+    public function assignToTeacher(Request $request)
+    {
+        $validated = $request->validate([
+            'codes_ue' => 'required|array|min:1',
+            'codes_ue.*' => 'required|string',
+            'enseignant_id' => 'required|exists:users,id',
+            'activer_immediatement' => 'boolean',
+        ]);
+
+        // Valider que c'est bien un enseignant
+        $enseignant = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+            ->find($validated['enseignant_id']);
+
+        if (!$enseignant) {
+            return redirect()->back()
+                ->withErrors(['enseignant_id' => 'Cet employé doit être un enseignant'])
+                ->withInput();
+        }
+
+        // Récupérer toutes les UE non attribuées avec ces codes
+        $ues = UniteEnseignement::whereIn('code_ue', $validated['codes_ue'])
+            ->whereNull('enseignant_id')
+            ->get();
+
+        if ($ues->isEmpty()) {
+            return redirect()->back()
+                ->withErrors(['codes_ue' => 'Aucune UE trouvée avec ces codes ou toutes sont déjà attribuées'])
+                ->withInput();
+        }
+
+        $codesFound = $ues->pluck('code_ue')->toArray();
+        $codesNotFound = array_diff($validated['codes_ue'], $codesFound);
+
+        // Attribuer toutes les UE trouvées
+        $count = 0;
+        foreach ($ues as $ue) {
+            $ue->enseignant_id = $validated['enseignant_id'];
+            $ue->date_attribution = now();
+
+            if ($request->boolean('activer_immediatement')) {
+                $ue->statut = 'activee';
+                $ue->date_activation = now();
+                $ue->activated_by = Auth::id();
+            }
+
+            $ue->save();
+            $count++;
+        }
+
+        $message = "{$count} UE(s) attribuée(s) à {$enseignant->full_name} avec succès";
+
+        if (!empty($codesNotFound)) {
+            $message .= " | Codes non trouvés: " . implode(', ', $codesNotFound);
+        }
+
+        return redirect()
+            ->route('admin.unites-enseignement.catalog')
+            ->with('success', $message);
+    }
+
+    /**
+     * Afficher le formulaire d'import
+     */
+    public function importForm()
+    {
+        return view('admin.unites-enseignement.import');
+    }
+
+    /**
+     * Importer des UE depuis Excel/CSV
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        try {
+            $import = new \App\Imports\UnitesEnseignementImport();
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+            return redirect()
+                ->route('admin.unites-enseignement.catalog')
+                ->with('success', "Import réussi ! {$import->getRowCount()} UE importées.");
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['file' => 'Erreur lors de l\'import : ' . $e->getMessage()])
+                ->withInput();
+        }
+    }
+
+    /**
+     * Télécharger le template d'import
+     */
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\UnitesEnseignementTemplateExport(),
+            'template_import_ue.xlsx'
+        );
+    }
 }
