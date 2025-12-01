@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Campus;
 use App\Models\UserCampusShift;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -33,34 +34,47 @@ class PermanentEmployeesImport implements ToModel, WithHeadingRow, WithValidatio
             return null;
         }
 
-        // Générer l'employee_id automatiquement
-        $year = date('Y');
-        $lastEmployee = User::where('employee_id', 'like', "EMP-{$year}-%")
-            ->orderBy('employee_id', 'desc')
-            ->first();
+        // Utiliser une transaction pour garantir l'unicité de l'employee_id
+        try {
+            $user = DB::transaction(function () use ($row) {
+                // Générer l'employee_id automatiquement avec verrouillage
+                $year = date('Y');
 
-        if ($lastEmployee) {
-            $lastNumber = (int) substr($lastEmployee->employee_id, -4);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
+                // Verrouiller la table pour éviter les doublons en parallèle
+                $lastEmployee = User::where('employee_id', 'like', "EMP-{$year}-%")
+                    ->orderBy('employee_id', 'desc')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($lastEmployee) {
+                    $lastNumber = (int) substr($lastEmployee->employee_id, -4);
+                    $newNumber = $lastNumber + 1;
+                } else {
+                    $newNumber = 1;
+                }
+
+                $employeeId = sprintf('EMP-%s-%04d', $year, $newNumber);
+
+                // Créer l'utilisateur permanent
+                return User::create([
+                    'employee_id' => $employeeId,
+                    'first_name' => $row['prenom'],
+                    'last_name' => $row['nom'],
+                    'email' => $row['email'],
+                    'phone' => $row['telephone'] ?? null,
+                    'password' => Hash::make($row['mot_de_passe']),
+                    'employee_type' => 'enseignant_titulaire', // Type fixe pour permanents
+                    'monthly_salary' => $row['salaire_mensuel'] ?? null,
+                    'role_id' => 2, // Role Employee
+                    'is_active' => $this->parseBoolean($row['actif'] ?? 'oui'),
+                ]);
+            });
+        } catch (\Exception $e) {
+            // Si une erreur de contrainte d'unicité se produit, ignorer cette ligne
+            $this->skipCount++;
+            $this->errors[] = "Ligne ignorée pour {$row['email']}: " . $e->getMessage();
+            return null;
         }
-
-        $employeeId = sprintf('EMP-%s-%04d', $year, $newNumber);
-
-        // Créer l'utilisateur permanent
-        $user = User::create([
-            'employee_id' => $employeeId,
-            'first_name' => $row['prenom'],
-            'last_name' => $row['nom'],
-            'email' => $row['email'],
-            'phone' => $row['telephone'] ?? null,
-            'password' => Hash::make($row['mot_de_passe']),
-            'employee_type' => 'enseignant_titulaire', // Type fixe pour permanents
-            'monthly_salary' => $row['salaire_mensuel'] ?? null,
-            'role_id' => 2, // Role Employee
-            'is_active' => $this->parseBoolean($row['actif'] ?? 'oui'),
-        ]);
 
         // Assigner les campus avec shifts (matin/soir)
         if (!empty($row['campus'])) {
