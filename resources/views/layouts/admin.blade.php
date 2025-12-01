@@ -123,6 +123,11 @@
                     <span class="ml-3">Campus</span>
                 </a>
 
+                <a href="{{ route('admin.semesters.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.semesters.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-calendar-alt w-5"></i>
+                    <span class="ml-3">Semestres</span>
+                </a>
+
                 <a href="{{ route('admin.attendances.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.attendances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-clock w-5"></i>
                     <span class="ml-3">Présences</span>

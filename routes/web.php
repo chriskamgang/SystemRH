@@ -46,6 +46,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Campus
     Route::resource('campuses', CampusController::class);
 
+    // Semesters
+    Route::resource('semesters', App\Http\Controllers\Admin\SemesterController::class);
+    Route::patch('semesters/{semester}/activate', [App\Http\Controllers\Admin\SemesterController::class, 'activate'])->name('semesters.activate');
+    Route::patch('semesters/{semester}/deactivate', [App\Http\Controllers\Admin\SemesterController::class, 'deactivate'])->name('semesters.deactivate');
+
     // Attendances
     Route::get('/attendances', [AttendanceController::class, 'index'])->name('attendances.index');
     Route::get('/attendances/{id}', [AttendanceController::class, 'show'])->name('attendances.show');
