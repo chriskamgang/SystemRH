@@ -12,11 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('unites_enseignement', function (Blueprint $table) {
-            // Ajouter la colonne semester_id après semestre
-            $table->foreignId('semester_id')->nullable()->after('semestre')->constrained('semesters')->onDelete('set null');
-
-            // Ajouter un index pour améliorer les performances
-            $table->index('semester_id');
+            // Rendre enseignant_id nullable pour permettre les UE en bibliothèque
+            $table->unsignedBigInteger('enseignant_id')->nullable()->change();
         });
     }
 
@@ -26,10 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('unites_enseignement', function (Blueprint $table) {
-            // Supprimer la clé étrangère et la colonne
-            $table->dropForeign(['semester_id']);
-            $table->dropIndex(['semester_id']);
-            $table->dropColumn('semester_id');
+            // Remettre enseignant_id NOT NULL
+            $table->unsignedBigInteger('enseignant_id')->nullable(false)->change();
         });
     }
 };

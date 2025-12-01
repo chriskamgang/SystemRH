@@ -4,6 +4,25 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto">
+    <!-- Afficher les erreurs d'import détaillées -->
+    @if(session('import_errors') && count(session('import_errors')) > 0)
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500 text-xl"></i>
+                </div>
+                <div class="ml-3 flex-1">
+                    <h3 class="text-sm font-medium text-red-800 mb-2">Erreurs détectées lors de l'import :</h3>
+                    <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                        @foreach(session('import_errors') as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="bg-white rounded-lg shadow-lg p-8">
         <div class="mb-6">
             <h3 class="text-lg font-semibold mb-4">Télécharger le template</h3>
@@ -24,7 +43,15 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Fichier Excel/CSV *</label>
                 <input type="file" name="file" required accept=".xlsx,.xls,.csv" class="w-full px-4 py-2 border rounded-lg @error('file') border-red-500 @enderror">
                 @error('file')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
-                <p class="text-xs text-gray-500 mt-1">Formats acceptés: .xlsx, .xls, .csv (max 2 Mo)</p>
+                <p class="text-xs text-gray-500 mt-1">Formats acceptés: .xlsx, .xls, .csv (max 10 Mo)</p>
+            </div>
+
+            <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 mb-4">
+                <p class="text-sm"><i class="fas fa-info-circle mr-2"></i> <strong>Format du champ semestre :</strong></p>
+                <ul class="text-sm mt-2 ml-6 list-disc">
+                    <li>Vous pouvez utiliser : <code class="bg-blue-100 px-1 rounded">1</code>, <code class="bg-blue-100 px-1 rounded">2</code>, ..., <code class="bg-blue-100 px-1 rounded">9</code></li>
+                    <li>Ou : <code class="bg-blue-100 px-1 rounded">Semestre 1</code>, <code class="bg-blue-100 px-1 rounded">Semestre 7</code>, etc. (le numéro sera extrait automatiquement)</li>
+                </ul>
             </div>
 
             <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 mb-6">

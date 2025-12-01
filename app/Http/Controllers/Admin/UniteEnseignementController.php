@@ -80,7 +80,6 @@ class UniteEnseignementController extends Controller
     public function create(Request $request)
     {
         $vacataireId = $request->get('vacataire_id');
-        $semesterId = $request->get('semester_id');
 
         // Récupérer les vacataires ET les semi-permanents
         $vacataires = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
@@ -88,12 +87,7 @@ class UniteEnseignementController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        // Récupérer les semestres triés par année et numéro
-        $semesters = \App\Models\Semester::orderBy('annee_academique', 'desc')
-            ->orderBy('numero_semestre', 'desc')
-            ->get();
-
-        return view('admin.unites-enseignement.create', compact('vacataires', 'vacataireId', 'semesters', 'semesterId'));
+        return view('admin.unites-enseignement.create', compact('vacataires', 'vacataireId'));
     }
 
     /**
@@ -107,8 +101,7 @@ class UniteEnseignementController extends Controller
             'nom_matiere' => 'required|string|max:255',
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
-            'semestre' => 'nullable|integer|in:1,2',
-            'semester_id' => 'nullable|exists:semesters,id',
+            'semestre' => 'nullable|integer|between:1,9',
             'activer_immediatement' => 'boolean',
         ]);
 
@@ -156,12 +149,7 @@ class UniteEnseignementController extends Controller
     {
         $ue = UniteEnseignement::with('vacataire')->findOrFail($id);
 
-        // Récupérer les semestres triés par année et numéro
-        $semesters = \App\Models\Semester::orderBy('annee_academique', 'desc')
-            ->orderBy('numero_semestre', 'desc')
-            ->get();
-
-        return view('admin.unites-enseignement.edit', compact('ue', 'semesters'));
+        return view('admin.unites-enseignement.edit', compact('ue'));
     }
 
     /**
@@ -176,8 +164,7 @@ class UniteEnseignementController extends Controller
             'nom_matiere' => 'required|string|max:255',
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
-            'semestre' => 'nullable|integer|in:1,2',
-            'semester_id' => 'nullable|exists:semesters,id',
+            'semestre' => 'nullable|integer|between:1,9',
         ]);
 
         if ($validator->fails()) {
@@ -191,8 +178,7 @@ class UniteEnseignementController extends Controller
             'nom_matiere',
             'volume_horaire_total',
             'annee_academique',
-            'semestre',
-            'semester_id'
+            'semestre'
         ]));
 
         return redirect()
@@ -535,16 +521,57 @@ class UniteEnseignementController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ], [
+            'file.required' => 'Veuillez sélectionner un fichier',
+            'file.mimes' => 'Le fichier doit être au format Excel (.xlsx, .xls) ou CSV',
+            'file.max' => 'La taille du fichier ne doit pas dépasser 10 Mo',
         ]);
 
         try {
             $import = new \App\Imports\UnitesEnseignementImport();
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
 
+            $imported = $import->getRowCount();
+            $skipped = $import->getSkippedCount();
+            $errors = $import->getErrors();
+
+            // Message de succès avec détails
+            $message = "Import terminé : {$imported} UE importée(s)";
+
+            if ($skipped > 0) {
+                $message .= ", {$skipped} UE ignorée(s) (codes déjà existants)";
+            }
+
+            if (count($errors) > 0) {
+                $message .= ". Attention : " . count($errors) . " erreur(s) détectée(s)";
+            }
+
+            // Si des erreurs, les afficher
+            if (count($errors) > 0) {
+                return redirect()
+                    ->route('admin.unites-enseignement.catalog')
+                    ->with('warning', $message)
+                    ->with('import_errors', $errors);
+            }
+
             return redirect()
                 ->route('admin.unites-enseignement.catalog')
-                ->with('success', "Import réussi ! {$import->getRowCount()} UE importées.");
+                ->with('success', $message);
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errorMessages = [];
+
+            foreach ($failures as $failure) {
+                $errorMessages[] = "Ligne {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+
+            return redirect()->back()
+                ->withErrors(['file' => 'Erreurs de validation détectées'])
+                ->with('import_errors', $errorMessages)
+                ->withInput();
+
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['file' => 'Erreur lors de l\'import : ' . $e->getMessage()])

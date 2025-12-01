@@ -162,10 +162,10 @@
                     @enderror
                 </div>
 
-                <!-- Semestre (numéro) -->
+                <!-- Semestre -->
                 <div>
                     <label for="semestre" class="block text-sm font-medium text-gray-700 mb-2">
-                        Semestre (numéro)
+                        Semestre
                     </label>
                     <select
                         name="semestre"
@@ -173,49 +173,14 @@
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('semestre') border-red-500 @enderror"
                     >
                         <option value="">Aucun</option>
-                        <option value="1" {{ old('semestre') == 1 ? 'selected' : '' }}>Semestre 1</option>
-                        <option value="2" {{ old('semestre') == 2 ? 'selected' : '' }}>Semestre 2</option>
+                        @for($i = 1; $i <= 9; $i++)
+                            <option value="{{ $i }}" {{ old('semestre') == $i ? 'selected' : '' }}>Semestre {{ $i }}</option>
+                        @endfor
                     </select>
                     @error('semestre')
                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-            </div>
-
-            <!-- Semestre (relation avec la table semesters) -->
-            <div>
-                <label for="semester_id" class="block text-sm font-medium text-gray-700 mb-2">
-                    Période de semestre <span class="text-blue-600">(Recommandé)</span>
-                </label>
-                <select
-                    name="semester_id"
-                    id="semester_id"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('semester_id') border-red-500 @enderror"
-                >
-                    <option value="">Non lié à un semestre spécifique</option>
-                    @if(isset($semesters))
-                        @foreach($semesters as $sem)
-                            <option
-                                value="{{ $sem->id }}"
-                                {{ old('semester_id', $semesterId ?? null) == $sem->id ? 'selected' : '' }}
-                                {{ $sem->is_active ? 'selected' : '' }}
-                            >
-                                {{ $sem->name }}
-                                @if($sem->is_active)
-                                    <span class="text-green-600">● Actif</span>
-                                @endif
-                                ({{ $sem->date_debut->format('d/m/Y') }} - {{ $sem->date_fin->format('d/m/Y') }})
-                            </option>
-                        @endforeach
-                    @endif
-                </select>
-                <p class="text-xs text-gray-500 mt-1">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Lie cette UE à une période de semestre spécifique pour un meilleur suivi
-                </p>
-                @error('semester_id')
-                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                @enderror
             </div>
 
             <!-- Activation immédiate -->

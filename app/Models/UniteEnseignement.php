@@ -18,7 +18,6 @@ class UniteEnseignement extends Model
         'statut',
         'annee_academique',
         'semestre',
-        'semester_id',
         'specialite',
         'niveau',
         'date_attribution',
@@ -37,12 +36,6 @@ class UniteEnseignement extends Model
     /**
      * Relations
      */
-
-    // Semestre auquel appartient l'UE
-    public function semester(): BelongsTo
-    {
-        return $this->belongsTo(Semester::class, 'semester_id');
-    }
 
     // Enseignant (vacataire ou semi-permanent) à qui l'UE est attribuée
     public function enseignant(): BelongsTo
