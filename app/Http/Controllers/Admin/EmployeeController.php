@@ -476,6 +476,9 @@ class EmployeeController extends Controller
      */
     public function importPermanent(Request $request)
     {
+        // Augmenter le temps d'exécution pour les gros imports
+        set_time_limit(300); // 5 minutes
+
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv|max:5120',
         ], [
@@ -523,6 +526,9 @@ class EmployeeController extends Controller
      */
     public function importSemiPermanent(Request $request)
     {
+        // Augmenter le temps d'exécution pour les gros imports
+        set_time_limit(300); // 5 minutes
+
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv|max:5120',
         ]);
@@ -566,6 +572,9 @@ class EmployeeController extends Controller
      */
     public function importVacataire(Request $request)
     {
+        // Augmenter le temps d'exécution pour les gros imports
+        set_time_limit(300); // 5 minutes
+
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv|max:5120',
         ]);

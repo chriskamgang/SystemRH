@@ -21,6 +21,7 @@ class PermanentEmployeesImport implements ToModel, WithHeadingRow, WithValidatio
     protected $errors = [];
     protected $successCount = 0;
     protected $skipCount = 0;
+    protected static $defaultPasswordHash = null;
 
     /**
      * Traiter chaque ligne du CSV/Excel pour les employés PERMANENTS
@@ -55,6 +56,12 @@ class PermanentEmployeesImport implements ToModel, WithHeadingRow, WithValidatio
 
                 $employeeId = sprintf('EMP-%s-%04d', $year, $newNumber);
 
+                // Utiliser un mot de passe par défaut pour accélérer l'import
+                // Les utilisateurs pourront le changer après la première connexion
+                if (self::$defaultPasswordHash === null) {
+                    self::$defaultPasswordHash = Hash::make('password123');
+                }
+
                 // Créer l'utilisateur permanent
                 return User::create([
                     'employee_id' => $employeeId,
@@ -62,7 +69,7 @@ class PermanentEmployeesImport implements ToModel, WithHeadingRow, WithValidatio
                     'last_name' => $row['nom'],
                     'email' => $row['email'],
                     'phone' => $row['telephone'] ?? null,
-                    'password' => Hash::make($row['mot_de_passe']),
+                    'password' => self::$defaultPasswordHash, // Mot de passe par défaut pour tous
                     'employee_type' => 'enseignant_titulaire', // Type fixe pour permanents
                     'monthly_salary' => $row['salaire_mensuel'] ?? null,
                     'role_id' => 2, // Role Employee
@@ -140,7 +147,7 @@ class PermanentEmployeesImport implements ToModel, WithHeadingRow, WithValidatio
             'prenom' => 'required|string|max:255',
             'nom' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'mot_de_passe' => 'required|string|min:6',
+            'mot_de_passe' => 'nullable|string|min:6', // Optionnel car on utilise un mot de passe par défaut
             'salaire_mensuel' => 'nullable|numeric|min:0',
             'campus' => 'nullable|string',
             'travail_matin' => 'nullable|string',
