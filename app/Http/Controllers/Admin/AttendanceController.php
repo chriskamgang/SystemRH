@@ -16,7 +16,8 @@ class AttendanceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Attendance::with(['user', 'campus', 'uniteEnseignement']);
+        $query = Attendance::with(['user', 'campus', 'uniteEnseignement'])
+            ->whereHas('user'); // Only get attendances with valid users
 
         // Filter by date range
         if ($request->filled('start_date')) {
