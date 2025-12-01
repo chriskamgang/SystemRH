@@ -18,14 +18,17 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('campus_id')->constrained()->onDelete('cascade');
 
-            // Plages horaires assignées
-            $table->boolean('works_morning')->default(false); // Travaille le matin (8h15-17h)
-            $table->boolean('works_evening')->default(false); // Travaille le soir (17h30-21h)
+            // Type de shift (morning, evening, full_day)
+            $table->enum('shift_type', ['morning', 'evening', 'full_day'])->default('morning');
+
+            // Horaires de travail
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
 
             $table->timestamps();
 
-            // Index unique pour éviter les doublons
-            $table->unique(['user_id', 'campus_id']);
+            // Index unique pour éviter les doublons user + campus + shift_type
+            $table->unique(['user_id', 'campus_id', 'shift_type']);
         });
     }
 

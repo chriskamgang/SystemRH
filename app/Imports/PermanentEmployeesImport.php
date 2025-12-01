@@ -65,35 +65,49 @@ class PermanentEmployeesImport implements ToModel, WithHeadingRow, WithValidatio
         // Assigner les campus avec shifts (matin/soir)
         if (!empty($row['campus'])) {
             $campusNames = array_map('trim', explode(',', $row['campus']));
+            $campusNames = array_unique($campusNames); // Éviter les doublons dans le CSV
 
             foreach ($campusNames as $campusName) {
                 $campus = Campus::where('name', 'like', "%{$campusName}%")->first();
 
                 if ($campus) {
-                    $user->campuses()->attach($campus->id);
+                    // Vérifier si la relation n'existe pas déjà avant d'attacher
+                    if (!$user->campuses()->where('campus_id', $campus->id)->exists()) {
+                        $user->campuses()->attach($campus->id);
+                    }
 
                     // Créer les shifts pour les permanents
                     $travailMatin = $this->parseBoolean($row['travail_matin'] ?? 'non');
                     $travailSoir = $this->parseBoolean($row['travail_soir'] ?? 'non');
 
                     if ($travailMatin) {
-                        UserCampusShift::create([
-                            'user_id' => $user->id,
-                            'campus_id' => $campus->id,
-                            'shift_type' => 'morning',
-                            'start_time' => '08:00:00',
-                            'end_time' => '13:00:00',
-                        ]);
+                        // Utiliser updateOrCreate pour éviter les doublons
+                        UserCampusShift::updateOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'campus_id' => $campus->id,
+                                'shift_type' => 'morning',
+                            ],
+                            [
+                                'start_time' => '08:00:00',
+                                'end_time' => '13:00:00',
+                            ]
+                        );
                     }
 
                     if ($travailSoir) {
-                        UserCampusShift::create([
-                            'user_id' => $user->id,
-                            'campus_id' => $campus->id,
-                            'shift_type' => 'evening',
-                            'start_time' => '14:00:00',
-                            'end_time' => '19:00:00',
-                        ]);
+                        // Utiliser updateOrCreate pour éviter les doublons
+                        UserCampusShift::updateOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'campus_id' => $campus->id,
+                                'shift_type' => 'evening',
+                            ],
+                            [
+                                'start_time' => '14:00:00',
+                                'end_time' => '19:00:00',
+                            ]
+                        );
                     }
                 }
             }
