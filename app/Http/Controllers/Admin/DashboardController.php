@@ -40,6 +40,7 @@ class DashboardController extends Controller
 
         // Derniers check-ins
         $recent_checkins = Attendance::with(['user', 'campus'])
+            ->whereHas('user') // Only get attendances with valid users
             ->where('type', 'check-in')
             ->whereDate('timestamp', today())
             ->orderBy('timestamp', 'desc')
@@ -48,6 +49,7 @@ class DashboardController extends Controller
 
         // Retards d'aujourd'hui
         $late_today = Attendance::with(['user', 'campus'])
+            ->whereHas('user') // Only get attendances with valid users
             ->where('type', 'check-in')
             ->where('is_late', true)
             ->whereDate('timestamp', today())
@@ -117,6 +119,7 @@ class DashboardController extends Controller
 
         // Get active check-ins (people who checked in today but haven't checked out yet)
         $activeCheckIns = Attendance::with(['user', 'campus'])
+            ->whereHas('user') // Only get attendances with valid users
             ->where('type', 'check-in')
             ->whereDate('timestamp', today())
             ->whereNotIn('user_id', function ($query) {
@@ -137,6 +140,7 @@ class DashboardController extends Controller
     public function activeCheckIns()
     {
         $activeCheckIns = Attendance::with(['user', 'campus'])
+            ->whereHas('user') // Only get attendances with valid users
             ->where('type', 'check-in')
             ->whereDate('timestamp', today())
             ->whereNotIn('user_id', function ($query) {

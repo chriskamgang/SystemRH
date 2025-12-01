@@ -176,6 +176,7 @@ class ReportController extends Controller
 
         // Get attendance data
         $attendancesQuery = Attendance::with(['user', 'campus'])
+            ->whereHas('user') // Only get attendances with valid users
             ->whereBetween('timestamp', [$startDate, $endDate]);
 
         // Appliquer le filtre de plage horaire
