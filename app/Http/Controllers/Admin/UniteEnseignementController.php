@@ -80,13 +80,20 @@ class UniteEnseignementController extends Controller
     public function create(Request $request)
     {
         $vacataireId = $request->get('vacataire_id');
+        $semesterId = $request->get('semester_id');
+
         // Récupérer les vacataires ET les semi-permanents
         $vacataires = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
             ->where('is_active', true)
             ->orderBy('first_name')
             ->get();
 
-        return view('admin.unites-enseignement.create', compact('vacataires', 'vacataireId'));
+        // Récupérer les semestres triés par année et numéro
+        $semesters = \App\Models\Semester::orderBy('annee_academique', 'desc')
+            ->orderBy('numero_semestre', 'desc')
+            ->get();
+
+        return view('admin.unites-enseignement.create', compact('vacataires', 'vacataireId', 'semesters', 'semesterId'));
     }
 
     /**
@@ -101,6 +108,7 @@ class UniteEnseignementController extends Controller
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
             'semestre' => 'nullable|integer|in:1,2',
+            'semester_id' => 'nullable|exists:semesters,id',
             'activer_immediatement' => 'boolean',
         ]);
 
@@ -148,7 +156,12 @@ class UniteEnseignementController extends Controller
     {
         $ue = UniteEnseignement::with('vacataire')->findOrFail($id);
 
-        return view('admin.unites-enseignement.edit', compact('ue'));
+        // Récupérer les semestres triés par année et numéro
+        $semesters = \App\Models\Semester::orderBy('annee_academique', 'desc')
+            ->orderBy('numero_semestre', 'desc')
+            ->get();
+
+        return view('admin.unites-enseignement.edit', compact('ue', 'semesters'));
     }
 
     /**
@@ -164,6 +177,7 @@ class UniteEnseignementController extends Controller
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
             'semestre' => 'nullable|integer|in:1,2',
+            'semester_id' => 'nullable|exists:semesters,id',
         ]);
 
         if ($validator->fails()) {
@@ -177,7 +191,8 @@ class UniteEnseignementController extends Controller
             'nom_matiere',
             'volume_horaire_total',
             'annee_academique',
-            'semestre'
+            'semestre',
+            'semester_id'
         ]));
 
         return redirect()
