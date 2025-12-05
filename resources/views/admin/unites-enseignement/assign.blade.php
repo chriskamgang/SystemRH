@@ -29,11 +29,21 @@
                 </div>
 
                 <div id="ueInfo" class="hidden">
-                    <h3 class="font-semibold mb-3">UE trouvées (<span id="ueCount">0</span>)</h3>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-semibold">
+                            UE trouvées (<span id="ueCount">0</span>)
+                            <span id="selectedCount" class="text-blue-600 ml-2"></span>
+                        </h3>
+                        <label class="inline-flex items-center cursor-pointer" id="selectAllContainer">
+                            <input type="checkbox" id="selectAllCheckbox" class="form-checkbox h-4 w-4 text-blue-600 mr-2">
+                            <span class="text-sm text-gray-700">Tout sélectionner (disponibles)</span>
+                        </label>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 border">
                             <thead class="bg-gray-50">
                                 <tr>
+                                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Sélection</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code UE</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Matière</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Volume (h)</th>
@@ -41,6 +51,7 @@
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Niveau</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Année</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Semestre</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
                                 </tr>
                             </thead>
                             <tbody id="ueTableBody" class="bg-white divide-y divide-gray-200">
@@ -137,19 +148,53 @@ function displayResults(ues, notFound) {
     const ueCount = document.getElementById('ueCount');
 
     if (ues.length > 0) {
-        ueCount.textContent = ues.length;
-        ueTableBody.innerHTML = ues.map(ue => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-4 py-2 text-sm font-mono font-semibold text-blue-600">${ue.code_ue}</td>
-                <td class="px-4 py-2 text-sm">${ue.nom_matiere}</td>
-                <td class="px-4 py-2 text-sm">${ue.volume_horaire_total}h</td>
-                <td class="px-4 py-2 text-sm">${ue.specialite || '-'}</td>
-                <td class="px-4 py-2 text-sm">${ue.niveau || '-'}</td>
-                <td class="px-4 py-2 text-sm">${ue.annee_academique}</td>
-                <td class="px-4 py-2 text-sm">${ue.semestre ? 'S' + ue.semestre : '-'}</td>
-            </tr>
-        `).join('');
+        const availableCount = ues.filter(ue => !ue.is_assigned).length;
+        const assignedCount = ues.filter(ue => ue.is_assigned).length;
+
+        ueCount.textContent = `${ues.length} (${availableCount} disponible${availableCount > 1 ? 's' : ''}, ${assignedCount} déjà attribuée${assignedCount > 1 ? 's' : ''})`;
+
+        ueTableBody.innerHTML = ues.map(ue => {
+            const isAssigned = ue.is_assigned;
+            const checkboxHtml = isAssigned
+                ? `<input type="checkbox" disabled class="form-checkbox h-4 w-4 text-gray-300 cursor-not-allowed" title="UE déjà attribuée">`
+                : `<input type="checkbox" class="ue-checkbox form-checkbox h-4 w-4 text-blue-600 cursor-pointer" data-ue-id="${ue.id}" onchange="updateSelectedCount()">`;
+
+            const statusHtml = isAssigned
+                ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                     <i class="fas fa-lock mr-1"></i> Attribuée à ${ue.enseignant.full_name}
+                   </span>`
+                : `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                     <i class="fas fa-check-circle mr-1"></i> Disponible
+                   </span>`;
+
+            const rowClass = isAssigned ? 'bg-gray-50' : 'hover:bg-blue-50';
+
+            return `
+                <tr class="${rowClass}">
+                    <td class="px-4 py-2 text-center">${checkboxHtml}</td>
+                    <td class="px-4 py-2 text-sm font-mono font-semibold text-blue-600">${ue.code_ue}</td>
+                    <td class="px-4 py-2 text-sm ${isAssigned ? 'text-gray-500' : ''}">${ue.nom_matiere}</td>
+                    <td class="px-4 py-2 text-sm ${isAssigned ? 'text-gray-500' : ''}">${ue.volume_horaire_total}h</td>
+                    <td class="px-4 py-2 text-sm ${isAssigned ? 'text-gray-500' : ''}">${ue.specialite || '-'}</td>
+                    <td class="px-4 py-2 text-sm ${isAssigned ? 'text-gray-500' : ''}">${ue.niveau || '-'}</td>
+                    <td class="px-4 py-2 text-sm ${isAssigned ? 'text-gray-500' : ''}">${ue.annee_academique}</td>
+                    <td class="px-4 py-2 text-sm ${isAssigned ? 'text-gray-500' : ''}">${ue.semestre ? 'S' + ue.semestre : '-'}</td>
+                    <td class="px-4 py-2 text-sm">${statusHtml}</td>
+                </tr>
+            `;
+        }).join('');
+
         ueInfoDiv.classList.remove('hidden');
+
+        // Show/hide "Select All" checkbox
+        const selectAllContainer = document.getElementById('selectAllContainer');
+        if (availableCount > 0) {
+            selectAllContainer.classList.remove('hidden');
+        } else {
+            selectAllContainer.classList.add('hidden');
+        }
+
+        updateSelectedCount();
     } else {
         ueInfoDiv.classList.add('hidden');
         if (notFound.length > 0) {
@@ -158,23 +203,59 @@ function displayResults(ues, notFound) {
     }
 }
 
-// Intercept form submission to add hidden inputs for codes
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.ue-checkbox');
+    const selectedCheckboxes = document.querySelectorAll('.ue-checkbox:checked');
+    const selectedCount = document.getElementById('selectedCount');
+
+    if (selectedCheckboxes.length > 0) {
+        selectedCount.textContent = `(${selectedCheckboxes.length} sélectionnée${selectedCheckboxes.length > 1 ? 's' : ''})`;
+    } else {
+        selectedCount.textContent = '';
+    }
+
+    // Update "Select All" checkbox state
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (checkboxes.length > 0) {
+        selectAllCheckbox.checked = selectedCheckboxes.length === checkboxes.length;
+        selectAllCheckbox.indeterminate = selectedCheckboxes.length > 0 && selectedCheckboxes.length < checkboxes.length;
+    }
+}
+
+// Handle "Select All" checkbox
+document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.ue-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = this.checked;
+    });
+    updateSelectedCount();
+});
+
+// Intercept form submission to add hidden inputs for selected UE IDs
 document.getElementById('assignForm').addEventListener('submit', function(e) {
+    const selectedCheckboxes = document.querySelectorAll('.ue-checkbox:checked');
+
     if (foundUEs.length === 0) {
         e.preventDefault();
         alert('Veuillez d\'abord rechercher et vérifier les codes UE');
         return false;
     }
 
-    // Remove any existing hidden codes_ue inputs
-    document.querySelectorAll('input[name="codes_ue[]"]').forEach(el => el.remove());
+    if (selectedCheckboxes.length === 0) {
+        e.preventDefault();
+        alert('Veuillez sélectionner au moins une UE disponible à attribuer');
+        return false;
+    }
 
-    // Add hidden input for each found UE code
-    foundUEs.forEach(ue => {
+    // Remove any existing hidden ue_ids inputs
+    document.querySelectorAll('input[name="ue_ids[]"]').forEach(el => el.remove());
+
+    // Add hidden input for each selected UE ID
+    selectedCheckboxes.forEach(checkbox => {
         const input = document.createElement('input');
         input.type = 'hidden';
-        input.name = 'codes_ue[]';
-        input.value = ue.code_ue;
+        input.name = 'ue_ids[]';
+        input.value = checkbox.dataset.ueId;
         this.appendChild(input);
     });
 });

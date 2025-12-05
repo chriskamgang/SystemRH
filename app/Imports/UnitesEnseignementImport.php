@@ -10,9 +10,10 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\Importable;
 
-class UnitesEnseignementImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, WithBatchInserts
+class UnitesEnseignementImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, WithBatchInserts, WithChunkReading
 {
     use SkipsFailures, Importable;
 
@@ -26,10 +27,20 @@ class UnitesEnseignementImport implements ToModel, WithHeadingRow, WithValidatio
      */
     public function model(array $row)
     {
-        // Vérifier si le code UE existe déjà
-        if (isset($row['code_ue']) && UniteEnseignement::where('code_ue', $row['code_ue'])->exists()) {
-            $this->skipped++;
-            return null;
+        // IMPORTANT : Vérifier si cette combinaison CODE + MATIÈRE existe déjà
+        // (car plusieurs matières peuvent avoir le même code UE)
+        $codeUe = $row['code_ue'] ?? null;
+        $nomMatiere = $row['nom_matiere'] ?? null;
+
+        if (!empty($codeUe) && !empty($nomMatiere)) {
+            $exists = UniteEnseignement::where('code_ue', $codeUe)
+                ->where('nom_matiere', $nomMatiere)
+                ->exists();
+
+            if ($exists) {
+                $this->skipped++;
+                return null;
+            }
         }
 
         $this->rowCount++;
@@ -64,7 +75,15 @@ class UnitesEnseignementImport implements ToModel, WithHeadingRow, WithValidatio
      */
     public function batchSize(): int
     {
-        return 100;
+        return 25; // Réduit pour gros fichiers
+    }
+
+    /**
+     * Taille des chunks de lecture
+     */
+    public function chunkSize(): int
+    {
+        return 100; // Réduit de 500 à 100 pour fichiers volumineux (évite timeout MySQL)
     }
 
     /**
@@ -101,13 +120,22 @@ class UnitesEnseignementImport implements ToModel, WithHeadingRow, WithValidatio
 
     /**
      * Obtenir les erreurs sous forme de messages
+     * LIMITE à 100 erreurs maximum pour éviter saturation mémoire
      */
     public function getErrors(): array
     {
         $errorMessages = [];
+        $count = 0;
+        $maxErrors = 100; // Limiter à 100 erreurs affichées
 
         foreach ($this->failures() as $failure) {
+            if ($count >= $maxErrors) {
+                $errorMessages[] = "... et " . (count($this->failures()) - $maxErrors) . " autres erreurs (fichier trop volumineux ou mal formaté)";
+                break;
+            }
+
             $errorMessages[] = "Ligne {$failure->row()}: " . implode(', ', $failure->errors());
+            $count++;
         }
 
         return $errorMessages;

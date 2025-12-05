@@ -309,12 +309,29 @@ class UniteEnseignementController extends Controller
 
         $unites = $query->with(['enseignant'])
             ->orderBy('code_ue')
-            ->paginate(20);
+            ->paginate(50); // Augmenté à 50 pour meilleure UX
 
-        // Récupérer les valeurs uniques pour les filtres
-        $specialites = UniteEnseignement::distinct()->pluck('specialite')->filter();
-        $niveaux = UniteEnseignement::distinct()->pluck('niveau')->filter();
-        $anneesAcademiques = UniteEnseignement::distinct()->pluck('annee_academique')->filter();
+        // Récupérer les valeurs uniques pour les filtres (OPTIMISÉ avec whereNotNull)
+        $specialites = UniteEnseignement::select('specialite')
+            ->whereNotNull('specialite')
+            ->where('specialite', '!=', '')
+            ->distinct()
+            ->limit(100)
+            ->pluck('specialite');
+
+        $niveaux = UniteEnseignement::select('niveau')
+            ->whereNotNull('niveau')
+            ->where('niveau', '!=', '')
+            ->distinct()
+            ->limit(100)
+            ->pluck('niveau');
+
+        $anneesAcademiques = UniteEnseignement::select('annee_academique')
+            ->whereNotNull('annee_academique')
+            ->where('annee_academique', '!=', '')
+            ->distinct()
+            ->limit(20)
+            ->pluck('annee_academique');
 
         return view('admin.unites-enseignement.catalog', compact(
             'unites',
@@ -405,16 +422,18 @@ class UniteEnseignementController extends Controller
             return response()->json(['success' => false, 'message' => 'Codes requis']);
         }
 
+        // Rechercher toutes les UE avec ces codes (même celles déjà attribuées)
         $ues = UniteEnseignement::whereIn('code_ue', $codes)
-            ->whereNull('enseignant_id')
+            ->with('enseignant')
             ->get();
 
-        $found = $ues->pluck('code_ue')->toArray();
+        $found = $ues->pluck('code_ue')->unique()->toArray();
         $notFound = array_diff($codes, $found);
 
         return response()->json([
             'success' => true,
             'ues' => $ues->map(function($ue) {
+                $isAssigned = !is_null($ue->enseignant_id);
                 return [
                     'id' => $ue->id,
                     'code_ue' => $ue->code_ue,
@@ -424,6 +443,11 @@ class UniteEnseignementController extends Controller
                     'semestre' => $ue->semestre,
                     'specialite' => $ue->specialite,
                     'niveau' => $ue->niveau,
+                    'is_assigned' => $isAssigned,
+                    'enseignant' => $isAssigned && $ue->enseignant ? [
+                        'id' => $ue->enseignant->id,
+                        'full_name' => $ue->enseignant->full_name,
+                    ] : null,
                 ];
             }),
             'not_found' => $notFound,
@@ -445,15 +469,18 @@ class UniteEnseignementController extends Controller
     }
 
     /**
-     * Attribuer une ou plusieurs UE à un enseignant (par codes)
+     * Attribuer une ou plusieurs UE à un enseignant (par IDs sélectionnés)
      */
     public function assignToTeacher(Request $request)
     {
         $validated = $request->validate([
-            'codes_ue' => 'required|array|min:1',
-            'codes_ue.*' => 'required|string',
+            'ue_ids' => 'required|array|min:1',
+            'ue_ids.*' => 'required|integer|exists:unites_enseignement,id',
             'enseignant_id' => 'required|exists:users,id',
             'activer_immediatement' => 'boolean',
+        ], [
+            'ue_ids.required' => 'Veuillez sélectionner au moins une UE à attribuer',
+            'ue_ids.min' => 'Veuillez sélectionner au moins une UE à attribuer',
         ]);
 
         // Valider que c'est bien un enseignant
@@ -466,21 +493,24 @@ class UniteEnseignementController extends Controller
                 ->withInput();
         }
 
-        // Récupérer toutes les UE non attribuées avec ces codes
-        $ues = UniteEnseignement::whereIn('code_ue', $validated['codes_ue'])
+        // Récupérer toutes les UE sélectionnées qui ne sont PAS encore attribuées
+        $ues = UniteEnseignement::whereIn('id', $validated['ue_ids'])
             ->whereNull('enseignant_id')
             ->get();
 
         if ($ues->isEmpty()) {
             return redirect()->back()
-                ->withErrors(['codes_ue' => 'Aucune UE trouvée avec ces codes ou toutes sont déjà attribuées'])
+                ->withErrors(['ue_ids' => 'Aucune UE valide sélectionnée ou toutes sont déjà attribuées'])
                 ->withInput();
         }
 
-        $codesFound = $ues->pluck('code_ue')->toArray();
-        $codesNotFound = array_diff($validated['codes_ue'], $codesFound);
+        // Vérifier s'il y a des UE déjà attribuées dans la sélection
+        $alreadyAssignedIds = UniteEnseignement::whereIn('id', $validated['ue_ids'])
+            ->whereNotNull('enseignant_id')
+            ->pluck('id')
+            ->toArray();
 
-        // Attribuer toutes les UE trouvées
+        // Attribuer toutes les UE disponibles
         $count = 0;
         foreach ($ues as $ue) {
             $ue->enseignant_id = $validated['enseignant_id'];
@@ -498,8 +528,8 @@ class UniteEnseignementController extends Controller
 
         $message = "{$count} UE(s) attribuée(s) à {$enseignant->full_name} avec succès";
 
-        if (!empty($codesNotFound)) {
-            $message .= " | Codes non trouvés: " . implode(', ', $codesNotFound);
+        if (!empty($alreadyAssignedIds)) {
+            $message .= " | " . count($alreadyAssignedIds) . " UE(s) ignorée(s) (déjà attribuées)";
         }
 
         return redirect()
@@ -535,6 +565,15 @@ class UniteEnseignementController extends Controller
             $imported = $import->getRowCount();
             $skipped = $import->getSkippedCount();
             $errors = $import->getErrors();
+            $totalErrors = count($import->failures());
+
+            // LOG DE DEBUG
+            \Log::info("Import UE terminé", [
+                'imported' => $imported,
+                'skipped' => $skipped,
+                'errors' => $totalErrors,
+                'file_name' => $request->file('file')->getClientOriginalName()
+            ]);
 
             // Message de succès avec détails
             $message = "Import terminé : {$imported} UE importée(s)";
@@ -543,11 +582,23 @@ class UniteEnseignementController extends Controller
                 $message .= ", {$skipped} UE ignorée(s) (codes déjà existants)";
             }
 
-            if (count($errors) > 0) {
-                $message .= ". Attention : " . count($errors) . " erreur(s) détectée(s)";
+            if ($totalErrors > 0) {
+                $message .= ". Attention : {$totalErrors} erreur(s) détectée(s)";
             }
 
-            // Si des erreurs, les afficher
+            // Si beaucoup d'erreurs, suggérer de vérifier le fichier
+            if ($totalErrors > 100) {
+                $message .= " (fichier probablement mal formaté, vérifiez les colonnes)";
+            }
+
+            // CAS SPÉCIAL : Aucune UE importée et beaucoup ignorées = tout existe déjà
+            if ($imported == 0 && $skipped > 10) {
+                return redirect()
+                    ->route('admin.unites-enseignement.catalog')
+                    ->with('info', "❌ Aucune nouvelle UE importée : Les {$skipped} UE du fichier existent déjà dans la base de données. Vérifiez que vous n'importez pas un fichier déjà traité.");
+            }
+
+            // Si des erreurs, les afficher (LIMITÉ à 100 erreurs maximum)
             if (count($errors) > 0) {
                 return redirect()
                     ->route('admin.unites-enseignement.catalog')
@@ -555,9 +606,11 @@ class UniteEnseignementController extends Controller
                     ->with('import_errors', $errors);
             }
 
+            // Import réussi
+            $statusType = $imported > 0 ? 'success' : 'info';
             return redirect()
                 ->route('admin.unites-enseignement.catalog')
-                ->with('success', $message);
+                ->with($statusType, $message);
 
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = $e->failures();
