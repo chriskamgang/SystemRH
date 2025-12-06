@@ -15,6 +15,8 @@ class UniteEnseignement extends Model
         'code_ue',
         'nom_matiere',
         'volume_horaire_total',
+        'heures_effectuees_validees',
+        'derniere_mise_a_jour_heures',
         'statut',
         'annee_academique',
         'semestre',
@@ -28,6 +30,8 @@ class UniteEnseignement extends Model
 
     protected $casts = [
         'volume_horaire_total' => 'decimal:2',
+        'heures_effectuees_validees' => 'decimal:2',
+        'derniere_mise_a_jour_heures' => 'datetime',
         'date_attribution' => 'datetime',
         'date_activation' => 'datetime',
         'semestre' => 'integer',
@@ -65,6 +69,12 @@ class UniteEnseignement extends Model
     public function presenceIncidents(): HasMany
     {
         return $this->hasMany(PresenceIncident::class, 'unite_enseignement_id');
+    }
+
+    // Détails des paiements pour cette UE
+    public function paymentDetails(): HasMany
+    {
+        return $this->hasMany(VacatairePaymentDetail::class, 'unite_enseignement_id');
     }
 
     /**
@@ -221,5 +231,44 @@ class UniteEnseignement extends Model
 
         $tauxHoraire = $enseignant->hourly_rate ?? 0;
         return $this->volume_horaire_total * $tauxHoraire;
+    }
+
+    // Ajouter des heures validées
+    public function ajouterHeuresValidees(float $heures): void
+    {
+        $this->update([
+            'heures_effectuees_validees' => $this->heures_effectuees_validees + $heures,
+            'derniere_mise_a_jour_heures' => now(),
+        ]);
+    }
+
+    // Soustraire des heures validées (lors de la suppression d'un paiement)
+    public function soustraireHeuresValidees(float $heures): void
+    {
+        $this->update([
+            'heures_effectuees_validees' => max(0, $this->heures_effectuees_validees - $heures),
+            'derniere_mise_a_jour_heures' => now(),
+        ]);
+    }
+
+    // Obtenir les heures restantes basées sur les heures validées
+    public function getHeuresRestantesValideesAttribute(): float
+    {
+        return max(0, $this->volume_horaire_total - $this->heures_effectuees_validees);
+    }
+
+    // Calculer le total payé pour cette UE
+    public function getTotalPayeAttribute(): float
+    {
+        return $this->paymentDetails()->sum('montant');
+    }
+
+    // Calculer le pourcentage de progression basé sur les heures validées
+    public function getPourcentageProgressionValideesAttribute(): float
+    {
+        if ($this->volume_horaire_total == 0) {
+            return 0;
+        }
+        return min(100, ($this->heures_effectuees_validees / $this->volume_horaire_total) * 100);
     }
 }

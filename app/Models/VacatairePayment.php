@@ -59,4 +59,35 @@ class VacatairePayment extends Model
     {
         return $this->belongsTo(User::class, 'validated_by');
     }
+
+    public function details()
+    {
+        return $this->hasMany(VacatairePaymentDetail::class, 'payment_id');
+    }
+
+    /**
+     * Méthodes helper
+     */
+
+    // Calculer le total depuis les détails
+    public function calculerTotalFromDetails(): float
+    {
+        return $this->details()->sum('montant');
+    }
+
+    // Synchroniser le total avec les détails
+    public function syncTotalFromDetails(): void
+    {
+        $total = $this->calculerTotalFromDetails();
+        $this->update([
+            'gross_amount' => $total,
+            'net_amount' => $total - $this->late_penalty + $this->bonus,
+        ]);
+    }
+
+    // Obtenir les détails groupés par UE
+    public function getDetailsGroupedByUE()
+    {
+        return $this->details()->with('uniteEnseignement')->get();
+    }
 }

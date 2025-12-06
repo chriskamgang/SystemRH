@@ -175,6 +175,10 @@
                             <i class="fas fa-money-bill-wave w-4"></i>
                             <span class="ml-2">Gestion des paiements</span>
                         </a>
+                        <a href="{{ route('admin.vacataires.manual-payments.index') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.vacataires.manual-payments.*') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-hand-holding-usd w-4"></i>
+                            <span class="ml-2">Paiement Manuel Vacataires</span>
+                        </a>
                         <a href="{{ route('admin.vacataires.report') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.vacataires.report') ? 'bg-gray-700' : '' }}">
                             <i class="fas fa-file-alt w-4"></i>
                             <span class="ml-2">Rapport</span>
@@ -223,10 +227,10 @@
                     <span class="ml-3">Rapport sur la paie</span>
                 </a>
 
-                <!-- Calculateur de Paie Manuelle -->
-                <a href="{{ route('admin.manual-payroll.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.manual-payroll.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                <!-- Calculateur Générique -->
+                <a href="{{ route('admin.generic-calculator.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.generic-calculator.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-calculator w-5"></i>
-                    <span class="ml-3">Calculateur de Paie</span>
+                    <span class="ml-3">Calculateur Générique</span>
                 </a>
 
                 <!-- Déductions Manuelles -->

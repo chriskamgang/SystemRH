@@ -72,6 +72,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/report', [App\Http\Controllers\Admin\VacataireController::class, 'report'])->name('report');
         Route::get('/report/export', [App\Http\Controllers\Admin\VacataireController::class, 'exportReport'])->name('report.export');
 
+        // Paiements Manuels Vacataires (AVANT les routes dynamiques)
+        Route::prefix('paiements-manuels')->name('manual-payments.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'index'])->name('index');
+            Route::get('/create', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'create'])->name('create');
+            Route::post('/select-ue', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'selectUE'])->name('select-ue');
+            Route::post('/store', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'store'])->name('store');
+            Route::get('/statistics', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'statistics'])->name('statistics');
+            Route::post('/check-existing', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'checkExistingPayment'])->name('check-existing');
+            Route::get('/{id}', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'show'])->name('show');
+            Route::get('/{id}/edit', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'update'])->name('update');
+            Route::delete('/{id}', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'destroy'])->name('destroy');
+        });
+
         // Gestion des UE d'un vacataire (AVANT les routes dynamiques)
         Route::get('/{id}/unites', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'vacataireUnites'])->name('unites');
 
@@ -142,8 +156,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/report/export', [App\Http\Controllers\Admin\PayrollReportController::class, 'export'])->name('report.export');
     });
 
-    // Paie Manuelle
-    Route::prefix('manual-payroll')->name('manual-payroll.')->group(function () {
+    // Calculateur Générique
+    Route::prefix('calculateur-generique')->name('generic-calculator.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\ManualPayrollController::class, 'index'])->name('index');
         Route::post('/calculate', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculate'])->name('calculate');
         Route::post('/calculate-bulk', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculateBulk'])->name('calculate-bulk');

@@ -55,6 +55,19 @@
         </div>
     @endif
 
+    <!-- Info sur les heures validées -->
+    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+        <div class="flex">
+            <i class="fas fa-info-circle text-blue-500 mr-3 mt-1"></i>
+            <div>
+                <p class="text-sm text-blue-800">
+                    <strong>Information :</strong> Les heures affichées ci-dessous sont les <strong>heures validées manuellement</strong> via les paiements manuels.
+                    Elles représentent les heures réellement payées au vacataire.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Statistiques globales -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="bg-white rounded-lg shadow p-6">
@@ -72,11 +85,11 @@
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Heures Effectuées</p>
+                    <p class="text-sm text-gray-600">Heures Validées (Payées)</p>
                     <p class="text-3xl font-bold text-green-600 mt-2">{{ number_format($totalHeuresEffectuees, 1) }}h</p>
                 </div>
                 <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-clock text-green-600 text-xl"></i>
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
                 </div>
             </div>
         </div>
@@ -144,34 +157,34 @@
                                         <p class="text-lg font-semibold text-gray-800">{{ number_format($ue->volume_horaire_total, 1) }}h</p>
                                     </div>
                                     <div>
-                                        <p class="text-sm text-gray-600">Heures effectuées</p>
-                                        <p class="text-lg font-semibold text-blue-600">{{ number_format($ue->heures_effectuees, 1) }}h</p>
+                                        <p class="text-sm text-gray-600">Heures validées (payées)</p>
+                                        <p class="text-lg font-semibold text-blue-600">{{ number_format($ue->heures_effectuees_validees, 1) }}h</p>
                                     </div>
                                     <div>
                                         <p class="text-sm text-gray-600">Reste à faire</p>
-                                        <p class="text-lg font-semibold text-orange-600">{{ number_format($ue->heures_restantes, 1) }}h</p>
+                                        <p class="text-lg font-semibold text-orange-600">{{ number_format($ue->heures_restantes_validees, 1) }}h</p>
                                     </div>
                                 </div>
 
                                 <!-- Barre de progression -->
                                 <div class="mb-4">
                                     <div class="flex justify-between items-center mb-2">
-                                        <span class="text-sm font-medium text-gray-700">Progression</span>
-                                        <span class="text-sm font-semibold text-blue-600">{{ number_format($ue->pourcentage_progression, 1) }}%</span>
+                                        <span class="text-sm font-medium text-gray-700">Progression (heures validées)</span>
+                                        <span class="text-sm font-semibold text-blue-600">{{ number_format($ue->pourcentage_progression_validees, 1) }}%</span>
                                     </div>
                                     <div class="w-full bg-gray-200 rounded-full h-3">
-                                        <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: {{ $ue->pourcentage_progression }}%"></div>
+                                        <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: {{ $ue->pourcentage_progression_validees }}%"></div>
                                     </div>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div class="bg-green-50 rounded-lg p-3">
-                                        <p class="text-xs text-gray-600">Montant payé</p>
-                                        <p class="text-lg font-bold text-green-600">{{ number_format($ue->montant_paye, 0, ',', ' ') }} FCFA</p>
+                                        <p class="text-xs text-gray-600">Montant payé (validé)</p>
+                                        <p class="text-lg font-bold text-green-600">{{ number_format($ue->total_paye, 0, ',', ' ') }} FCFA</p>
                                     </div>
                                     <div class="bg-orange-50 rounded-lg p-3">
                                         <p class="text-xs text-gray-600">Montant restant</p>
-                                        <p class="text-lg font-bold text-orange-600">{{ number_format($ue->montant_restant, 0, ',', ' ') }} FCFA</p>
+                                        <p class="text-lg font-bold text-orange-600">{{ number_format($ue->heures_restantes_validees * $vacataire->hourly_rate, 0, ',', ' ') }} FCFA</p>
                                     </div>
                                     <div class="bg-purple-50 rounded-lg p-3">
                                         <p class="text-xs text-gray-600">Montant maximum</p>
@@ -198,13 +211,17 @@
                                 <a href="{{ route('admin.unites-enseignement.edit', $ue->id) }}" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                @if($ue->heures_effectuees == 0)
+                                @if($ue->heures_effectuees_validees == 0)
                                     <form action="{{ route('admin.unites-enseignement.desactiver', $ue->id) }}" method="POST" onsubmit="return confirm('Désactiver cette UE ?')">
                                         @csrf
                                         <button type="submit" class="w-full px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 text-sm rounded-lg transition" title="Désactiver">
                                             <i class="fas fa-pause"></i>
                                         </button>
                                     </form>
+                                @else
+                                    <div class="text-xs text-gray-500 text-center p-2" title="Ne peut pas être désactivée car des heures ont déjà été validées">
+                                        <i class="fas fa-lock"></i>
+                                    </div>
                                 @endif
                             </div>
                         </div>

@@ -59,14 +59,40 @@
                         </table>
                     </div>
                 </div>
-                <div>
+                <div x-data="{ searchQuery: '' }">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Enseignant *</label>
-                    <select name="enseignant_id" required class="w-full px-4 py-2 border rounded-lg">
-                        <option value="">Sélectionner un enseignant</option>
+
+                    <!-- Champ de recherche -->
+                    <div class="relative mb-2">
+                        <input
+                            type="text"
+                            x-model="searchQuery"
+                            placeholder="Filtrer par nom..."
+                            class="w-full px-4 py-2 pr-10 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            autocomplete="off"
+                        >
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <i class="fas fa-filter text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- Liste déroulante normale avec filtre -->
+                    <select name="enseignant_id" id="enseignant_select" required class="w-full px-4 py-2 border rounded-lg" size="8">
+                        <option value="">-- Sélectionner un enseignant --</option>
                         @foreach($enseignants as $ens)
-                            <option value="{{ $ens->id }}">{{ $ens->full_name }} - {{ ucfirst(str_replace('_', ' ', $ens->employee_type)) }} @if($ens->isVacataire()) - Taux horaire: {{ number_format($ens->hourly_rate, 0, ',', ' ') }} FCFA/h @endif</option>
+                            <option
+                                value="{{ $ens->id }}"
+                                x-show="searchQuery === '' || '{{ strtolower($ens->full_name) }} {{ strtolower(str_replace('_', ' ', $ens->employee_type)) }}'.includes(searchQuery.toLowerCase())"
+                            >
+                                {{ $ens->full_name }} - {{ ucfirst(str_replace('_', ' ', $ens->employee_type)) }} @if($ens->isVacataire()) - {{ number_format($ens->hourly_rate, 0, ',', ' ') }} FCFA/h @endif
+                            </option>
                         @endforeach
                     </select>
+
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Tapez dans le champ ci-dessus pour filtrer la liste
+                    </p>
                 </div>
                 <div>
                     <label class="inline-flex items-center">

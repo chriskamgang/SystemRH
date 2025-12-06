@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 
-@section('title', 'Calculateur de Paie Manuelle')
-@section('page-title', 'Calculateur de Paie Manuelle')
+@section('title', 'Calculateur Générique')
+@section('page-title', 'Calculateur Générique')
 
 @section('content')
 <div class="max-w-7xl mx-auto">
     <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
         <p class="text-blue-800">
             <i class="fas fa-info-circle mr-2"></i>
-            <strong>Calculateur de Paie :</strong> Entrez le salaire mensuel et le nombre de jours travaillés pour calculer automatiquement le montant à payer.
+            <strong>Calculateur Générique :</strong> Entrez le salaire mensuel et le nombre de jours travaillés pour calculer automatiquement le montant à payer.
         </p>
     </div>
 
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const formData = new FormData(form);
 
-        fetch('{{ route('admin.manual-payroll.calculate') }}', {
+        fetch('{{ route('admin.generic-calculator.calculate') }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',

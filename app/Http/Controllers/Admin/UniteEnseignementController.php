@@ -56,13 +56,14 @@ class UniteEnseignementController extends Controller
             ->where('statut', 'non_activee')
             ->get();
 
-        // Calcul des totaux
+        // Calcul des totaux (utilise les heures validées manuellement)
         $totalHeuresEffectuees = 0;
         $totalMontantPaye = 0;
 
         foreach ($unitesActivees as $ue) {
-            $totalHeuresEffectuees += $ue->heures_effectuees;
-            $totalMontantPaye += $ue->montant_paye;
+            // Utiliser les heures validées manuellement au lieu des heures calculées automatiquement
+            $totalHeuresEffectuees += $ue->heures_effectuees_validees;
+            $totalMontantPaye += $ue->total_paye;
         }
 
         return view('admin.vacataires.unites', compact(
@@ -255,7 +256,10 @@ class UniteEnseignementController extends Controller
     public function show($id)
     {
         $ue = UniteEnseignement::with([
-            'vacataire',
+            'enseignant',
+            'creator',
+            'activator',
+            'paymentDetails.payment',
             'presenceIncidents' => function ($query) {
                 $query->orderBy('incident_date', 'desc');
             },
