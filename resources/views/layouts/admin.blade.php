@@ -216,10 +216,52 @@
                     <span class="ml-3">Carte en temps réel</span>
                 </a>
 
-                <a href="{{ route('admin.reports.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.reports.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                <!-- Ancien module Rapports (à garder pour compatibilité) -->
+                <a href="{{ route('admin.reports.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.reports.*') && !request()->routeIs('admin.rapports.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-chart-bar w-5"></i>
-                    <span class="ml-3">Rapports</span>
+                    <span class="ml-3">Rapports (Ancien)</span>
                 </a>
+
+                <!-- Nouveau Module Rapports avec sous-menu -->
+                <div x-data="{ open: {{ request()->routeIs('admin.rapports.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.rapports.*') ? 'bg-blue-600' : '' }}">
+                        <div class="flex items-center">
+                            <i class="fas fa-file-invoice-dollar w-5"></i>
+                            <span class="ml-3">Rapports Paiements</span>
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{'rotate-180': open}"></i>
+                    </button>
+                    <div x-show="open" x-transition class="ml-4 space-y-1">
+                        <a href="{{ route('admin.rapports.personnel-paye') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.rapports.personnel-paye') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-users-cog w-4"></i>
+                            <span class="ml-2">Personnel Payé</span>
+                        </a>
+                        <a href="{{ route('admin.rapports.cours-payes') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.rapports.cours-payes') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-check-circle w-4 text-green-500"></i>
+                            <span class="ml-2">Cours Payés</span>
+                        </a>
+                        <a href="{{ route('admin.rapports.cours-non-payes') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.rapports.cours-non-payes') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-times-circle w-4 text-red-500"></i>
+                            <span class="ml-2">Cours Non Payés</span>
+                        </a>
+                        <a href="{{ route('admin.rapports.masse-payes-specialite') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.rapports.masse-payes-specialite') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-graduation-cap w-4"></i>
+                            <span class="ml-2">Masse Payée/Spécialité</span>
+                        </a>
+                        <a href="{{ route('admin.rapports.masse-non-payes-specialite') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.rapports.masse-non-payes-specialite') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-graduation-cap w-4 text-orange-500"></i>
+                            <span class="ml-2">Masse Non Payée/Spécialité</span>
+                        </a>
+                        <a href="{{ route('admin.rapports.masse-payes-cycle') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.rapports.masse-payes-cycle') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-layer-group w-4"></i>
+                            <span class="ml-2">Masse Payée/Cycle</span>
+                        </a>
+                        <a href="{{ route('admin.rapports.masse-non-payes-cycle') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.rapports.masse-non-payes-cycle') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-layer-group w-4 text-orange-500"></i>
+                            <span class="ml-2">Masse Non Payée/Cycle</span>
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Rapport sur la paie -->
                 <a href="{{ route('admin.payroll.report') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.payroll.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">

@@ -499,9 +499,10 @@ class EmployeeController extends Controller
                     ->with('warning', $message);
             }
 
-            if ($results['success'] == 0) {
+            // Vérifier s'il y a au moins une création OU une mise à jour
+            if ($results['success'] == 0 && ($results['updated'] ?? 0) == 0) {
                 return redirect()->route('admin.employees.import-form')
-                    ->with('error', 'Aucun employé permanent n\'a été importé.');
+                    ->with('error', 'Aucun employé permanent n\'a été traité.');
             }
 
             return redirect()->route('admin.employees.index')
@@ -612,12 +613,43 @@ class EmployeeController extends Controller
     {
         $message = '';
 
-        if ($results['success'] > 0) {
+        // Nombre d'employés créés (nouveaux)
+        $created = $results['success'] - ($results['updated'] ?? 0);
+
+        if ($created > 0) {
+            $message .= "{$created} employé(s) {$type} créé(s) avec succès. ";
+        }
+
+        // Nombre d'employés mis à jour (existants)
+        if (isset($results['updated']) && $results['updated'] > 0) {
+            $message .= "{$results['updated']} employé(s) mis à jour. ";
+        }
+
+        // Total traité
+        if ($results['success'] > 0 && !$message) {
             $message .= "{$results['success']} employé(s) {$type} importé(s) avec succès. ";
         }
 
+        // Emails modifiés pour éviter les doublons
+        if (!empty($results['email_modifications'])) {
+            $count = count($results['email_modifications']);
+            $message .= "{$count} email(s) modifié(s) pour éviter les doublons : ";
+
+            $modifications = array_slice($results['email_modifications'], 0, 3);
+            $emailChanges = array_map(function($mod) {
+                return "{$mod['name']} : {$mod['original']} → {$mod['modified']}";
+            }, $modifications);
+
+            $message .= implode(' | ', $emailChanges);
+
+            if ($count > 3) {
+                $message .= " (et " . ($count - 3) . " autres)";
+            }
+            $message .= ". ";
+        }
+
         if ($results['skipped'] > 0) {
-            $message .= "{$results['skipped']} ligne(s) ignorée(s) (emails déjà existants). ";
+            $message .= "{$results['skipped']} ligne(s) ignorée(s). ";
         }
 
         if (!empty($results['errors'])) {

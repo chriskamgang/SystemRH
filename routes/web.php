@@ -53,9 +53,40 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Real-time map
     Route::get('/realtime', [DashboardController::class, 'realtime'])->name('realtime');
 
-    // Reports
+    // Reports (ancien système - à garder pour compatibilité)
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+
+    // Nouveau module Rapports
+    Route::prefix('rapports')->name('rapports.')->group(function () {
+        // 1. Etat du personnel payé sur une période
+        Route::get('/personnel-paye', [App\Http\Controllers\Admin\RapportController::class, 'personnelPaye'])->name('personnel-paye');
+        Route::get('/personnel-paye/export', [App\Http\Controllers\Admin\RapportController::class, 'personnelPayeExport'])->name('personnel-paye.export');
+
+        // 2. Etat des cours payés
+        Route::get('/cours-payes', [App\Http\Controllers\Admin\RapportController::class, 'coursPayes'])->name('cours-payes');
+        Route::get('/cours-payes/export', [App\Http\Controllers\Admin\RapportController::class, 'coursPayesExport'])->name('cours-payes.export');
+
+        // 3. Etat des cours non payés
+        Route::get('/cours-non-payes', [App\Http\Controllers\Admin\RapportController::class, 'coursNonPayes'])->name('cours-non-payes');
+        Route::get('/cours-non-payes/export', [App\Http\Controllers\Admin\RapportController::class, 'coursNonPayesExport'])->name('cours-non-payes.export');
+
+        // 4. Masse salariale des enseignements déjà payés par spécialité
+        Route::get('/masse-payes-specialite', [App\Http\Controllers\Admin\RapportController::class, 'massePayesSpecialite'])->name('masse-payes-specialite');
+        Route::get('/masse-payes-specialite/export', [App\Http\Controllers\Admin\RapportController::class, 'massePayesSpecialiteExport'])->name('masse-payes-specialite.export');
+
+        // 5. Masse salariale des enseignements non payés par spécialité
+        Route::get('/masse-non-payes-specialite', [App\Http\Controllers\Admin\RapportController::class, 'masseNonPayesSpecialite'])->name('masse-non-payes-specialite');
+        Route::get('/masse-non-payes-specialite/export', [App\Http\Controllers\Admin\RapportController::class, 'masseNonPayesSpecialiteExport'])->name('masse-non-payes-specialite.export');
+
+        // 6. Masse salariale des enseignements déjà payés par cycle
+        Route::get('/masse-payes-cycle', [App\Http\Controllers\Admin\RapportController::class, 'massePayesCycle'])->name('masse-payes-cycle');
+        Route::get('/masse-payes-cycle/export', [App\Http\Controllers\Admin\RapportController::class, 'massePayesCycleExport'])->name('masse-payes-cycle.export');
+
+        // 7. Masse salariale des enseignements non payés par cycle
+        Route::get('/masse-non-payes-cycle', [App\Http\Controllers\Admin\RapportController::class, 'masseNonPayesCycle'])->name('masse-non-payes-cycle');
+        Route::get('/masse-non-payes-cycle/export', [App\Http\Controllers\Admin\RapportController::class, 'masseNonPayesCycleExport'])->name('masse-non-payes-cycle.export');
+    });
 
     // Vacataires
     Route::prefix('vacataires')->name('vacataires.')->group(function () {
