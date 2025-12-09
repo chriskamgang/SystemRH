@@ -23,6 +23,7 @@
             <th>Période</th>
             <th class="text-right">Heures</th>
             <th class="text-right">Montant brut</th>
+            <th class="text-right">Impôt (5%)</th>
             <th class="text-right">Montant net</th>
             <th>Date paiement</th>
         </tr>
@@ -40,12 +41,13 @@
             </td>
             <td class="text-right">{{ number_format($paiement->hours_worked, 2) }}h</td>
             <td class="text-right">{{ number_format($paiement->gross_amount, 0, ',', ' ') }}</td>
+            <td class="text-right" style="color: #dc2626;">{{ $paiement->impot_retenu > 0 ? number_format($paiement->impot_retenu, 0, ',', ' ') : '-' }}</td>
             <td class="text-right font-bold text-green">{{ number_format($paiement->net_amount, 0, ',', ' ') }}</td>
             <td>{{ $paiement->paid_at ? $paiement->paid_at->format('d/m/Y') : 'N/A' }}</td>
         </tr>
         @empty
         <tr>
-            <td colspan="7" class="text-center" style="padding: 20px; color: #9ca3af;">
+            <td colspan="8" class="text-center" style="padding: 20px; color: #9ca3af;">
                 Aucun paiement trouvé pour cette période
             </td>
         </tr>
@@ -56,6 +58,7 @@
         <tr>
             <td colspan="4">TOTAL</td>
             <td class="text-right">{{ number_format($paiements->sum('gross_amount'), 0, ',', ' ') }}</td>
+            <td class="text-right" style="color: #dc2626;">{{ number_format($paiements->sum('impot_retenu'), 0, ',', ' ') }}</td>
             <td class="text-right text-green">{{ number_format($totalPaye, 0, ',', ' ') }} FCFA</td>
             <td></td>
         </tr>

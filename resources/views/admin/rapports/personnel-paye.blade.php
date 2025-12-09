@@ -140,6 +140,9 @@
                             Montant brut
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Impôt (5%)
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Montant net
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -178,6 +181,13 @@
                             <span class="text-sm font-medium text-gray-900">{{ number_format($paiement->gross_amount, 0, ',', ' ') }} FCFA</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
+                            @if($paiement->impot_retenu > 0)
+                                <span class="text-sm font-medium text-red-600">{{ number_format($paiement->impot_retenu, 0, ',', ' ') }} FCFA</span>
+                            @else
+                                <span class="text-sm text-gray-400">-</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <span class="text-sm font-bold text-green-600">{{ number_format($paiement->net_amount, 0, ',', ' ') }} FCFA</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -186,7 +196,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                        <td colspan="8" class="px-6 py-4 text-center text-gray-500">
                             <i class="fas fa-inbox text-4xl text-gray-300 mb-2"></i>
                             <p>Aucun paiement trouvé pour cette période</p>
                         </td>

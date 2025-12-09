@@ -134,6 +134,7 @@ class VacataireManualPaymentController extends Controller
             'ue_details' => 'required|array|min:1',
             'ue_details.*.unite_enseignement_id' => 'required|exists:unites_enseignement,id',
             'ue_details.*.heures_saisies' => 'required|numeric|min:0.01',
+            'appliquer_impot' => 'nullable|boolean',
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -154,6 +155,12 @@ class VacataireManualPaymentController extends Controller
                 $totalMontant += $montant;
             }
 
+            // Calculer l'impôt si demandé (5% du montant brut)
+            $impotRetenu = 0;
+            if ($request->has('appliquer_impot') && $request->appliquer_impot) {
+                $impotRetenu = $totalMontant * 0.05;
+            }
+
             // Créer le paiement
             $payment = VacatairePayment::create([
                 'user_id' => $vacataire->id,
@@ -163,7 +170,8 @@ class VacataireManualPaymentController extends Controller
                 'hourly_rate' => $vacataire->hourly_rate,
                 'hours_worked' => $totalHeures,
                 'gross_amount' => $totalMontant,
-                'net_amount' => $totalMontant,
+                'impot_retenu' => $impotRetenu,
+                'net_amount' => $totalMontant - $impotRetenu,
                 'status' => 'pending',
                 'notes' => $validated['notes'] ?? null,
             ]);

@@ -170,9 +170,35 @@
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-sm text-gray-600 mb-1">
-                                <i class="fas fa-money-bill-wave text-green-500 mr-2"></i>Montant Total
+                                <i class="fas fa-money-bill-wave text-blue-500 mr-2"></i>Montant Brut
                             </p>
-                            <p class="text-3xl font-bold text-green-600" x-text="formatNumber(totalMontant) + ' FCFA'"></p>
+                            <p class="text-2xl font-bold text-blue-600" x-text="formatNumber(totalMontant) + ' FCFA'"></p>
+                        </div>
+                    </div>
+
+                    <!-- Tax Section -->
+                    <div class="mt-4 bg-white rounded-lg p-4 shadow">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox"
+                                   name="appliquer_impot"
+                                   value="1"
+                                   x-model="appliquerImpot"
+                                   @change="calculateTotal()"
+                                   class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                            <span class="ml-3 text-sm font-medium text-gray-700">
+                                <i class="fas fa-percentage text-red-500 mr-1"></i>
+                                Appliquer l'impôt (5% du montant brut)
+                            </span>
+                        </label>
+                        <div x-show="appliquerImpot" x-transition class="mt-3 pt-3 border-t border-gray-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-gray-600">Impôt retenu (5%)</span>
+                                <span class="text-lg font-bold text-red-600">- <span x-text="formatNumber(impotRetenu)"></span> FCFA</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-2 border-t border-gray-200">
+                                <span class="text-sm font-medium text-gray-700">Montant NET à payer</span>
+                                <span class="text-2xl font-bold text-green-600" x-text="formatNumber(montantNet) + ' FCFA'"></span>
+                            </div>
                         </div>
                     </div>
 
@@ -188,7 +214,7 @@
                     <div x-show="totalHeures > 0" class="mt-4 p-3 bg-green-100 border-l-4 border-green-500 rounded">
                         <p class="text-sm text-green-800">
                             <i class="fas fa-check-circle mr-2"></i>
-                            <strong>Prêt à enregistrer :</strong> <span x-text="formatNumber(totalHeures)"></span>h pour un montant de <span x-text="formatNumber(totalMontant)"></span> FCFA
+                            <strong>Prêt à enregistrer :</strong> <span x-text="formatNumber(totalHeures)"></span>h pour un montant <span x-show="appliquerImpot">net</span> de <span x-text="formatNumber(appliquerImpot ? montantNet : totalMontant)"></span> FCFA
                         </p>
                     </div>
                 </div>
@@ -232,6 +258,9 @@ function paymentForm() {
         ues: [],
         totalHeures: 0,
         totalMontant: 0,
+        appliquerImpot: false,
+        impotRetenu: 0,
+        montantNet: 0,
         loading: false,
 
         init() {
@@ -285,6 +314,10 @@ function paymentForm() {
         calculateTotal() {
             this.totalHeures = this.ues.reduce((sum, ue) => sum + (parseFloat(ue.heures_saisies) || 0), 0);
             this.totalMontant = this.ues.reduce((sum, ue) => sum + (parseFloat(ue.montant) || 0), 0);
+
+            // Calculate tax if applicable (5% of gross amount)
+            this.impotRetenu = this.appliquerImpot ? (this.totalMontant * 0.05) : 0;
+            this.montantNet = this.totalMontant - this.impotRetenu;
         },
 
         // Incrémenter les heures (+0.5h)
@@ -326,7 +359,15 @@ function paymentForm() {
                 return false;
             }
 
-            return confirm('Confirmer la création de ce paiement de ' + this.formatNumber(this.totalMontant) + ' FCFA ?');
+            let message = 'Confirmer la création de ce paiement :\n\n';
+            message += 'Montant brut : ' + this.formatNumber(this.totalMontant) + ' FCFA\n';
+
+            if (this.appliquerImpot) {
+                message += 'Impôt retenu (5%) : ' + this.formatNumber(this.impotRetenu) + ' FCFA\n';
+                message += 'Montant NET : ' + this.formatNumber(this.montantNet) + ' FCFA';
+            }
+
+            return confirm(message);
         }
     }
 }

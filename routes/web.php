@@ -7,13 +7,20 @@ use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\CampusController;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\LandingController;
+
+// Landing pages (public)
+Route::get('/', [LandingController::class, 'index'])->name('landing.index');
+Route::get('/fonctionnalites', [LandingController::class, 'features'])->name('landing.features');
+Route::get('/avantages', [LandingController::class, 'advantages'])->name('landing.advantages');
+Route::get('/tarifs', [LandingController::class, 'pricing'])->name('landing.pricing');
+Route::get('/temoignages', [LandingController::class, 'testimonials'])->name('landing.testimonials');
+Route::get('/faq', [LandingController::class, 'faq'])->name('landing.faq');
+Route::get('/telecharger', [LandingController::class, 'download'])->name('landing.download');
 
 // Authentication routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
-
-// Redirect root to dashboard
-Route::redirect('/', '/admin/dashboard');
 
 // Admin routes (protected by auth middleware)
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {

@@ -79,6 +79,34 @@
         </div>
     </div>
 
+    <!-- Tax Breakdown (if applicable) -->
+    @if($payment->impot_retenu > 0)
+        <div class="bg-red-50 border-l-4 border-red-500 rounded-lg p-6">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-percentage text-red-600 text-2xl"></i>
+                </div>
+                <div class="ml-4 flex-1">
+                    <h4 class="text-lg font-semibold text-red-900 mb-3">Détail de l'impôt retenu</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Montant Brut</p>
+                            <p class="text-xl font-bold text-gray-900">{{ number_format($payment->gross_amount, 0, ',', ' ') }} FCFA</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Impôt Retenu (5%)</p>
+                            <p class="text-xl font-bold text-red-600">- {{ number_format($payment->impot_retenu, 0, ',', ' ') }} FCFA</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Montant NET</p>
+                            <p class="text-xl font-bold text-green-600">{{ number_format($payment->net_amount, 0, ',', ' ') }} FCFA</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- D\u00e9tails par UE -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="px-6 py-4 bg-gray-50 border-b">

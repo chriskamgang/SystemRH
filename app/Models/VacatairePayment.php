@@ -20,6 +20,7 @@ class VacatairePayment extends Model
         'total_late_minutes',
         'gross_amount',
         'late_penalty',
+        'impot_retenu',
         'bonus',
         'net_amount',
         'status',
@@ -36,6 +37,7 @@ class VacatairePayment extends Model
         'total_late_minutes' => 'integer',
         'gross_amount' => 'decimal:2',
         'late_penalty' => 'decimal:2',
+        'impot_retenu' => 'decimal:2',
         'bonus' => 'decimal:2',
         'net_amount' => 'decimal:2',
         'validated_at' => 'datetime',
@@ -81,8 +83,14 @@ class VacatairePayment extends Model
         $total = $this->calculerTotalFromDetails();
         $this->update([
             'gross_amount' => $total,
-            'net_amount' => $total - $this->late_penalty + $this->bonus,
+            'net_amount' => $total - $this->late_penalty - $this->impot_retenu + $this->bonus,
         ]);
+    }
+
+    // Calculer l'impôt (5% du montant brut)
+    public function calculerImpot(): float
+    {
+        return $this->gross_amount * 0.05;
     }
 
     // Obtenir les détails groupés par UE
