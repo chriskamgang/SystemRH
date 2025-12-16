@@ -24,9 +24,9 @@
                 <select name="user_id" class="w-full px-4 py-2 border rounded-lg">
                     <option value="">Tous les employés</option>
                     @foreach($employees as $emp)
-                        <option value="{{ $emp->id }}" {{ request('user_id') == $emp->id ? 'selected' : '' }}>
-                            {{ $emp->full_name }}
-                        </option>
+                    <option value="{{ $emp->id }}" {{ request('user_id') == $emp->id ? 'selected' : '' }}>
+                        {{ $emp->full_name }}
+                    </option>
                     @endforeach
                 </select>
             </div>
@@ -105,28 +105,28 @@
 
                     <td class="px-6 py-4">
                         @if($loan->status === 'active')
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Actif</span>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Actif</span>
                         @elseif($loan->status === 'completed')
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Terminé</span>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Terminé</span>
                         @else
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Annulé</span>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Annulé</span>
                         @endif
                     </td>
 
                     <td class="px-6 py-4 text-right text-sm space-x-2">
                         @if($loan->status === 'active')
-                            <button onclick="editLoan({{ $loan->id }}, {{ $loan->monthly_amount }}, '{{ addslashes($loan->reason ?? '') }}')"
-                                class="text-blue-600 hover:text-blue-900" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button onclick="markAsCompleted({{ $loan->id }})"
-                                class="text-green-600 hover:text-green-900" title="Marquer comme terminé">
-                                <i class="fas fa-check-circle"></i>
-                            </button>
-                            <button onclick="cancelLoan({{ $loan->id }})"
-                                class="text-red-600 hover:text-red-900" title="Annuler">
-                                <i class="fas fa-times-circle"></i>
-                            </button>
+                        <button onclick="editLoan({{ $loan->id }}, {{ $loan->monthly_amount }}, '{{ addslashes($loan->reason ?? '') }}')"
+                            class="text-blue-600 hover:text-blue-900" title="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="markAsCompleted({{ $loan->id }})"
+                            class="text-green-600 hover:text-green-900" title="Marquer comme terminé">
+                            <i class="fas fa-check-circle"></i>
+                        </button>
+                        <button onclick="cancelLoan({{ $loan->id }})"
+                            class="text-red-600 hover:text-red-900" title="Annuler">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
                         @endif
                         <button onclick="showLoanDetails({{ json_encode($loan) }})"
                             class="text-gray-600 hover:text-gray-900" title="Détails">
@@ -166,7 +166,7 @@
                     <select id="user_id" required class="w-full px-4 py-2 border rounded-lg">
                         <option value="">Sélectionner un employé</option>
                         @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->full_name }} - {{ $emp->employee_id }}</option>
+                        <option value="{{ $emp->id }}">{{ $emp->full_name }} - {{ $emp->employee_id }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -174,12 +174,12 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Montant Total (FCFA) *</label>
-                        <input type="number" id="total_amount" required min="1" step="1000"
+                        <input type="number" id="total_amount" step="1000"
                             class="w-full px-4 py-2 border rounded-lg" placeholder="100000">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Mensualité (FCFA) *</label>
-                        <input type="number" id="monthly_amount" required min="1" step="1000"
+                        <input type="number" id="monthly_amount" step="1000"
                             class="w-full px-4 py-2 border rounded-lg" placeholder="10000">
                     </div>
                 </div>
@@ -234,125 +234,138 @@
 
 @push('scripts')
 <script>
-// Calculer les informations automatiquement
-document.getElementById('total_amount')?.addEventListener('input', calculateInfo);
-document.getElementById('monthly_amount')?.addEventListener('input', calculateInfo);
-document.getElementById('start_date')?.addEventListener('change', calculateInfo);
+    // Calculer les informations automatiquement
+    document.getElementById('total_amount')?.addEventListener('input', calculateInfo);
+    document.getElementById('monthly_amount')?.addEventListener('input', calculateInfo);
+    document.getElementById('start_date')?.addEventListener('change', calculateInfo);
 
-function calculateInfo() {
-    const total = parseFloat(document.getElementById('total_amount').value) || 0;
-    const monthly = parseFloat(document.getElementById('monthly_amount').value) || 0;
-    const startDate = document.getElementById('start_date').value;
+    function calculateInfo() {
+        const total = parseFloat(document.getElementById('total_amount').value) || 0;
+        const monthly = parseFloat(document.getElementById('monthly_amount').value) || 0;
+        const startDate = document.getElementById('start_date').value;
 
-    if (total > 0 && monthly > 0) {
-        const months = Math.ceil(total / monthly);
-        document.getElementById('calc_months').textContent = months;
+        if (total > 0 && monthly > 0) {
+            const months = Math.ceil(total / monthly);
+            document.getElementById('calc_months').textContent = months;
 
-        if (startDate) {
-            const start = new Date(startDate);
-            start.setMonth(start.getMonth() + months);
-            document.getElementById('calc_end_date').textContent = start.toLocaleDateString('fr-FR');
-        }
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setMonth(start.getMonth() + months);
+                document.getElementById('calc_end_date').textContent = start.toLocaleDateString('fr-FR');
+            }
 
-        document.getElementById('calculatedInfo').classList.remove('hidden');
-    } else {
-        document.getElementById('calculatedInfo').classList.add('hidden');
-    }
-}
-
-function openCreateModal() {
-    document.getElementById('modalTitle').textContent = 'Nouveau Prêt';
-    document.getElementById('loan_id').value = '';
-    document.getElementById('loanForm').reset();
-    document.getElementById('user_id').disabled = false;
-    document.getElementById('total_amount').disabled = false;
-    document.getElementById('start_date').disabled = false;
-    document.getElementById('loanModal').classList.remove('hidden');
-}
-
-function editLoan(id, monthlyAmount, reason) {
-    document.getElementById('modalTitle').textContent = 'Modifier Prêt';
-    document.getElementById('loan_id').value = id;
-    document.getElementById('monthly_amount').value = monthlyAmount;
-    document.getElementById('reason').value = reason;
-    document.getElementById('user_id').disabled = true;
-    document.getElementById('total_amount').disabled = true;
-    document.getElementById('start_date').disabled = true;
-    document.getElementById('loanModal').classList.remove('hidden');
-}
-
-function closeModal() {
-    document.getElementById('loanModal').classList.add('hidden');
-}
-
-document.getElementById('loanForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const loanId = document.getElementById('loan_id').value;
-    const url = loanId ? `/admin/loans/${loanId}` : '/admin/loans';
-    const method = loanId ? 'PUT' : 'POST';
-
-    const data = {
-        user_id: document.getElementById('user_id').value,
-        total_amount: document.getElementById('total_amount').value,
-        monthly_amount: document.getElementById('monthly_amount').value,
-        start_date: document.getElementById('start_date').value,
-        reason: document.getElementById('reason').value,
-        _token: '{{ csrf_token() }}'
-    };
-
-    fetch(url, {
-        method: method,
-        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success) {
-            alert(data.message);
-            location.reload();
+            document.getElementById('calculatedInfo').classList.remove('hidden');
         } else {
-            alert('Erreur: ' + data.message);
+            document.getElementById('calculatedInfo').classList.add('hidden');
         }
+    }
+
+    function openCreateModal() {
+        document.getElementById('modalTitle').textContent = 'Nouveau Prêt';
+        document.getElementById('loan_id').value = '';
+        document.getElementById('loanForm').reset();
+        document.getElementById('user_id').disabled = false;
+        document.getElementById('total_amount').disabled = false;
+        document.getElementById('start_date').disabled = false;
+        document.getElementById('loanModal').classList.remove('hidden');
+    }
+
+    function editLoan(id, monthlyAmount, reason) {
+        document.getElementById('modalTitle').textContent = 'Modifier Prêt';
+        document.getElementById('loan_id').value = id;
+        document.getElementById('monthly_amount').value = monthlyAmount;
+        document.getElementById('reason').value = reason;
+        document.getElementById('user_id').disabled = true;
+        document.getElementById('total_amount').disabled = true;
+        document.getElementById('start_date').disabled = true;
+        document.getElementById('loanModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('loanModal').classList.add('hidden');
+    }
+
+    document.getElementById('loanForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const loanId = document.getElementById('loan_id').value;
+        const url = loanId ? `/admin/loans/${loanId}` : '/admin/loans';
+        const method = loanId ? 'PUT' : 'POST';
+
+        const data = {
+            user_id: document.getElementById('user_id').value,
+            total_amount: document.getElementById('total_amount').value,
+            monthly_amount: document.getElementById('monthly_amount').value,
+            start_date: document.getElementById('start_date').value,
+            reason: document.getElementById('reason').value,
+            _token: '{{ csrf_token() }}'
+        };
+
+        fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            });
     });
-});
 
-function markAsCompleted(id) {
-    if(!confirm('Voulez-vous vraiment marquer ce prêt comme terminé (remboursement anticipé)?')) return;
+    function markAsCompleted(id) {
+        if (!confirm('Voulez-vous vraiment marquer ce prêt comme terminé (remboursement anticipé)?')) return;
 
-    fetch(`/admin/loans/${id}/mark-completed`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
-        body: JSON.stringify({_token: '{{ csrf_token() }}'})
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success) {
-            alert(data.message);
-            location.reload();
-        }
-    });
-}
+        fetch(`/admin/loans/${id}/mark-completed`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    _token: '{{ csrf_token() }}'
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                }
+            });
+    }
 
-function cancelLoan(id) {
-    if(!confirm('Voulez-vous vraiment annuler ce prêt?')) return;
+    function cancelLoan(id) {
+        if (!confirm('Voulez-vous vraiment annuler ce prêt?')) return;
 
-    fetch(`/admin/loans/${id}/cancel`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
-        body: JSON.stringify({_token: '{{ csrf_token() }}'})
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success) {
-            alert(data.message);
-            location.reload();
-        }
-    });
-}
+        fetch(`/admin/loans/${id}/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    _token: '{{ csrf_token() }}'
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                }
+            });
+    }
 
-function showLoanDetails(loan) {
-    const content = `
+    function showLoanDetails(loan) {
+        const content = `
         <div class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -403,26 +416,26 @@ function showLoanDetails(loan) {
         </div>
     `;
 
-    document.getElementById('detailsContent').innerHTML = content;
-    document.getElementById('detailsModal').classList.remove('hidden');
-}
-
-function closeDetailsModal() {
-    document.getElementById('detailsModal').classList.add('hidden');
-}
-
-// Fermer les modals en cliquant à l'extérieur
-window.onclick = function(event) {
-    const loanModal = document.getElementById('loanModal');
-    const detailsModal = document.getElementById('detailsModal');
-
-    if (event.target == loanModal) {
-        closeModal();
+        document.getElementById('detailsContent').innerHTML = content;
+        document.getElementById('detailsModal').classList.remove('hidden');
     }
-    if (event.target == detailsModal) {
-        closeDetailsModal();
+
+    function closeDetailsModal() {
+        document.getElementById('detailsModal').classList.add('hidden');
     }
-}
+
+    // Fermer les modals en cliquant à l'extérieur
+    window.onclick = function(event) {
+        const loanModal = document.getElementById('loanModal');
+        const detailsModal = document.getElementById('detailsModal');
+
+        if (event.target == loanModal) {
+            closeModal();
+        }
+        if (event.target == detailsModal) {
+            closeDetailsModal();
+        }
+    }
 </script>
 @endpush
 

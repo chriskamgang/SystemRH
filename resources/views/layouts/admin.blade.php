@@ -335,6 +335,33 @@
                     </span>
                 </a>
 
+                <!-- Sécurité Anti-Fraude -->
+                <div x-data="{ open: {{ request()->routeIs('admin.security.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.security.*') ? 'bg-blue-600' : '' }}">
+                        <div class="flex items-center">
+                            <i class="fas fa-shield-alt w-5 text-red-500"></i>
+                            <span class="ml-3">Sécurité Anti-Fraude</span>
+                            @php
+                                $pendingViolations = \App\Models\SecurityViolation::where('status', 'pending')->count();
+                            @endphp
+                            @if($pendingViolations > 0)
+                                <span class="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingViolations }}</span>
+                            @endif
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{'rotate-180': open}"></i>
+                    </button>
+                    <div x-show="open" x-transition class="ml-4 space-y-1">
+                        <a href="{{ route('admin.security.dashboard') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.security.dashboard') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-chart-line w-4"></i>
+                            <span class="ml-2">Dashboard</span>
+                        </a>
+                        <a href="{{ route('admin.security.violations.index') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.security.violations.*') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-exclamation-triangle w-4"></i>
+                            <span class="ml-2">Violations de Sécurité</span>
+                        </a>
+                    </div>
+                </div>
+
                 <a href="{{ route('admin.firebase.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.firebase.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-fire w-5 text-orange-500"></i>
                     <span class="ml-3">Firebase</span>

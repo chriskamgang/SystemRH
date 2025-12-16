@@ -31,6 +31,6 @@ class AdminUserSeeder extends Seeder
 
         $this->command->info('✅ Utilisateur admin créé avec succès!');
         $this->command->info('📧 Email: admin@attendance.com');
-        $this->command->info('🔑 Mot de passe: password');
+        $this->command->info('🔑 Mot de passe: m');
     }
 }

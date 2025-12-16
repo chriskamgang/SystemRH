@@ -7,6 +7,7 @@ use App\Http\Controllers\API\AttendanceController;
 use App\Http\Controllers\API\CampusController;
 use App\Http\Controllers\API\PresenceCheckController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\SecurityController;
 
 // Route de test (accessible via GET dans le navigateur)
 Route::get('/', function () {
@@ -133,6 +134,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/deactivate', [\App\Http\Controllers\API\LocationController::class, 'deactivateLocation']);
         Route::get('/active-users', [\App\Http\Controllers\API\LocationController::class, 'getActiveUsers']);
         Route::get('/user/{userId}', [\App\Http\Controllers\API\LocationController::class, 'getUserLocation']);
+    });
+
+    // ========== SECURITY (Anti-Fraud System) ==========
+    Route::prefix('security')->group(function () {
+        Route::post('/report-violation', [SecurityController::class, 'reportViolation']);
+        Route::post('/check-status', [SecurityController::class, 'checkSecurityStatus']);
+        Route::get('/violations/history', [SecurityController::class, 'getUserViolations']);
     });
 
     // Test route

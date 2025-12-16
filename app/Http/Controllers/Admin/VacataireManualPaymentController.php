@@ -421,4 +421,78 @@ class VacataireManualPaymentController extends Controller
             'message' => $exists ? 'Un paiement existe déjà pour cette période' : null,
         ]);
     }
+
+    /**
+     * Valider un paiement (statut: pending -> validated)
+     */
+    public function validate($id)
+    {
+        $payment = VacatairePayment::findOrFail($id);
+
+        if ($payment->status !== 'pending') {
+            return back()->with('error', 'Ce paiement ne peut pas être validé (statut actuel: ' . $payment->status . ')');
+        }
+
+        $payment->update([
+            'status' => 'validated',
+            'validated_at' => now(),
+            'validated_by' => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Paiement validé avec succès !');
+    }
+
+    /**
+     * Marquer comme payé (statut: validated -> paid)
+     */
+    public function markAsPaid($id)
+    {
+        $payment = VacatairePayment::findOrFail($id);
+
+        if ($payment->status === 'paid') {
+            return back()->with('error', 'Ce paiement est déjà marqué comme payé.');
+        }
+
+        $payment->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        return back()->with('success', 'Paiement marqué comme payé avec succès !');
+    }
+
+    /**
+     * Rejeter/Annuler un paiement
+     */
+    public function reject($id)
+    {
+        $payment = VacatairePayment::findOrFail($id);
+
+        if ($payment->status === 'paid') {
+            return back()->with('error', 'Impossible d\'annuler un paiement déjà effectué.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Soustraire les heures des UE
+            foreach ($payment->details as $detail) {
+                if ($detail->uniteEnseignement) {
+                    $detail->uniteEnseignement->soustraireHeuresValidees($detail->heures_saisies);
+                }
+            }
+
+            // Mettre le statut à "cancelled" au lieu de supprimer
+            $payment->update([
+                'status' => 'cancelled',
+            ]);
+
+            DB::commit();
+
+            return back()->with('success', 'Paiement annulé avec succès !');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Erreur lors de l\'annulation : ' . $e->getMessage());
+        }
+    }
 }

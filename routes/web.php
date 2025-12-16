@@ -118,6 +118,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
             Route::post('/store', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'store'])->name('store');
             Route::get('/statistics', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'statistics'])->name('statistics');
             Route::post('/check-existing', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'checkExistingPayment'])->name('check-existing');
+
+            // Actions de validation
+            Route::post('/{id}/validate', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'validate'])->name('validate');
+            Route::post('/{id}/mark-as-paid', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'markAsPaid'])->name('mark-as-paid');
+            Route::post('/{id}/reject', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'reject'])->name('reject');
+
             Route::get('/{id}', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'show'])->name('show');
             Route::get('/{id}/edit', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'edit'])->name('edit');
             Route::put('/{id}', [App\Http\Controllers\Admin\VacataireManualPaymentController::class, 'update'])->name('update');
@@ -199,6 +205,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/', [App\Http\Controllers\Admin\ManualPayrollController::class, 'index'])->name('index');
         Route::post('/calculate', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculate'])->name('calculate');
         Route::post('/calculate-bulk', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculateBulk'])->name('calculate-bulk');
+    });
+
+    // Sécurité et violations
+    Route::prefix('security')->name('security.')->group(function () {
+        Route::get('/dashboard', [App\Http\Controllers\Admin\SecurityViolationController::class, 'dashboard'])->name('dashboard');
+
+        Route::prefix('violations')->name('violations.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Admin\SecurityViolationController::class, 'index'])->name('index');
+            Route::get('/{id}', [App\Http\Controllers\Admin\SecurityViolationController::class, 'show'])->name('show');
+            Route::post('/{id}/review', [App\Http\Controllers\Admin\SecurityViolationController::class, 'review'])->name('review');
+        });
+
+        Route::post('/users/{userId}/toggle-status', [App\Http\Controllers\Admin\SecurityViolationController::class, 'toggleUserStatus'])->name('users.toggle-status');
     });
 
     // Déductions manuelles

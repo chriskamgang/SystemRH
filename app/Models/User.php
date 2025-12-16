@@ -182,6 +182,12 @@ class User extends Authenticatable
             ->where('statut', 'non_activee');
     }
 
+    // Violations de sécurité
+    public function securityViolations()
+    {
+        return $this->hasMany(SecurityViolation::class);
+    }
+
     /**
      * Accessors
      */

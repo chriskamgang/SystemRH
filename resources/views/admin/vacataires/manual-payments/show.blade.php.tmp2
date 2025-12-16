@@ -36,51 +36,6 @@
                     </span>
                 @endif
 
-
-                <div class="mt-4 flex flex-wrap gap-2 justify-end">
-                    @if($payment->status == 'pending')
-                        <form action="{{ route('admin.vacataires.manual-payments.validate', $payment->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" onclick="return confirm('Valider ce paiement ?')">
-                                <i class="fas fa-check mr-2"></i>Valider
-                            </button>
-                        </form>
-                        <a href="{{ route('admin.vacataires.manual-payments.edit', $payment->id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            <i class="fas fa-edit mr-2"></i>Modifier
-                        </a>
-                        <form action="{{ route('admin.vacataires.manual-payments.reject', $payment->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" onclick="return confirm('Annuler ce paiement ?')">
-                                <i class="fas fa-times mr-2"></i>Annuler
-                            </button>
-                        </form>
-                    @elseif($payment->status == 'validated')
-                        <form action="{{ route('admin.vacataires.manual-payments.mark-as-paid', $payment->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" onclick="return confirm('Marquer ce paiement comme payé ?')">
-                                <i class="fas fa-money-bill-wave mr-2"></i>Marquer comme Payé
-                            </button>
-                        </form>
-                        <form action="{{ route('admin.vacataires.manual-payments.reject', $payment->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" onclick="return confirm('Annuler ce paiement ?')">
-                                <i class="fas fa-times mr-2"></i>Annuler
-                            </button>
-                        </form>
-                    @elseif($payment->status == 'paid')
-                        <div class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm">
-                            <i class="fas fa-lock mr-2"></i>Paiement effectué
-                        </div>
-                    @else
-                        <form action="{{ route('admin.vacataires.manual-payments.destroy', $payment->id) }}" method="POST" class="inline">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" onclick="return confirm('Supprimer ce paiement annulé ?')">
-                                <i class="fas fa-trash mr-2"></i>Supprimer
-                            </button>
-                        </form>
-                    @endif
-                </div>
             </div>
         </div>
     </div>
