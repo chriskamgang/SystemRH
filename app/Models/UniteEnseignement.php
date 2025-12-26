@@ -150,14 +150,15 @@ class UniteEnseignement extends Model
     // Calculer les heures effectuées par l'enseignant pour cette UE
     public function getHeuresEffectueesAttribute(): float
     {
-        // Calculer à partir des attendances (check-in/check-out)
+        $totalHours = 0;
+
+        // ===== 1. PRÉSENCES GPS (Attendance) =====
         $attendances = \App\Models\Attendance::where('user_id', $this->enseignant_id)
             ->where('unite_enseignement_id', $this->id)
             ->where('type', 'check-in')
             ->where('status', 'valid')
             ->get();
 
-        $totalHours = 0;
         foreach ($attendances as $checkIn) {
             // Trouver le check-out correspondant
             $checkOut = \App\Models\Attendance::where('user_id', $this->enseignant_id)
@@ -170,6 +171,16 @@ class UniteEnseignement extends Model
             if ($checkOut) {
                 $totalHours += $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
             }
+        }
+
+        // ===== 2. PRÉSENCES MANUELLES (ManualAttendance) =====
+        $manualAttendances = \App\Models\ManualAttendance::where('user_id', $this->enseignant_id)
+            ->where('unite_enseignement_id', $this->id)
+            ->get();
+
+        foreach ($manualAttendances as $manualAttendance) {
+            // Calculer les heures à partir de check_in_time et check_out_time
+            $totalHours += $manualAttendance->duration_in_hours;
         }
 
         return round($totalHours, 2);

@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Kreait\Firebase\Factory;
+use App\Models\ManualAttendance;
+use App\Observers\ManualAttendanceObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Enregistrer l'Observer pour ManualAttendance
+        ManualAttendance::observe(ManualAttendanceObserver::class);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Models\User;
 use App\Models\Attendance;
+use App\Models\ManualAttendance;
 use App\Models\PayrollJustification;
 use App\Models\Setting;
 use Carbon\Carbon;
@@ -69,7 +70,7 @@ class PayrollCalculator
         $startDate = Carbon::create($year, $month, 1)->startOfMonth();
         $endDate = Carbon::create($year, $month, 1)->endOfMonth();
 
-        // Récupérer toutes les présences du mois
+        // ===== 1. PRÉSENCES GPS (Attendance) =====
         $attendances = Attendance::where('user_id', $user->id)
             ->whereBetween('timestamp', [$startDate, $endDate])
             ->orderBy('timestamp', 'asc')
@@ -116,6 +117,28 @@ class PayrollCalculator
                     $daysWithoutCheckout++;
                 }
             }
+        }
+
+        // ===== 2. PRÉSENCES MANUELLES (ManualAttendance) =====
+        $manualAttendances = ManualAttendance::where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->get();
+
+        // Compter les jours travaillés via présences manuelles
+        foreach ($manualAttendances as $manualAttendance) {
+            $carbonDate = Carbon::parse($manualAttendance->date);
+
+            // Déterminer la valeur du jour selon le type de session et le jour de la semaine
+            if ($manualAttendance->session_type === 'jour') {
+                // Session de jour = 1 jour complet (ou 0.5 si samedi)
+                $dayValue = $carbonDate->dayOfWeek == 6 ? 0.5 : 1;
+            } else {
+                // Session de soir = 0.5 jour
+                $dayValue = 0.5;
+            }
+
+            $daysWorked += $dayValue;
         }
 
         return [
@@ -339,6 +362,24 @@ class PayrollCalculator
             // Compter les retards (ignorer les valeurs négatives = bug d'anciennes données)
             if ($checkIn && $checkIn->is_late && $checkIn->late_minutes > 0) {
                 $totalLateMinutes += $checkIn->late_minutes;
+            }
+        }
+
+        // ===== AJOUTER LES PRÉSENCES MANUELLES =====
+        $manualAttendances = ManualAttendance::where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->get();
+
+        foreach ($manualAttendances as $manualAttendance) {
+            // Ajouter les heures de la présence manuelle
+            $totalHours += $manualAttendance->duration_in_hours;
+
+            // Compter les jours selon le type de session
+            if ($manualAttendance->session_type === 'jour') {
+                $daysWorked += 1; // Session complète
+            } else {
+                $daysWorked += 0.5; // Session de soir
             }
         }
 

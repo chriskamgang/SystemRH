@@ -128,6 +128,11 @@
                     <span class="ml-3">Présences</span>
                 </a>
 
+                <a href="{{ route('admin.manual-attendances.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.manual-attendances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-edit w-5"></i>
+                    <span class="ml-3">Présences Manuelles</span>
+                </a>
+
                 <!-- Unités d'Enseignement (UE) Section with Submenu -->
                 <div x-data="{ open: {{ request()->routeIs('admin.unites-enseignement.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.unites-enseignement.*') ? 'bg-blue-600' : '' }}">

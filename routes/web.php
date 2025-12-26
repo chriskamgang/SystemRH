@@ -285,6 +285,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/download', [App\Http\Controllers\Admin\FirebaseSettingsController::class, 'download'])->name('download');
     });
 
+    // ========== PRÉSENCES MANUELLES ==========
+    Route::prefix('manual-attendances')->name('manual-attendances.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'store'])->name('store');
+        Route::get('/monthly-report', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'monthlyReport'])->name('monthly-report');
+        Route::get('/monthly-report/export', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'exportMonthlyReport'])->name('monthly-report.export');
+        Route::get('/{manualAttendance}/edit', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'edit'])->name('edit');
+        Route::put('/{manualAttendance}', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'update'])->name('update');
+        Route::delete('/{manualAttendance}', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'destroy'])->name('destroy');
+
+        // API pour récupérer les UEs d'un employé
+        Route::get('/get-user-ues', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'getUserUEs'])->name('get-user-ues');
+    });
+
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
