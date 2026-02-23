@@ -375,22 +375,40 @@ class EmployeeController extends Controller
         $year = date('Y');
         $prefix = "EMP-{$year}-";
 
-        // Trouver le dernier employee_id de l'année en cours
-        $lastEmployee = User::where('employee_id', 'like', "{$prefix}%")
-            ->orderBy('employee_id', 'desc')
-            ->first();
+        // Boucle jusqu'à trouver un ID unique
+        $attempts = 0;
+        $maxAttempts = 10000; // Limite de sécurité
 
-        if ($lastEmployee) {
-            // Extraire le numéro et l'incrémenter
-            $lastNumber = intval(substr($lastEmployee->employee_id, -4));
-            $newNumber = $lastNumber + 1;
-        } else {
-            // Premier employé de l'année
-            $newNumber = 1;
-        }
+        do {
+            // Trouver le dernier employee_id de l'année en cours
+            $lastEmployee = User::where('employee_id', 'like', "{$prefix}%")
+                ->orderBy('employee_id', 'desc')
+                ->first();
 
-        // Formater avec des zéros devant (0001, 0002, etc.)
-        return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+            if ($lastEmployee) {
+                // Extraire le numéro et l'incrémenter
+                $lastNumber = intval(substr($lastEmployee->employee_id, -4));
+                $newNumber = $lastNumber + 1;
+            } else {
+                // Premier employé de l'année
+                $newNumber = 1;
+            }
+
+            // Formater avec des zéros devant (0001, 0002, etc.)
+            $employeeId = $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+
+            // Vérifier si cet ID existe déjà
+            $exists = User::where('employee_id', $employeeId)->exists();
+
+            $attempts++;
+
+            if ($attempts >= $maxAttempts) {
+                throw new \Exception("Impossible de générer un employee_id unique après {$maxAttempts} tentatives");
+            }
+
+        } while ($exists);
+
+        return $employeeId;
     }
 
     /**

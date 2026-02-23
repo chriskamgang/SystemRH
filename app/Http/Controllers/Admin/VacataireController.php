@@ -86,7 +86,7 @@ class VacataireController extends Controller
         }
 
         $vacataire = User::create([
-            'employee_id' => 'VAC' . str_pad(User::count() + 1, 4, '0', STR_PAD_LEFT),
+            'employee_id' => $this->generateVacataireEmployeeId(),
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
@@ -466,5 +466,49 @@ class VacataireController extends Controller
         // TODO: Implémenter l'export en PDF ou Excel
         return redirect()->route('admin.vacataires.report')
             ->with('info', 'Fonctionnalité d\'export en cours de développement.');
+    }
+
+    /**
+     * Generate a unique vacataire employee ID
+     * Format: VACXXXX (ex: VAC0001, VAC0002)
+     */
+    private function generateVacataireEmployeeId()
+    {
+        $prefix = "VAC";
+
+        // Boucle jusqu'à trouver un ID unique
+        $attempts = 0;
+        $maxAttempts = 10000; // Limite de sécurité
+
+        do {
+            // Trouver le dernier employee_id VAC
+            $lastVacataire = User::where('employee_id', 'like', "{$prefix}%")
+                ->orderBy('employee_id', 'desc')
+                ->first();
+
+            if ($lastVacataire) {
+                // Extraire le numéro et l'incrémenter
+                $lastNumber = intval(substr($lastVacataire->employee_id, 3)); // Après "VAC"
+                $newNumber = $lastNumber + 1;
+            } else {
+                // Premier vacataire
+                $newNumber = 1;
+            }
+
+            // Formater avec des zéros devant (0001, 0002, etc.)
+            $employeeId = $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+
+            // Vérifier si cet ID existe déjà
+            $exists = User::where('employee_id', $employeeId)->exists();
+
+            $attempts++;
+
+            if ($attempts >= $maxAttempts) {
+                throw new \Exception("Impossible de générer un employee_id vacataire unique après {$maxAttempts} tentatives");
+            }
+
+        } while ($exists);
+
+        return $employeeId;
     }
 }
