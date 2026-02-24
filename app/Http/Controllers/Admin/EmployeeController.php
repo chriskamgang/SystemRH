@@ -25,6 +25,15 @@ class EmployeeController extends Controller
         $query = User::with(['role', 'campuses'])
             ->where('role_id', '!=', 1); // Exclure les admins
 
+        // DEBUG: Log search parameter
+        if ($request->has('search')) {
+            \Log::info('Employee search', [
+                'search_term' => $request->search,
+                'has_search' => $request->has('search'),
+                'search_value' => $request->search
+            ]);
+        }
+
         // Recherche
         if ($request->has('search') && $request->search) {
             $search = $request->search;
