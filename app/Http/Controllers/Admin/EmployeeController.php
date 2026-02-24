@@ -51,7 +51,7 @@ class EmployeeController extends Controller
             $query->where('is_active', $request->status);
         }
 
-        $employees = $query->orderBy('created_at', 'desc')->paginate(15);
+        $employees = $query->orderBy('created_at', 'desc')->paginate(15)->appends($request->all());
         $roles = Role::where('id', '!=', 1)->get(); // Exclure le role admin
         $campuses = Campus::all();
 
