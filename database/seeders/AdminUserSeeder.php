@@ -16,12 +16,12 @@ class AdminUserSeeder extends Seeder
     {
         // Créer un utilisateur administrateur de test
         User::updateOrCreate(
-            ['email' => 'admin@attendance.com'],
+            ['email' => 'admin@gmail.com'],
             [
                 'first_name' => 'Admin',
                 'last_name' => 'System',
-                'email' => 'admin@attendance.com',
-                'password' => Hash::make('password'),
+                'email' => 'admin@gmail.com',
+                'password' => Hash::make('admin123'),
                 'employee_type' => 'direction',
                 'role_id' => 1, // Admin
                 'is_active' => true,
@@ -30,7 +30,7 @@ class AdminUserSeeder extends Seeder
         );
 
         $this->command->info('✅ Utilisateur admin créé avec succès!');
-        $this->command->info('📧 Email: admin@attendance.com');
-        $this->command->info('🔑 Mot de passe: m');
+        $this->command->info('📧 Email: admin@gmail.com');
+        $this->command->info('🔑 Mot de passe: admin123');
     }
 }

@@ -29,15 +29,14 @@ class UserSeeder extends Seeder
             [
                 'first_name' => 'Admin',
                 'last_name' => 'Système',
-                'email' => 'admin@university.ga',
-                'password' => Hash::make('password123'),
+                'email' => 'admin@gmail.com',
+                'password' => Hash::make('admin123'),
                 'phone' => '+241 01 23 45 67',
                 'employee_type' => 'direction',
                 'department_id' => null,
                 'role_id' => $adminRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
-                'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
@@ -115,7 +114,7 @@ class UserSeeder extends Seeder
         DB::table('users')->insert($users);
 
         // Assigner les campus aux utilisateurs
-        $adminUser = DB::table('users')->where('email', 'admin@university.ga')->first();
+        $adminUser = DB::table('users')->where('email', 'admin@gmail.com')->first();
         $jeanUser = DB::table('users')->where('email', 'jean.mbongo@university.ga')->first();
         $marieUser = DB::table('users')->where('email', 'marie.okome@university.ga')->first();
         $paulUser = DB::table('users')->where('email', 'paul.ndong@university.ga')->first();
@@ -143,8 +142,8 @@ class UserSeeder extends Seeder
         DB::table('user_campus')->insert($userCampus);
 
         $this->command->info('✅ ' . count($users) . ' utilisateurs créés avec succès');
-        $this->command->info('   📧 Email: admin@university.ga');
-        $this->command->info('   🔑 Password: password123');
+        $this->command->info('   📧 Email: admin@gmail.com');
+        $this->command->info('   🔑 Password: admin123');
         $this->command->info('');
         $this->command->info('   Autres utilisateurs de test :');
         $this->command->info('   - jean.mbongo@university.ga (Chef département)');
