@@ -372,6 +372,13 @@
                     <span class="ml-3">Firebase</span>
                 </a>
 
+                <!-- Brochure PDF -->
+                <a href="{{ route('admin.brochure.preview') }}" target="_blank" class="flex items-center px-4 py-3 mb-2 rounded-lg hover:bg-gray-800" title="Télécharger la brochure pour vacataires">
+                    <i class="fas fa-file-pdf w-5 text-red-400"></i>
+                    <span class="ml-3">Brochure PDF</span>
+                    <i class="fas fa-external-link-alt w-3 ml-auto text-gray-400"></i>
+                </a>
+
                 <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.settings') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-cog w-5"></i>
                     <span class="ml-3">Paramètres</span>
@@ -423,7 +430,18 @@
 
                     <!-- Search -->
                     <div class="hidden md:block">
-                        <input type="text" placeholder="Rechercher..." class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <form action="{{ route('admin.employees.index') }}" method="GET" class="flex gap-2">
+                            <input
+                                type="text"
+                                name="search"
+                                placeholder="Rechercher un employé..."
+                                class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="{{ request('search') }}"
+                            >
+                            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </header>
