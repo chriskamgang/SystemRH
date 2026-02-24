@@ -300,6 +300,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/get-user-ues', [App\Http\Controllers\Admin\ManualAttendanceController::class, 'getUserUEs'])->name('get-user-ues');
     });
 
+    // ========== BROCHURE PDF ==========
+    Route::prefix('brochure')->name('brochure.')->group(function () {
+        Route::get('/download', [App\Http\Controllers\Admin\BrochureController::class, 'downloadBrochure'])->name('download');
+        Route::get('/preview', [App\Http\Controllers\Admin\BrochureController::class, 'previewBrochure'])->name('preview');
+        Route::get('/view', [App\Http\Controllers\Admin\BrochureController::class, 'showBrochure'])->name('view');
+    });
+
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
