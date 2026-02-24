@@ -266,41 +266,26 @@
 
 @push('scripts')
 <script>
-    console.log('🔍 Employee search script loaded');
-
     // Recherche en temps réel avec debounce
     let searchTimeout;
     const searchInput = document.getElementById('searchInput');
     const searchForm = document.getElementById('searchForm');
 
-    console.log('Search input found:', searchInput);
-    console.log('Search form found:', searchForm);
-
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
 
-            console.log('Search input changed:', this.value);
-
             // Attendre 500ms après que l'utilisateur arrête de taper
             searchTimeout = setTimeout(function() {
-                console.log('Submitting search form...');
                 searchForm.submit();
             }, 500);
         });
-
-        console.log('✅ Live search activated');
-    } else {
-        console.error('❌ Search input not found!');
     }
 
     // Auto-submit sur changement de filtre
     const filterSelects = document.querySelectorAll('.filter-select');
-    console.log('Filter selects found:', filterSelects.length);
-
     filterSelects.forEach(function(select) {
         select.addEventListener('change', function() {
-            console.log('Filter changed:', this.name, '=', this.value);
             searchForm.submit();
         });
     });

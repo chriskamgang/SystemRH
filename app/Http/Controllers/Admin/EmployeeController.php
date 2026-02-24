@@ -25,23 +25,15 @@ class EmployeeController extends Controller
         $query = User::with(['role', 'campuses'])
             ->where('role_id', '!=', 1); // Exclure les admins
 
-        // DEBUG: Log search parameter
-        if ($request->has('search')) {
-            \Log::info('Employee search', [
-                'search_term' => $request->search,
-                'has_search' => $request->has('search'),
-                'search_value' => $request->search
-            ]);
-        }
-
-        // Recherche
+        // Recherche (insensible à la casse)
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('employee_id', 'like', "%{$search}%");
+                $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . strtolower($search) . '%'])
+                  ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . strtolower($search) . '%'])
+                  ->orWhereRaw('LOWER(CONCAT(first_name, " ", last_name)) LIKE ?', ['%' . strtolower($search) . '%'])
+                  ->orWhereRaw('LOWER(email) LIKE ?', ['%' . strtolower($search) . '%'])
+                  ->orWhereRaw('LOWER(employee_id) LIKE ?', ['%' . strtolower($search) . '%']);
             });
         }
 
