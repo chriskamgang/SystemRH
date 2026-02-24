@@ -53,6 +53,14 @@ class EmployeeController extends Controller
         }
 
         $employees = $query->orderBy('created_at', 'desc')->paginate(15)->appends($request->all());
+
+        // DEBUG: Log final query results
+        \Log::info('Employee search results', [
+            'search_term' => $request->search,
+            'total' => $employees->total(),
+            'count' => $employees->count()
+        ]);
+
         $roles = Role::where('id', '!=', 1)->get(); // Exclure le role admin
         $campuses = Campus::all();
 
