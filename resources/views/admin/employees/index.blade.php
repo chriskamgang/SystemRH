@@ -266,7 +266,29 @@
 
 @push('scripts')
 <script>
-    // Recherche en temps réel avec debounce
+    // Initialiser Choices.js sur les select pour les rendre searchable
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterSelects = document.querySelectorAll('.filter-select');
+
+        filterSelects.forEach(function(select) {
+            const choices = new Choices(select, {
+                searchEnabled: true,
+                searchPlaceholderValue: 'Rechercher...',
+                noResultsText: 'Aucun résultat',
+                itemSelectText: 'Cliquer pour sélectionner',
+                shouldSort: false,
+                placeholder: true,
+                placeholderValue: select.querySelector('option[value=""]')?.textContent || 'Sélectionner...'
+            });
+
+            // Auto-submit quand on change la sélection
+            select.addEventListener('change', function() {
+                document.getElementById('searchForm').submit();
+            });
+        });
+    });
+
+    // Recherche en temps réel avec debounce (champ texte)
     let searchTimeout;
     const searchInput = document.getElementById('searchInput');
     const searchForm = document.getElementById('searchForm');
@@ -281,14 +303,6 @@
             }, 500);
         });
     }
-
-    // Auto-submit sur changement de filtre
-    const filterSelects = document.querySelectorAll('.filter-select');
-    filterSelects.forEach(function(select) {
-        select.addEventListener('change', function() {
-            searchForm.submit();
-        });
-    });
 </script>
 @endpush
 @endsection
