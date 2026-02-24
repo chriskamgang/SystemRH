@@ -380,8 +380,9 @@ class EmployeeController extends Controller
         $maxAttempts = 10000; // Limite de sécurité
 
         do {
-            // Trouver le dernier employee_id de l'année en cours
-            $lastEmployee = User::where('employee_id', 'like', "{$prefix}%")
+            // Trouver le dernier employee_id de l'année en cours (incluant les soft deleted)
+            $lastEmployee = User::withTrashed()
+                ->where('employee_id', 'like', "{$prefix}%")
                 ->orderBy('employee_id', 'desc')
                 ->first();
 
@@ -397,8 +398,8 @@ class EmployeeController extends Controller
             // Formater avec des zéros devant (0001, 0002, etc.)
             $employeeId = $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
 
-            // Vérifier si cet ID existe déjà
-            $exists = User::where('employee_id', $employeeId)->exists();
+            // Vérifier si cet ID existe déjà (incluant les soft deleted)
+            $exists = User::withTrashed()->where('employee_id', $employeeId)->exists();
 
             $attempts++;
 

@@ -481,8 +481,9 @@ class VacataireController extends Controller
         $maxAttempts = 10000; // Limite de sécurité
 
         do {
-            // Trouver le dernier employee_id VAC
-            $lastVacataire = User::where('employee_id', 'like', "{$prefix}%")
+            // Trouver le dernier employee_id VAC (incluant les soft deleted)
+            $lastVacataire = User::withTrashed()
+                ->where('employee_id', 'like', "{$prefix}%")
                 ->orderBy('employee_id', 'desc')
                 ->first();
 
@@ -498,8 +499,8 @@ class VacataireController extends Controller
             // Formater avec des zéros devant (0001, 0002, etc.)
             $employeeId = $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
 
-            // Vérifier si cet ID existe déjà
-            $exists = User::where('employee_id', $employeeId)->exists();
+            // Vérifier si cet ID existe déjà (incluant les soft deleted)
+            $exists = User::withTrashed()->where('employee_id', $employeeId)->exists();
 
             $attempts++;
 
