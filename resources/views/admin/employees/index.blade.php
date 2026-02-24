@@ -268,23 +268,36 @@
 <script>
     // Initialiser Choices.js sur les select pour les rendre searchable
     document.addEventListener('DOMContentLoaded', function() {
+        // Vérifier si Choices.js est chargé
+        if (typeof Choices === 'undefined') {
+            console.error('❌ Choices.js not loaded!');
+            return;
+        }
+
         const filterSelects = document.querySelectorAll('.filter-select');
+        console.log('🔍 Found', filterSelects.length, 'filter selects');
 
         filterSelects.forEach(function(select) {
-            const choices = new Choices(select, {
-                searchEnabled: true,
-                searchPlaceholderValue: 'Rechercher...',
-                noResultsText: 'Aucun résultat',
-                itemSelectText: 'Cliquer pour sélectionner',
-                shouldSort: false,
-                placeholder: true,
-                placeholderValue: select.querySelector('option[value=""]')?.textContent || 'Sélectionner...'
-            });
+            try {
+                const choices = new Choices(select, {
+                    searchEnabled: true,
+                    searchPlaceholderValue: 'Rechercher...',
+                    noResultsText: 'Aucun résultat',
+                    itemSelectText: 'Cliquer pour sélectionner',
+                    shouldSort: false,
+                    placeholder: true,
+                    placeholderValue: select.querySelector('option[value=""]')?.textContent || 'Sélectionner...'
+                });
 
-            // Auto-submit quand on change la sélection
-            select.addEventListener('change', function() {
-                document.getElementById('searchForm').submit();
-            });
+                console.log('✅ Choices initialized on', select.name);
+
+                // Auto-submit quand on change la sélection
+                select.addEventListener('change', function() {
+                    document.getElementById('searchForm').submit();
+                });
+            } catch (error) {
+                console.error('❌ Error initializing Choices on', select.name, ':', error);
+            }
         });
     });
 
