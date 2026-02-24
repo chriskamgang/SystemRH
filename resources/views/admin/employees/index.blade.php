@@ -25,23 +25,25 @@
 
     <!-- Filtres et Recherche -->
     <div class="bg-white rounded-lg shadow p-6">
-        <form method="GET" action="{{ route('admin.employees.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form method="GET" action="{{ route('admin.employees.index') }}" id="searchForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Recherche -->
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Rechercher</label>
                 <input
                     type="text"
                     name="search"
+                    id="searchInput"
                     value="{{ request('search') }}"
                     placeholder="Nom, email, ID employé..."
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autocomplete="off"
                 >
             </div>
 
             <!-- Filtre Type d'employé -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Type d'employé</label>
-                <select name="employee_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select name="employee_type" class="filter-select w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Tous les types</option>
                     <option value="enseignant_titulaire" {{ request('employee_type') == 'enseignant_titulaire' ? 'selected' : '' }}>Personnel Permanent</option>
                     <option value="semi_permanent" {{ request('employee_type') == 'semi_permanent' ? 'selected' : '' }}>Personnel Semi-Permanent</option>
@@ -55,7 +57,7 @@
             <!-- Filtre Campus -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Campus</label>
-                <select name="campus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select name="campus" class="filter-select w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Tous les campus</option>
                     @foreach($campuses as $campus)
                         <option value="{{ $campus->id }}" {{ request('campus') == $campus->id ? 'selected' : '' }}>
@@ -68,7 +70,7 @@
             <!-- Filtre Statut -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
-                <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select name="status" class="filter-select w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Tous</option>
                     <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Actifs</option>
                     <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactifs</option>
@@ -261,4 +263,32 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    // Recherche en temps réel avec debounce
+    let searchTimeout;
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+
+            // Attendre 500ms après que l'utilisateur arrête de taper
+            searchTimeout = setTimeout(function() {
+                searchForm.submit();
+            }, 500);
+        });
+    }
+
+    // Auto-submit sur changement de filtre
+    const filterSelects = document.querySelectorAll('.filter-select');
+    filterSelects.forEach(function(select) {
+        select.addEventListener('change', function() {
+            searchForm.submit();
+        });
+    });
+</script>
+@endpush
 @endsection
