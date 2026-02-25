@@ -24,6 +24,8 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
+        'banque',
+        'numero_compte',
         'hourly_rate',
         'monthly_salary',
         'photo',
