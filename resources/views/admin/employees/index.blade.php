@@ -12,6 +12,10 @@
             <p class="text-gray-600 mt-1">Gérez les employés et leurs accès</p>
         </div>
         <div class="flex gap-3">
+            <a href="{{ route('admin.employees.print-by-bank') }}" class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition">
+                <i class="fas fa-university mr-2"></i>
+                Imprimer par Banque
+            </a>
             <a href="{{ route('admin.employees.import-form') }}" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
                 <i class="fas fa-file-import mr-2"></i>
                 Importer CSV/Excel

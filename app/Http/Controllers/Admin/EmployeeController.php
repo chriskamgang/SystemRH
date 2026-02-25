@@ -697,4 +697,39 @@ class EmployeeController extends Controller
 
         return $message;
     }
+
+    /**
+     * Print employees grouped by bank for depositing
+     */
+    public function printByBank(Request $request)
+    {
+        $selectedBanque = $request->get('banque');
+
+        // Get all employees with bank info, grouped by bank
+        $query = User::whereNotNull('banque')
+            ->where('banque', '!=', '')
+            ->where('is_active', true); // Only active employees
+
+        if ($selectedBanque) {
+            $query->where('banque', $selectedBanque);
+        }
+
+        $employees = $query->orderBy('banque')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        // Group employees by bank
+        $employeesByBank = $employees->groupBy('banque');
+
+        // Get list of all banks for the filter dropdown
+        $banques = User::whereNotNull('banque')
+            ->where('banque', '!=', '')
+            ->distinct()
+            ->pluck('banque')
+            ->sort()
+            ->values();
+
+        return view('admin.employees.print-by-bank', compact('employeesByBank', 'banques', 'selectedBanque'));
+    }
 }

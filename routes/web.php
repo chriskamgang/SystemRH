@@ -50,6 +50,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::get('employees-vacataire-template', [EmployeeController::class, 'downloadVacataireTemplate'])->name('employees.download-vacataire-template');
     Route::post('employees-import-vacataire', [EmployeeController::class, 'importVacataire'])->name('employees.import-vacataire');
 
+    // Print by Bank
+    Route::get('employees-print-by-bank', [EmployeeController::class, 'printByBank'])->name('employees.print-by-bank');
+
     // Campus
     Route::resource('campuses', CampusController::class);
 
