@@ -52,11 +52,23 @@ class EmployeeController extends Controller
             $query->where('is_active', $request->status);
         }
 
+        if ($request->has('banque') && $request->banque) {
+            $query->where('banque', $request->banque);
+        }
+
         $employees = $query->orderBy('created_at', 'desc')->paginate(15)->appends($request->all());
         $roles = Role::where('id', '!=', 1)->get(); // Exclure le role admin
         $campuses = Campus::all();
 
-        return view('admin.employees.index', compact('employees', 'roles', 'campuses'));
+        // Récupérer la liste des banques distinctes
+        $banques = User::whereNotNull('banque')
+            ->where('banque', '!=', '')
+            ->distinct()
+            ->pluck('banque')
+            ->sort()
+            ->values();
+
+        return view('admin.employees.index', compact('employees', 'roles', 'campuses', 'banques'));
     }
 
     /**

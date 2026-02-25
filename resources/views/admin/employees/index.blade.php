@@ -25,7 +25,7 @@
 
     <!-- Filtres et Recherche -->
     <div class="bg-white rounded-lg shadow p-6">
-        <form method="GET" action="{{ route('admin.employees.index') }}" id="searchForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form method="GET" action="{{ route('admin.employees.index') }}" id="searchForm" class="grid grid-cols-1 md:grid-cols-5 gap-4">
             <!-- Recherche -->
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Rechercher</label>
@@ -67,6 +67,19 @@
                 </select>
             </div>
 
+            <!-- Filtre Banque -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Banque</label>
+                <select name="banque" class="filter-select w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Toutes les banques</option>
+                    @foreach($banques as $banque)
+                        <option value="{{ $banque }}" {{ request('banque') == $banque ? 'selected' : '' }}>
+                            {{ $banque }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             <!-- Filtre Statut -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
@@ -78,7 +91,7 @@
             </div>
 
             <!-- Boutons -->
-            <div class="md:col-span-4 flex gap-2">
+            <div class="md:col-span-5 flex gap-2">
                 <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
                     <i class="fas fa-search mr-2"></i> Rechercher
                 </button>
