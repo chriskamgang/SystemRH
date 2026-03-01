@@ -17,73 +17,88 @@ class MobileApiController extends Controller
      */
     public function getSalaryStatus(Request $request)
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
 
-        $month = $request->query('month', now()->month);
-        $year = $request->query('year', now()->year);
+            $month = $request->query('month', now()->month);
+            $year = $request->query('year', now()->year);
 
-        // Calculer la paie
-        $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+            // Calculer la paie
+            $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
 
-        // Récupérer les déductions manuelles détaillées
-        $manualDeductions = ManualDeduction::with(['appliedBy'])
-            ->where('user_id', $user->id)
-            ->where('month', $month)
-            ->where('year', $year)
-            ->where('status', 'active')
-            ->get();
+            // Récupérer les déductions manuelles détaillées
+            $manualDeductions = ManualDeduction::with(['appliedBy'])
+                ->where('user_id', $user->id)
+                ->where('month', $month)
+                ->where('year', $year)
+                ->where('status', 'active')
+                ->get();
 
-        $manualDeductionsDetails = $manualDeductions->map(function ($deduction) {
-            return [
-                'id' => $deduction->id,
-                'amount' => $deduction->amount,
-                'reason' => $deduction->reason,
-                'applied_by' => $deduction->appliedBy->full_name,
-                'applied_at' => $deduction->created_at->format('d/m/Y H:i'),
-            ];
-        });
+            $manualDeductionsDetails = $manualDeductions->map(function ($deduction) {
+                return [
+                    'id' => $deduction->id,
+                    'amount' => $deduction->amount,
+                    'reason' => $deduction->reason,
+                    'applied_by' => $deduction->appliedBy ? $deduction->appliedBy->full_name : 'N/A',
+                    'applied_at' => $deduction->created_at->format('d/m/Y H:i'),
+                ];
+            });
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'full_name' => $user->full_name,
-                    'email' => $user->email,
-                    'employee_type' => $user->employee_type,
-                    'employee_id' => $user->employee_id,
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'user' => [
+                        'id' => $user->id,
+                        'full_name' => $user->full_name,
+                        'email' => $user->email,
+                        'employee_type' => $user->employee_type,
+                        'employee_id' => $user->employee_id,
+                    ],
+                    'period' => [
+                        'month' => $month,
+                        'year' => $year,
+                        'month_name' => Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY'),
+                    ],
+                    'salary' => [
+                        'monthly_salary' => $payroll['monthly_salary'] ?? 0,
+                        'gross_salary' => $payroll['gross_salary'] ?? 0,
+                        'net_salary' => $payroll['net_salary'] ?? 0,
+                        'total_deductions' => $payroll['total_deductions'] ?? 0,
+                    ],
+                    'attendance' => [
+                        'working_days' => $payroll['working_days'] ?? 0,
+                        'days_worked' => $payroll['days_worked'] ?? 0,
+                        'days_not_worked' => $payroll['days_not_worked'] ?? 0,
+                        'days_justified' => $payroll['days_justified'] ?? 0,
+                        'days_without_checkout' => $payroll['days_without_checkout'] ?? 0,
+                    ],
+                    'lateness' => [
+                        'total_late_minutes' => $payroll['total_late_minutes'] ?? 0,
+                        'late_minutes_justified' => $payroll['late_minutes_justified'] ?? 0,
+                        'late_penalty_amount' => $payroll['late_penalty_amount'] ?? 0,
+                    ],
+                    'deductions' => [
+                        'absence_deduction' => $payroll['absence_deduction'] ?? 0,
+                        'late_penalty_amount' => $payroll['late_penalty_amount'] ?? 0,
+                        'manual_deductions' => $payroll['manual_deductions'] ?? 0,
+                        'manual_deductions_details' => $manualDeductionsDetails,
+                    ],
                 ],
-                'period' => [
-                    'month' => $month,
-                    'year' => $year,
-                    'month_name' => Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY'),
-                ],
-                'salary' => [
-                    'monthly_salary' => $payroll['monthly_salary'],
-                    'gross_salary' => $payroll['gross_salary'],
-                    'net_salary' => $payroll['net_salary'],
-                    'total_deductions' => $payroll['total_deductions'],
-                ],
-                'attendance' => [
-                    'working_days' => $payroll['working_days'],
-                    'days_worked' => $payroll['days_worked'],
-                    'days_not_worked' => $payroll['days_not_worked'],
-                    'days_justified' => $payroll['days_justified'],
-                    'days_without_checkout' => $payroll['days_without_checkout'],
-                ],
-                'lateness' => [
-                    'total_late_minutes' => $payroll['total_late_minutes'],
-                    'late_minutes_justified' => $payroll['late_minutes_justified'],
-                    'late_penalty_amount' => $payroll['late_penalty_amount'],
-                ],
-                'deductions' => [
-                    'absence_deduction' => $payroll['absence_deduction'],
-                    'late_penalty_amount' => $payroll['late_penalty_amount'],
-                    'manual_deductions' => $payroll['manual_deductions'],
-                    'manual_deductions_details' => $manualDeductionsDetails,
-                ],
-            ],
-        ]);
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in getSalaryStatus: ' . $e->getMessage(), [
+                'user_id' => $request->user() ? $request->user()->id : null,
+                'month' => $request->query('month'),
+                'year' => $request->query('year'),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du calcul du salaire',
+                'error' => config('app.debug') ? $e->getMessage() : 'Une erreur est survenue',
+            ], 500);
+        }
     }
 
     /**
