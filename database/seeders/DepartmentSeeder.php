@@ -13,65 +13,24 @@ class DepartmentSeeder extends Seeder
      */
     public function run(): void
     {
-        // Récupérer les campus
-        $campusSci = DB::table('campuses')->where('code', 'CAM-SCI')->first();
-        $campusLet = DB::table('campuses')->where('code', 'CAM-LET')->first();
-        $campusDrt = DB::table('campuses')->where('code', 'CAM-DRT')->first();
-        $campusMed = DB::table('campuses')->where('code', 'CAM-MED')->first();
-        $campusTech = DB::table('campuses')->where('code', 'CAM-TECH')->first();
-        $campusCom = DB::table('campuses')->where('code', 'CAM-COM')->first();
+        // Récupérer le campus INSAM
+        $campusInsam = DB::table('campuses')->where('code', 'INSAM-BFM')->first();
 
         $departments = [
             [
-                'name' => 'Mathématiques',
-                'code' => 'DEPT-MATH',
-                'description' => 'Département de mathématiques pures et appliquées',
-                'campus_id' => $campusSci->id,
+                'name' => 'Architecture',
+                'code' => 'DEPT-ARCH',
+                'description' => 'Département d\'Architecture et Design',
+                'campus_id' => $campusInsam->id,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Physique',
-                'code' => 'DEPT-PHYS',
-                'description' => 'Département de physique',
-                'campus_id' => $campusSci->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Littérature',
-                'code' => 'DEPT-LITT',
-                'description' => 'Département de littérature et langues',
-                'campus_id' => $campusLet->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Histoire',
-                'code' => 'DEPT-HIST',
-                'description' => 'Département d\'histoire et géographie',
-                'campus_id' => $campusLet->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Droit Public',
-                'code' => 'DEPT-DRTP',
-                'description' => 'Département de droit public',
-                'campus_id' => $campusDrt->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Médecine Générale',
-                'code' => 'DEPT-MEDG',
-                'description' => 'Département de médecine générale',
-                'campus_id' => $campusMed->id,
+                'name' => 'Management',
+                'code' => 'DEPT-MGMT',
+                'description' => 'Département de Management et Gestion',
+                'campus_id' => $campusInsam->id,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -79,17 +38,26 @@ class DepartmentSeeder extends Seeder
             [
                 'name' => 'Informatique',
                 'code' => 'DEPT-INFO',
-                'description' => 'Département d\'informatique et systèmes',
-                'campus_id' => $campusTech->id,
+                'description' => 'Département d\'Informatique et Systèmes',
+                'campus_id' => $campusInsam->id,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Économie',
-                'code' => 'DEPT-ECO',
-                'description' => 'Département de sciences économiques',
-                'campus_id' => $campusCom->id,
+                'name' => 'Génie Civil',
+                'code' => 'DEPT-GECI',
+                'description' => 'Département de Génie Civil et BTP',
+                'campus_id' => $campusInsam->id,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Commerce International',
+                'code' => 'DEPT-COMI',
+                'description' => 'Département de Commerce International',
+                'campus_id' => $campusInsam->id,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),

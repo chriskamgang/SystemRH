@@ -226,9 +226,12 @@ class PayrollCalculator
         $totalLateSeconds = ($totalLateMinutes - $lateMinutesJustified) * 60;
         $latePenaltyAmount = max(0, $totalLateSeconds * $penaltyPerSecond);
 
-        // 9. Calculer les déductions pour absences (jours non travaillés et non justifiés)
-        $daysToDeduct = max(0, $daysNotWorked - $daysJustified);
-        $absenceDeduction = $daysToDeduct * $dailyRate;
+        // 9. NOUVEAU SYSTÈME: Calculer le salaire proportionnel aux jours travaillés
+        // Au lieu de déduire les absences, on paie seulement ce qui a été travaillé
+        $salaryForDaysWorked = $daysWorked * $dailyRate;
+
+        // On garde le concept de déduction d'absence pour la compatibilité, mais mis à 0
+        $absenceDeduction = 0;
 
         // 10. Récupérer les déductions manuelles
         $manualDeductions = \App\Models\ManualDeduction::where('user_id', $user->id)
@@ -263,10 +266,16 @@ class PayrollCalculator
             }
         }
 
-        // 12. Calculer le salaire net
+        // 12. Calculer le salaire net avec le nouveau système
+        // Le salaire brut reste le salaire mensuel (pour affichage)
         $grossSalary = $monthlySalary;
-        $totalDeductions = $latePenaltyAmount + $absenceDeduction + $totalManualDeductions + $totalLoanDeductions;
-        $netSalary = max(0, $grossSalary - $totalDeductions);
+
+        // Mais on calcule le net à partir du salaire proportionnel aux jours travaillés
+        $salaryBasedOnDaysWorked = $salaryForDaysWorked;
+
+        // Les déductions s'appliquent sur le salaire des jours travaillés
+        $totalDeductions = $latePenaltyAmount + $totalManualDeductions + $totalLoanDeductions;
+        $netSalary = max(0, $salaryBasedOnDaysWorked - $totalDeductions);
 
         return [
             'monthly_salary' => $monthlySalary,
@@ -283,6 +292,7 @@ class PayrollCalculator
             'late_penalty_amount' => $latePenaltyAmount,
             'absence_deduction' => $absenceDeduction,
             'gross_salary' => $grossSalary,
+            'salary_based_on_days_worked' => $salaryBasedOnDaysWorked, // NOUVEAU: salaire proportionnel
             'total_deductions' => $totalDeductions,
             'net_salary' => $netSalary,
             'days_without_checkout' => $daysWithoutCheckout,

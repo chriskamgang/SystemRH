@@ -12,10 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Étape 1 : Convertir la colonne ENUM en VARCHAR temporairement
-        DB::statement("ALTER TABLE attendances MODIFY type VARCHAR(20) NOT NULL");
+        // SQLite doesn't support MODIFY COLUMN, so we skip the ALTER statements
+        if (DB::getDriverName() !== 'sqlite') {
+            // Étape 1 : Convertir la colonne ENUM en VARCHAR temporairement
+            DB::statement("ALTER TABLE attendances MODIFY type VARCHAR(20) NOT NULL");
+        }
 
-        // Étape 2 : Mettre à jour les données existantes
+        // Étape 2 : Mettre à jour les données existantes (works on all databases)
         DB::table('attendances')
             ->where('type', 'check_in')
             ->update(['type' => 'check-in']);
@@ -24,8 +27,10 @@ return new class extends Migration
             ->where('type', 'check_out')
             ->update(['type' => 'check-out']);
 
-        // Étape 3 : Reconvertir en ENUM avec les nouvelles valeurs
-        DB::statement("ALTER TABLE attendances MODIFY type ENUM('check-in', 'check-out') NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            // Étape 3 : Reconvertir en ENUM avec les nouvelles valeurs
+            DB::statement("ALTER TABLE attendances MODIFY type ENUM('check-in', 'check-out') NOT NULL");
+        }
     }
 
     /**

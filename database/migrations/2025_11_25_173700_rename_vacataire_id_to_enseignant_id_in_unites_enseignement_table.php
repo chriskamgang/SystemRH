@@ -18,8 +18,10 @@ return new class extends Migration
             $table->renameColumn('vacataire_id', 'enseignant_id');
         });
 
-        // Mettre à jour le commentaire de la colonne
-        DB::statement("ALTER TABLE unites_enseignement MODIFY COLUMN enseignant_id BIGINT UNSIGNED NOT NULL COMMENT 'Enseignant (vacataire ou semi-permanent) concerné'");
+        // Mettre à jour le commentaire de la colonne (SQLite doesn't support MODIFY or COMMENT)
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE unites_enseignement MODIFY COLUMN enseignant_id BIGINT UNSIGNED NOT NULL COMMENT 'Enseignant (vacataire ou semi-permanent) concerné'");
+        }
     }
 
     /**
@@ -31,6 +33,8 @@ return new class extends Migration
             $table->renameColumn('enseignant_id', 'vacataire_id');
         });
 
-        DB::statement("ALTER TABLE unites_enseignement MODIFY COLUMN vacataire_id BIGINT UNSIGNED NOT NULL COMMENT 'Enseignant vacataire concerné'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE unites_enseignement MODIFY COLUMN vacataire_id BIGINT UNSIGNED NOT NULL COMMENT 'Enseignant vacataire concerné'");
+        }
     }
 };

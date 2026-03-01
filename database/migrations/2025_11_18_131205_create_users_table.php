@@ -30,6 +30,7 @@ return new class extends Migration
             $table->enum('employee_type', [
                 'enseignant_titulaire',
                 'enseignant_vacataire',
+                'semi_permanent',
                 'administratif',
                 'technique',
                 'direction'

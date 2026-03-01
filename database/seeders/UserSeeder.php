@@ -21,9 +21,9 @@ class UserSeeder extends Seeder
         $employeRole = DB::table('roles')->where('name', 'employe')->first();
 
         // Récupérer quelques départements
+        $deptArch = DB::table('departments')->where('code', 'DEPT-ARCH')->first();
+        $deptMgmt = DB::table('departments')->where('code', 'DEPT-MGMT')->first();
         $deptInfo = DB::table('departments')->where('code', 'DEPT-INFO')->first();
-        $deptMath = DB::table('departments')->where('code', 'DEPT-MATH')->first();
-        $deptLitt = DB::table('departments')->where('code', 'DEPT-LITT')->first();
 
         $users = [
             [
@@ -35,8 +35,10 @@ class UserSeeder extends Seeder
                 'employee_type' => 'direction',
                 'department_id' => null,
                 'role_id' => $adminRole->id,
+                'monthly_salary' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
@@ -48,6 +50,7 @@ class UserSeeder extends Seeder
                 'employee_type' => 'enseignant_titulaire',
                 'department_id' => $deptInfo->id,
                 'role_id' => $chefDeptRole->id,
+                'monthly_salary' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
@@ -60,8 +63,9 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'phone' => '+241 03 45 67 89',
                 'employee_type' => 'enseignant_titulaire',
-                'department_id' => $deptMath->id,
+                'department_id' => $deptArch->id,
                 'role_id' => $respCampusRole->id,
+                'monthly_salary' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
@@ -76,6 +80,7 @@ class UserSeeder extends Seeder
                 'employee_type' => 'enseignant_vacataire',
                 'department_id' => $deptInfo->id,
                 'role_id' => $employeRole->id,
+                'monthly_salary' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
@@ -88,8 +93,9 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'phone' => '+241 05 67 89 01',
                 'employee_type' => 'administratif',
-                'department_id' => $deptLitt->id,
+                'department_id' => $deptMgmt->id,
                 'role_id' => $employeRole->id,
+                'monthly_salary' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
@@ -104,6 +110,37 @@ class UserSeeder extends Seeder
                 'employee_type' => 'technique',
                 'department_id' => null,
                 'role_id' => $employeRole->id,
+                'monthly_salary' => null,
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'first_name' => 'Thomas',
+                'last_name' => 'KAMGA',
+                'email' => 'thomas.kamga@insam.cm',
+                'password' => Hash::make('password123'),
+                'phone' => '+237 06 70 80 90',
+                'employee_type' => 'enseignant_titulaire',
+                'department_id' => $deptArch->id,
+                'role_id' => $employeRole->id,
+                'monthly_salary' => 350000.00,
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'first_name' => 'Clarisse',
+                'last_name' => 'TCHOUMI',
+                'email' => 'clarisse.tchoumi@insam.cm',
+                'password' => Hash::make('password123'),
+                'phone' => '+237 06 71 82 93',
+                'employee_type' => 'semi_permanent',
+                'department_id' => $deptMgmt->id,
+                'role_id' => $employeRole->id,
+                'monthly_salary' => 350000.00,
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
@@ -118,25 +155,29 @@ class UserSeeder extends Seeder
         $jeanUser = DB::table('users')->where('email', 'jean.mbongo@university.ga')->first();
         $marieUser = DB::table('users')->where('email', 'marie.okome@university.ga')->first();
         $paulUser = DB::table('users')->where('email', 'paul.ndong@university.ga')->first();
+        $thomasUser = DB::table('users')->where('email', 'thomas.kamga@insam.cm')->first();
+        $clarisseUser = DB::table('users')->where('email', 'clarisse.tchoumi@insam.cm')->first();
 
-        $campusTech = DB::table('campuses')->where('code', 'CAM-TECH')->first();
-        $campusSci = DB::table('campuses')->where('code', 'CAM-SCI')->first();
-        $campusLet = DB::table('campuses')->where('code', 'CAM-LET')->first();
+        $campusInsam = DB::table('campuses')->where('code', 'INSAM-BFM')->first();
 
         $userCampus = [
-            // Admin a accès à tous les campus
-            ['user_id' => $adminUser->id, 'campus_id' => $campusTech->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['user_id' => $adminUser->id, 'campus_id' => $campusSci->id, 'is_primary' => false, 'created_at' => now(), 'updated_at' => now()],
+            // Admin a accès au campus INSAM
+            ['user_id' => $adminUser->id, 'campus_id' => $campusInsam->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
 
-            // Jean (Chef dept) - Campus Tech
-            ['user_id' => $jeanUser->id, 'campus_id' => $campusTech->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
+            // Jean (Chef dept) - INSAM Bafoussam
+            ['user_id' => $jeanUser->id, 'campus_id' => $campusInsam->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
 
-            // Marie (Resp campus) - Campus Sciences
-            ['user_id' => $marieUser->id, 'campus_id' => $campusSci->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
+            // Marie (Resp campus) - INSAM Bafoussam
+            ['user_id' => $marieUser->id, 'campus_id' => $campusInsam->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
 
-            // Paul (Vacataire) - Plusieurs campus
-            ['user_id' => $paulUser->id, 'campus_id' => $campusTech->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
-            ['user_id' => $paulUser->id, 'campus_id' => $campusLet->id, 'is_primary' => false, 'created_at' => now(), 'updated_at' => now()],
+            // Paul (Vacataire) - INSAM Bafoussam
+            ['user_id' => $paulUser->id, 'campus_id' => $campusInsam->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
+
+            // Thomas (Permanent) - INSAM Bafoussam
+            ['user_id' => $thomasUser->id, 'campus_id' => $campusInsam->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
+
+            // Clarisse (Semi-permanent) - INSAM Bafoussam
+            ['user_id' => $clarisseUser->id, 'campus_id' => $campusInsam->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
         ];
 
         DB::table('user_campus')->insert($userCampus);
@@ -151,6 +192,8 @@ class UserSeeder extends Seeder
         $this->command->info('   - paul.ndong@university.ga (Enseignant vacataire)');
         $this->command->info('   - sophie.essono@university.ga (Administratif)');
         $this->command->info('   - andre.obiang@university.ga (Technique)');
+        $this->command->info('   - thomas.kamga@insam.cm (Enseignant permanent - 350,000 FCFA/mois)');
+        $this->command->info('   - clarisse.tchoumi@insam.cm (Enseignant semi-permanent - 350,000 FCFA/mois)');
         $this->command->info('   🔑 Tous avec le mot de passe: password123');
     }
 }

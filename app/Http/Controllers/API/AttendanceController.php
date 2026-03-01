@@ -324,36 +324,93 @@ class AttendanceController extends Controller
             ], 400);
         }
 
+        // Calculer la durée de cette session
+        $sessionDurationMinutes = $checkIn->timestamp->diffInMinutes($now);
+        $sessionDurationHours = round($sessionDurationMinutes / 60, 2);
+
+        // Variables pour le plafonnement
+        $isCapped = false;
+        $cappedHours = null;
+        $nonCountedHours = null;
+        $ueWarning = null;
+
+        // Si le check-in a une UE associée (vacataire ou semi-permanent)
+        if ($checkIn->unite_enseignement_id) {
+            $ue = \App\Models\UniteEnseignement::find($checkIn->unite_enseignement_id);
+
+            if ($ue) {
+                $heuresRestantes = $ue->heures_restantes;
+
+                // Si les heures de cette session dépassent les heures restantes
+                if ($sessionDurationHours > $heuresRestantes) {
+                    $isCapped = true;
+                    $cappedHours = $heuresRestantes;
+                    $nonCountedHours = round($sessionDurationHours - $heuresRestantes, 2);
+
+                    $ueWarning = [
+                        'message' => 'Attention: Les heures de cette session dépassent le volume horaire restant pour cette UE.',
+                        'ue_nom' => $ue->nom_matiere,
+                        'volume_horaire_total' => $ue->volume_horaire_total,
+                        'heures_deja_effectuees' => $ue->heures_effectuees,
+                        'heures_restantes' => $heuresRestantes,
+                        'heures_session_reelles' => $sessionDurationHours,
+                        'heures_comptabilisees' => $cappedHours,
+                        'heures_non_comptabilisees' => $nonCountedHours,
+                        'explication' => "Les {$nonCountedHours}h supplémentaires ne seront pas payées car vous avez atteint le maximum autorisé de {$ue->volume_horaire_total}h pour cette UE.",
+                    ];
+                }
+            }
+        }
+
         // Créer le check-out
-        $checkout = Attendance::create([
+        $checkoutData = [
             'user_id' => $user->id,
             'campus_id' => $campus->id,
             'type' => 'check-out',
-            'shift' => $shift, // Ajouter la plage horaire
+            'shift' => $shift,
             'timestamp' => $now,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'accuracy' => $request->accuracy,
             'device_info' => $request->device_info,
             'status' => 'valid',
-        ]);
+        ];
 
-        // Calculer la durée
-        $duration = $checkIn->timestamp->diffInMinutes($checkout->timestamp);
+        // Si le check-in avait une UE, l'associer aussi au check-out
+        if ($checkIn->unite_enseignement_id) {
+            $checkoutData['unite_enseignement_id'] = $checkIn->unite_enseignement_id;
+        }
+
+        $checkout = Attendance::create($checkoutData);
 
         $checkout->load('campus');
 
         $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
 
-        return response()->json([
-            'message' => "Check-out enregistré avec succès pour la plage du {$shiftLabel}.",
+        $responseMessage = "Check-out enregistré avec succès pour la plage du {$shiftLabel}.";
+        if ($isCapped) {
+            $responseMessage .= " ⚠️ Heures plafonnées à {$cappedHours}h (sur {$sessionDurationHours}h effectuées).";
+        }
+
+        $response = [
+            'message' => $responseMessage,
             'checkout' => $checkout,
             'checkin' => $checkIn,
             'shift' => $shift,
             'shift_label' => $shiftLabel,
-            'duration_minutes' => $duration,
-            'duration_formatted' => $this->formatDuration($duration),
-        ], 201);
+            'duration_minutes' => $sessionDurationMinutes,
+            'duration_hours' => $sessionDurationHours,
+            'duration_formatted' => $this->formatDuration($sessionDurationMinutes),
+            'is_capped' => $isCapped,
+        ];
+
+        if ($isCapped) {
+            $response['capped_hours'] = $cappedHours;
+            $response['non_counted_hours'] = $nonCountedHours;
+            $response['ue_warning'] = $ueWarning;
+        }
+
+        return response()->json($response, 201);
     }
 
     /**

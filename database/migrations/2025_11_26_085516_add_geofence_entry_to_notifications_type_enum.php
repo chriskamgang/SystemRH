@@ -12,8 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Modifier l'ENUM pour ajouter 'geofence_entry'
-        DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('presence_check', 'check_in_reminder', 'check_out_reminder', 'zone_exit', 'geofence_entry', 'system') NOT NULL");
+        // Modifier l'ENUM pour ajouter 'geofence_entry' (SQLite doesn't support ENUM)
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('presence_check', 'check_in_reminder', 'check_out_reminder', 'zone_exit', 'geofence_entry', 'system') NOT NULL");
+        }
     }
 
     /**
@@ -22,6 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         // Retirer 'geofence_entry' de l'ENUM
-        DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('presence_check', 'check_in_reminder', 'check_out_reminder', 'zone_exit', 'system') NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('presence_check', 'check_in_reminder', 'check_out_reminder', 'zone_exit', 'system') NOT NULL");
+        }
     }
 };

@@ -147,7 +147,7 @@ class UniteEnseignement extends Model
         ]);
     }
 
-    // Calculer les heures effectuées par l'enseignant pour cette UE
+    // Calculer les heures effectuées par l'enseignant pour cette UE (avec plafonnement)
     public function getHeuresEffectueesAttribute(): float
     {
         $totalHours = 0;
@@ -157,6 +157,7 @@ class UniteEnseignement extends Model
             ->where('unite_enseignement_id', $this->id)
             ->where('type', 'check-in')
             ->where('status', 'valid')
+            ->orderBy('timestamp', 'asc')
             ->get();
 
         foreach ($attendances as $checkIn) {
@@ -169,18 +170,49 @@ class UniteEnseignement extends Model
                 ->first();
 
             if ($checkOut) {
-                $totalHours += $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
+                $sessionHours = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
+
+                // PLAFONNEMENT: Ne pas dépasser le volume horaire total
+                $heuresRestantes = $this->volume_horaire_total - $totalHours;
+
+                if ($heuresRestantes <= 0) {
+                    // On a déjà atteint le maximum, ne plus compter
+                    break;
+                }
+
+                if ($sessionHours > $heuresRestantes) {
+                    // Cette session dépasse, on plafonne
+                    $totalHours += $heuresRestantes;
+                    break; // On arrête de compter les sessions suivantes
+                } else {
+                    // Session normale, on compte tout
+                    $totalHours += $sessionHours;
+                }
             }
         }
 
         // ===== 2. PRÉSENCES MANUELLES (ManualAttendance) =====
         $manualAttendances = \App\Models\ManualAttendance::where('user_id', $this->enseignant_id)
             ->where('unite_enseignement_id', $this->id)
+            ->orderBy('check_in_time', 'asc')
             ->get();
 
         foreach ($manualAttendances as $manualAttendance) {
-            // Calculer les heures à partir de check_in_time et check_out_time
-            $totalHours += $manualAttendance->duration_in_hours;
+            $sessionHours = $manualAttendance->duration_in_hours;
+
+            // PLAFONNEMENT: Ne pas dépasser le volume horaire total
+            $heuresRestantes = $this->volume_horaire_total - $totalHours;
+
+            if ($heuresRestantes <= 0) {
+                break;
+            }
+
+            if ($sessionHours > $heuresRestantes) {
+                $totalHours += $heuresRestantes;
+                break;
+            } else {
+                $totalHours += $sessionHours;
+            }
         }
 
         return round($totalHours, 2);

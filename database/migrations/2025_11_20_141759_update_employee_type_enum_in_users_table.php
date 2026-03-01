@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         // Ajouter 'semi_permanent' aux valeurs possibles de employee_type
-        \DB::statement("ALTER TABLE users MODIFY COLUMN employee_type ENUM('enseignant_titulaire', 'enseignant_vacataire', 'semi_permanent', 'administratif', 'technique', 'direction') NULL");
+        // Note: SQLite doesn't support MODIFY COLUMN or ENUM constraints
+        // For SQLite, the string values are already flexible
+        if (\DB::getDriverName() !== 'sqlite') {
+            \DB::statement("ALTER TABLE users MODIFY COLUMN employee_type ENUM('enseignant_titulaire', 'enseignant_vacataire', 'semi_permanent', 'administratif', 'technique', 'direction') NULL");
+        }
     }
 
     /**
@@ -21,6 +25,8 @@ return new class extends Migration
     public function down(): void
     {
         // Retirer 'semi_permanent' des valeurs possibles
-        \DB::statement("ALTER TABLE users MODIFY COLUMN employee_type ENUM('enseignant_titulaire', 'enseignant_vacataire', 'administratif', 'technique', 'direction') NULL");
+        if (\DB::getDriverName() !== 'sqlite') {
+            \DB::statement("ALTER TABLE users MODIFY COLUMN employee_type ENUM('enseignant_titulaire', 'enseignant_vacataire', 'administratif', 'technique', 'direction') NULL");
+        }
     }
 };
