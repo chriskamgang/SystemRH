@@ -77,13 +77,17 @@
         <!-- Graphique Présences -->
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold mb-4">Présences des 7 Derniers Jours</h3>
-            <canvas id="attendanceChart" height="200"></canvas>
+            <div style="position: relative; height: 300px;">
+                <canvas id="attendanceChart"></canvas>
+            </div>
         </div>
 
         <!-- Graphique Par Campus -->
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold mb-4">Présences par Campus</h3>
-            <canvas id="campusChart" height="200"></canvas>
+            <div style="position: relative; height: 300px;">
+                <canvas id="campusChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -225,6 +229,14 @@
                     display: true,
                     position: 'bottom'
                 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
             }
         }
     });
@@ -247,6 +259,14 @@
             plugins: {
                 legend: {
                     display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
                 }
             }
         }
