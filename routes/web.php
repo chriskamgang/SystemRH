@@ -207,6 +207,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::prefix('calculateur-generique')->name('generic-calculator.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\ManualPayrollController::class, 'index'])->name('index');
         Route::post('/calculate', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculate'])->name('calculate');
+        Route::post('/apply', [App\Http\Controllers\Admin\ManualPayrollController::class, 'applyCalculation'])->name('apply');
         Route::post('/calculate-bulk', [App\Http\Controllers\Admin\ManualPayrollController::class, 'calculateBulk'])->name('calculate-bulk');
     });
 

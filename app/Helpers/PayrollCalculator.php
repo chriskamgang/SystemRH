@@ -173,6 +173,43 @@ class PayrollCalculator
      */
     public static function calculatePayroll(User $user, int $year, int $month): array
     {
+        // VÉRIFIER D'ABORD S'IL Y A UN AJUSTEMENT MANUEL ACTIF
+        $manualAdjustment = \App\Models\ManualPayrollAdjustment::where('user_id', $user->id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->where('status', 'active')
+            ->first();
+
+        // Si un ajustement manuel existe, utiliser ces valeurs au lieu des calculs automatiques
+        if ($manualAdjustment) {
+            return [
+                'monthly_salary' => $manualAdjustment->salaire_mensuel,
+                'working_days' => $manualAdjustment->jours_total,
+                'days_worked' => $manualAdjustment->jours_travailles,
+                'days_not_worked' => $manualAdjustment->jours_total - $manualAdjustment->jours_travailles,
+                'days_justified' => 0, // Pas de justifications avec ajustements manuels
+                'total_late_minutes' => ($manualAdjustment->heures_retard * 60) + $manualAdjustment->minutes_retard,
+                'late_minutes_justified' => 0,
+                'manual_deductions' => $manualAdjustment->deduction_manuelle,
+                'manual_deductions_details' => [],
+                'loan_deductions' => 0,
+                'loan_deductions_details' => [],
+                'late_penalty_amount' => $manualAdjustment->penalite_retard,
+                'absence_deduction' => $manualAdjustment->montant_perdu,
+                'gross_salary' => $manualAdjustment->salaire_brut,
+                'salary_based_on_days_worked' => $manualAdjustment->salaire_brut,
+                'total_deductions' => $manualAdjustment->penalite_retard + $manualAdjustment->deduction_manuelle,
+                'net_salary' => $manualAdjustment->salaire_net,
+                'days_without_checkout' => 0,
+                'daily_rate' => $manualAdjustment->salaire_journalier,
+                'hourly_rate' => 0,
+                'per_second_rate' => 0,
+                'is_manual_adjustment' => true, // Indicateur pour savoir qu'il s'agit d'un ajustement manuel
+                'manual_adjustment_notes' => $manualAdjustment->notes,
+            ];
+        }
+
+        // Sinon, calculer normalement
         // 1. Récupérer les paramètres
         $penaltyPerSecond = (float) Setting::get('penalty_per_second', 0.50);
         $workingHoursPerDay = (float) Setting::get('working_hours_per_day', 8);

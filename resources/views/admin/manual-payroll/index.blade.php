@@ -23,6 +23,48 @@
             <form id="payroll-form">
                 @csrf
 
+                <!-- Sélecteur d'Employé -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user text-blue-600 mr-2"></i>
+                        Sélectionner un Employé (optionnel)
+                    </label>
+
+                    <!-- Champ de recherche -->
+                    <div class="mb-3 relative">
+                        <input
+                            type="text"
+                            id="employee_search"
+                            placeholder="Rechercher un employé par nom, prénom ou matricule..."
+                            class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                        <i class="fas fa-search absolute left-3 top-4 text-gray-400"></i>
+                    </div>
+
+                    <select
+                        id="employee_id"
+                        name="employee_id"
+                        size="8"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">-- Calcul Générique (sans employé) --</option>
+                        @foreach($employees as $employee)
+                            <option
+                                value="{{ $employee->id }}"
+                                data-salary="{{ $employee->monthly_salary }}"
+                                data-type="{{ $employee->employee_type }}"
+                                data-search="{{ strtolower($employee->full_name . ' ' . $employee->employee_id) }}"
+                            >
+                                {{ $employee->full_name }} - {{ $employee->employee_id }} ({{ number_format($employee->monthly_salary, 0, ',', ' ') }} FCFA)
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Si vous sélectionnez un employé, son salaire sera automatiquement rempli et vous pourrez appliquer le calcul.
+                    </p>
+                </div>
+
                 <!-- Salaire Mensuel -->
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -83,38 +125,21 @@
                         Retards du Mois
                     </h4>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Heures de Retard
-                            </label>
-                            <input
-                                type="number"
-                                id="heures_retard"
-                                name="heures_retard"
-                                value="0"
-                                min="0"
-                                step="1"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                placeholder="0"
-                            >
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Minutes de Retard
-                            </label>
-                            <input
-                                type="number"
-                                id="minutes_retard"
-                                name="minutes_retard"
-                                value="0"
-                                min="0"
-                                max="59"
-                                step="1"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                placeholder="0"
-                            >
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Minutes de Retard Total
+                        </label>
+                        <input
+                            type="number"
+                            id="minutes_retard"
+                            name="minutes_retard"
+                            value="0"
+                            min="0"
+                            step="1"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            placeholder="Exemple: 90 (pour 1h30)"
+                        >
+                        <input type="hidden" id="heures_retard" name="heures_retard" value="0">
                     </div>
 
                     <div class="mt-3 p-3 bg-white rounded border border-orange-200">
@@ -167,14 +192,33 @@
                     </div>
                 </div>
 
-                <!-- Bouton Calculer -->
-                <button
-                    type="submit"
-                    class="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg transition shadow-lg"
-                >
-                    <i class="fas fa-calculator mr-2"></i>
-                    Calculer la Paie
-                </button>
+                <!-- Boutons -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Bouton Calculer -->
+                    <button
+                        type="submit"
+                        class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg transition shadow-lg"
+                    >
+                        <i class="fas fa-calculator mr-2"></i>
+                        Calculer la Paie
+                    </button>
+
+                    <!-- Bouton Appliquer (visible uniquement si employé sélectionné) -->
+                    <button
+                        type="button"
+                        id="apply-button"
+                        onclick="applyCalculation()"
+                        class="px-6 py-4 bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-lg transition shadow-lg hidden"
+                    >
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Appliquer le Calcul
+                    </button>
+                </div>
+
+                <p class="text-xs text-gray-500 mt-3 text-center" id="apply-info" style="display: none;">
+                    <i class="fas fa-info-circle text-green-600 mr-1"></i>
+                    Le calcul sera enregistré pour cet employé et apparaîtra dans le rapport de paie
+                </p>
             </form>
 
             <!-- Info -->
@@ -256,21 +300,34 @@
             </div>
 
             <!-- Actions -->
-            <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-3">
+                <!-- Bouton Appliquer (visible uniquement si un employé est sélectionné) -->
                 <button
-                    onclick="imprimerResultat()"
-                    class="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition"
+                    type="button"
+                    id="apply-button-results"
+                    onclick="applyCalculation()"
+                    class="hidden w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition shadow-md"
                 >
-                    <i class="fas fa-print mr-2"></i>
-                    Imprimer
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Appliquer le Calcul
                 </button>
-                <button
-                    onclick="nouveauCalcul()"
-                    class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
-                >
-                    <i class="fas fa-redo mr-2"></i>
-                    Nouveau
-                </button>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button
+                        onclick="imprimerResultat()"
+                        class="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition"
+                    >
+                        <i class="fas fa-print mr-2"></i>
+                        Imprimer
+                    </button>
+                    <button
+                        onclick="nouveauCalcul()"
+                        class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
+                    >
+                        <i class="fas fa-redo mr-2"></i>
+                        Nouveau
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -281,6 +338,51 @@
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('payroll-form');
     const resultatContainer = document.getElementById('resultat-container');
+    const employeeSelect = document.getElementById('employee_id');
+    const employeeSearch = document.getElementById('employee_search');
+    const salaryInput = document.getElementById('salaire_mensuel');
+    const applyButton = document.getElementById('apply-button');
+    const applyInfo = document.getElementById('apply-info');
+
+    // Filtrage de la liste d'employés
+    employeeSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        const options = employeeSelect.options;
+
+        for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            const searchData = option.getAttribute('data-search') || '';
+
+            if (searchTerm === '' || searchData.includes(searchTerm)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+
+        // Toujours afficher la première option (calcul générique)
+        if (options.length > 0) {
+            options[0].style.display = '';
+        }
+    });
+
+    // Gérer le changement d'employé
+    employeeSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const salary = selectedOption.dataset.salary;
+
+        if (this.value) {
+            // Remplir automatiquement le salaire
+            salaryInput.value = salary || '';
+            // Afficher le bouton "Appliquer"
+            applyButton.classList.remove('hidden');
+            applyInfo.style.display = 'block';
+        } else {
+            // Masquer le bouton "Appliquer"
+            applyButton.classList.add('hidden');
+            applyInfo.style.display = 'none';
+        }
+    });
 
     // Soumission du formulaire
     form.addEventListener('submit', function(e) {
@@ -301,6 +403,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 afficherResultats(data.calcul);
                 resultatContainer.style.display = 'block';
+
+                // Afficher le bouton "Appliquer" dans les résultats si un employé est sélectionné
+                const applyButtonResults = document.getElementById('apply-button-results');
+                if (employeeSelect.value) {
+                    applyButtonResults.classList.remove('hidden');
+                } else {
+                    applyButtonResults.classList.add('hidden');
+                }
+
                 resultatContainer.scrollIntoView({ behavior: 'smooth' });
             }
         })
@@ -352,11 +463,61 @@ function afficherResultats(calcul) {
 
 function nouveauCalcul() {
     document.getElementById('resultat-container').style.display = 'none';
+    document.getElementById('apply-button-results').classList.add('hidden');
     document.getElementById('payroll-form').scrollIntoView({ behavior: 'smooth' });
 }
 
 function imprimerResultat() {
     window.print();
+}
+
+function applyCalculation() {
+    const employeeId = document.getElementById('employee_id').value;
+
+    if (!employeeId) {
+        alert('Veuillez sélectionner un employé pour appliquer le calcul.');
+        return;
+    }
+
+    // Vérifier si un calcul a été effectué
+    const resultatContainer = document.getElementById('resultat-container');
+    if (resultatContainer.style.display === 'none') {
+        alert('Veuillez d\'abord calculer la paie avant de l\'appliquer.');
+        return;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir appliquer ce calcul ? Il sera enregistré dans le rapport de paie.')) {
+        return;
+    }
+
+    const formData = new FormData(document.getElementById('payroll-form'));
+    formData.append('user_id', employeeId);
+
+    fetch('{{ route('admin.generic-calculator.apply') }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            // Réinitialiser le formulaire
+            document.getElementById('payroll-form').reset();
+            document.getElementById('resultat-container').style.display = 'none';
+            document.getElementById('apply-button').classList.add('hidden');
+            document.getElementById('apply-info').style.display = 'none';
+        } else {
+            alert('❌ Erreur: ' + (data.message || 'Une erreur est survenue'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors de l\'application du calcul. Veuillez réessayer.');
+    });
 }
 </script>
 @endpush

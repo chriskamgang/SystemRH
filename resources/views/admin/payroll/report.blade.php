@@ -125,7 +125,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($employees as $index => $employee)
-                    <tr class="hover:bg-gray-50" data-employee-id="{{ $employee->id }}">
+                    <tr class="hover:bg-gray-50 {{ isset($employee->is_manual_adjustment) && $employee->is_manual_adjustment ? 'bg-purple-50' : '' }}" data-employee-id="{{ $employee->id }}">
                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
 
                         <td class="px-4 py-4 whitespace-nowrap">
@@ -136,7 +136,14 @@
                                     </div>
                                 </div>
                                 <div class="ml-3">
-                                    <div class="text-sm font-medium text-gray-900">{{ $employee->full_name }}</div>
+                                    <div class="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                        {{ $employee->full_name }}
+                                        @if(isset($employee->is_manual_adjustment) && $employee->is_manual_adjustment)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800" title="Ajustement manuel appliqué">
+                                                <i class="fas fa-edit mr-1"></i> Manuel
+                                            </span>
+                                        @endif
+                                    </div>
                                     <div class="text-sm text-gray-500">{{ $employee->email }}</div>
                                 </div>
                             </div>
@@ -208,18 +215,33 @@
                         </td>
 
                         <td class="px-4 py-4 whitespace-nowrap text-right text-sm space-x-2">
-                            <button
-                                onclick="openJustifyModal({{ $employee->id }}, '{{ $employee->full_name }}', '{{ $employee->email }}', {{ $employee->days_not_worked }}, {{ $employee->total_late_minutes }})"
-                                class="text-blue-600 hover:text-blue-900 font-medium"
-                                title="Justifier">
-                                <i class="fas fa-file-signature"></i> Justifier
-                            </button>
-                            <button
-                                onclick="openApplyModal({{ $employee->id }}, '{{ $employee->full_name }}', {{ $employee->days_not_worked }}, {{ $employee->monthly_salary }}, {{ $employee->daily_rate ?? 0 }}, {{ $employee->absence_deduction }}, {{ $employee->net_salary }})"
-                                class="text-green-600 hover:text-green-900 font-medium"
-                                title="Appliquer la déduction">
-                                <i class="fas fa-check-circle"></i> Appliquer
-                            </button>
+                            @if(isset($employee->is_manual_adjustment) && $employee->is_manual_adjustment)
+                                <!-- Ajustement manuel: afficher les notes si disponibles -->
+                                @if(!empty($employee->manual_adjustment_notes))
+                                    <button
+                                        onclick="alert('Notes: {{ addslashes($employee->manual_adjustment_notes ?? '') }}')"
+                                        class="text-purple-600 hover:text-purple-900 font-medium"
+                                        title="Voir les notes de l'ajustement manuel">
+                                        <i class="fas fa-info-circle"></i> Notes
+                                    </button>
+                                @else
+                                    <span class="text-gray-400 text-xs italic">Ajustement manuel</span>
+                                @endif
+                            @else
+                                <!-- Actions normales pour les calculs automatiques -->
+                                <button
+                                    onclick="openJustifyModal({{ $employee->id }}, '{{ $employee->full_name }}', '{{ $employee->email }}', {{ $employee->days_not_worked }}, {{ $employee->total_late_minutes }})"
+                                    class="text-blue-600 hover:text-blue-900 font-medium"
+                                    title="Justifier">
+                                    <i class="fas fa-file-signature"></i> Justifier
+                                </button>
+                                <button
+                                    onclick="openApplyModal({{ $employee->id }}, '{{ $employee->full_name }}', {{ $employee->days_not_worked }}, {{ $employee->monthly_salary }}, {{ $employee->daily_rate ?? 0 }}, {{ $employee->absence_deduction }}, {{ $employee->net_salary }})"
+                                    class="text-green-600 hover:text-green-900 font-medium"
+                                    title="Appliquer la déduction">
+                                    <i class="fas fa-check-circle"></i> Appliquer
+                                </button>
+                            @endif
                         </td>
                     </tr>
                     @empty
