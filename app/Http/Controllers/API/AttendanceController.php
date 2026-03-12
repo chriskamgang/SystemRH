@@ -70,7 +70,7 @@ class AttendanceController extends Controller
             $ue = \App\Models\UniteEnseignement::find($request->unite_enseignement_id);
 
             // Vérifier que l'UE appartient à l'enseignant
-            if (!$ue || $ue->vacataire_id !== $user->id) {
+            if (!$ue || $ue->enseignant_id !== $user->id) {
                 return response()->json([
                     'message' => 'Cette UE ne vous appartient pas.',
                 ], 403);
@@ -88,6 +88,43 @@ class AttendanceController extends Controller
                 return response()->json([
                     'message' => 'Vous avez déjà effectué toutes les heures pour cette UE.',
                 ], 400);
+            }
+
+            // Vérifier l'emploi du temps si des créneaux existent (valides pour la période actuelle)
+            $schedules = \App\Models\UeSchedule::where('unite_enseignement_id', $ue->id)
+                ->where('is_active', true)
+                ->validNow()
+                ->get();
+
+            if ($schedules->count() > 0) {
+                $jourActuel = \App\Models\UeSchedule::getCurrentDayFr();
+                $heureActuelle = now();
+                $toleranceMinutes = (int) \App\Models\Setting::get('schedule_tolerance_minutes', '15');
+
+                $creneauValide = $schedules->first(function ($schedule) use ($jourActuel, $heureActuelle, $campus, $toleranceMinutes) {
+                    if ($schedule->jour_semaine !== $jourActuel) {
+                        return false;
+                    }
+                    if ($schedule->campus_id !== $campus->id) {
+                        return false;
+                    }
+                    $debut = \Carbon\Carbon::parse($schedule->heure_debut)->subMinutes($toleranceMinutes);
+                    $fin = \Carbon\Carbon::parse($schedule->heure_fin)->addMinutes($toleranceMinutes);
+                    $current = \Carbon\Carbon::parse($heureActuelle->format('H:i:s'));
+                    return $current->between($debut, $fin);
+                });
+
+                if (!$creneauValide) {
+                    $creneauxDuJour = $schedules->where('jour_semaine', $jourActuel)->where('campus_id', $campus->id);
+                    if ($creneauxDuJour->isEmpty()) {
+                        return response()->json([
+                            'message' => "Cette UE n'est pas programmée aujourd'hui sur ce campus.",
+                        ], 400);
+                    }
+                    return response()->json([
+                        'message' => "Cette UE n'est pas programmée à cette heure. Consultez votre emploi du temps.",
+                    ], 400);
+                }
             }
         }
 

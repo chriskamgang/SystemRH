@@ -77,6 +77,12 @@ class UniteEnseignement extends Model
         return $this->hasMany(VacatairePaymentDetail::class, 'unite_enseignement_id');
     }
 
+    // Créneaux d'emploi du temps
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(UeSchedule::class, 'unite_enseignement_id');
+    }
+
     /**
      * Scopes
      */

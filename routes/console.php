@@ -36,3 +36,9 @@ Schedule::call(function () {
 })->everyMinute()
   ->name('presence-check-dynamic')
   ->withoutOverlapping();
+
+// Auto-checkout des vacataires dont le créneau UE est terminé
+Schedule::command('schedule:auto-checkout')
+    ->everyMinute()
+    ->name('auto-checkout-ue')
+    ->withoutOverlapping();

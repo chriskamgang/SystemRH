@@ -166,6 +166,31 @@
                     </div>
                 </div>
 
+                <!-- Emploi du Temps -->
+                <div x-data="{ open: {{ request()->routeIs('admin.emploi-du-temps.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.emploi-du-temps.*') ? 'bg-blue-600' : '' }}">
+                        <div class="flex items-center">
+                            <i class="fas fa-calendar-alt w-5"></i>
+                            <span class="ml-3">Emploi du Temps</span>
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{'rotate-180': open}"></i>
+                    </button>
+                    <div x-show="open" x-transition class="ml-4 space-y-1">
+                        <a href="{{ route('admin.emploi-du-temps.index') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.emploi-du-temps.index') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-list w-4"></i>
+                            <span class="ml-2">Tous les créneaux</span>
+                        </a>
+                        <a href="{{ route('admin.emploi-du-temps.create') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.emploi-du-temps.create') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-plus w-4"></i>
+                            <span class="ml-2">Ajouter un créneau</span>
+                        </a>
+                        <a href="{{ route('admin.emploi-du-temps.bulk-create') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.emploi-du-temps.bulk-create') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-layer-group w-4"></i>
+                            <span class="ml-2">Création en lot</span>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Vacataires Section with Submenu -->
                 <div x-data="{ open: {{ request()->routeIs('admin.vacataires.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.vacataires.*') ? 'bg-blue-600' : '' }}">

@@ -143,6 +143,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/violations/history', [SecurityController::class, 'getUserViolations']);
     });
 
+    // ========== EMPLOI DU TEMPS (UE Schedules) ==========
+    Route::prefix('emploi-du-temps')->group(function () {
+        Route::get('/mon-emploi', [\App\Http\Controllers\API\UeScheduleApiController::class, 'monEmploi']);
+        Route::get('/aujourdhui', [\App\Http\Controllers\API\UeScheduleApiController::class, 'aujourdhui']);
+        Route::get('/ues-disponibles-maintenant', [\App\Http\Controllers\API\UeScheduleApiController::class, 'uesDisponiblesMaintenant']);
+    });
+
     // Test route
     Route::get('/test', function () {
         return response()->json([

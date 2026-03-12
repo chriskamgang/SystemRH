@@ -311,6 +311,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/view', [App\Http\Controllers\Admin\BrochureController::class, 'showBrochure'])->name('view');
     });
 
+    // ========== EMPLOI DU TEMPS (UE Schedules) ==========
+    Route::prefix('emploi-du-temps')->name('emploi-du-temps.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\UeScheduleController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\UeScheduleController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\UeScheduleController::class, 'store'])->name('store');
+        Route::get('/bulk-create', [App\Http\Controllers\Admin\UeScheduleController::class, 'bulkCreate'])->name('bulk-create');
+        Route::post('/bulk-store', [App\Http\Controllers\Admin\UeScheduleController::class, 'bulkStore'])->name('bulk-store');
+        Route::get('/enseignant/{id}', [App\Http\Controllers\Admin\UeScheduleController::class, 'byEnseignant'])->name('by-enseignant');
+        Route::get('/{id}/edit', [App\Http\Controllers\Admin\UeScheduleController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [App\Http\Controllers\Admin\UeScheduleController::class, 'update'])->name('update');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\UeScheduleController::class, 'destroy'])->name('destroy');
+    });
+
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
