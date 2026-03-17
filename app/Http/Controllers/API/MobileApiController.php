@@ -23,8 +23,7 @@ class MobileApiController extends Controller
             $month = $request->query('month', now()->month);
             $year = $request->query('year', now()->year);
 
-            // Calculer la paie
-            $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+            $isVacataire = $user->employee_type === 'enseignant_vacataire';
 
             // Récupérer les déductions manuelles détaillées
             $manualDeductions = ManualDeduction::with(['appliedBy'])
@@ -33,6 +32,8 @@ class MobileApiController extends Controller
                 ->where('year', $year)
                 ->where('status', 'active')
                 ->get();
+
+            $manualDeductionsTotal = $manualDeductions->sum('amount');
 
             $manualDeductionsDetails = $manualDeductions->map(function ($deduction) {
                 return [
@@ -43,6 +44,64 @@ class MobileApiController extends Controller
                     'applied_at' => $deduction->created_at->format('d/m/Y H:i'),
                 ];
             });
+
+            if ($isVacataire) {
+                // Calcul spécifique vacataire : basé sur les heures et le taux horaire
+                $payroll = PayrollCalculator::calculateVacatairePayroll($user, $year, $month);
+
+                // Calculer les jours programmés via l'emploi du temps
+                $scheduledDays = $this->getVacataireScheduledDays($user, $year, $month);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'user' => [
+                            'id' => $user->id,
+                            'full_name' => $user->full_name,
+                            'email' => $user->email,
+                            'employee_type' => $user->employee_type,
+                            'employee_id' => $user->employee_id,
+                        ],
+                        'period' => [
+                            'month' => $month,
+                            'year' => $year,
+                            'month_name' => Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY'),
+                        ],
+                        'is_vacataire' => true,
+                        'salary' => [
+                            'hourly_rate' => $payroll['hourly_rate'] ?? 0,
+                            'hours_worked' => $payroll['hours_worked'] ?? 0,
+                            'gross_salary' => $payroll['gross_amount'] ?? 0,
+                            'net_salary' => max(0, ($payroll['net_amount'] ?? 0) - $manualDeductionsTotal),
+                            'total_deductions' => ($payroll['late_penalty'] ?? 0) + $manualDeductionsTotal,
+                        ],
+                        'attendance' => [
+                            'scheduled_days' => $scheduledDays['total_scheduled_days'],
+                            'days_worked' => $payroll['days_worked'] ?? 0,
+                            'days_missed' => max(0, $scheduledDays['past_scheduled_days'] - ($payroll['days_worked'] ?? 0)),
+                            'working_days' => $scheduledDays['total_scheduled_days'],
+                            'days_not_worked' => max(0, $scheduledDays['past_scheduled_days'] - ($payroll['days_worked'] ?? 0)),
+                            'days_justified' => 0,
+                            'days_without_checkout' => 0,
+                        ],
+                        'lateness' => [
+                            'total_late_minutes' => $payroll['total_late_minutes'] ?? 0,
+                            'late_minutes_justified' => 0,
+                            'late_penalty_amount' => $payroll['late_penalty'] ?? 0,
+                        ],
+                        'deductions' => [
+                            'late_penalty_amount' => $payroll['late_penalty'] ?? 0,
+                            'absence_deduction' => 0,
+                            'manual_deductions' => $manualDeductionsTotal,
+                            'manual_deductions_details' => $manualDeductionsDetails,
+                        ],
+                        'ue_summary' => $scheduledDays['ue_summary'],
+                    ],
+                ]);
+            }
+
+            // Calcul standard pour permanents et semi-permanents
+            $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
 
             return response()->json([
                 'success' => true,
@@ -59,6 +118,7 @@ class MobileApiController extends Controller
                         'year' => $year,
                         'month_name' => Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY'),
                     ],
+                    'is_vacataire' => false,
                     'salary' => [
                         'monthly_salary' => $payroll['monthly_salary'] ?? 0,
                         'gross_salary' => $payroll['gross_salary'] ?? 0,
@@ -99,6 +159,69 @@ class MobileApiController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : 'Une erreur est survenue',
             ], 500);
         }
+    }
+
+    /**
+     * Calculer les jours programmés pour un vacataire basé sur son emploi du temps
+     */
+    private function getVacataireScheduledDays(User $user, int $year, int $month): array
+    {
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        $today = now()->endOfDay();
+
+        // Récupérer les UE actives du vacataire
+        $ueIds = \App\Models\UniteEnseignement::where('enseignant_id', $user->id)
+            ->where('statut', 'activee')
+            ->pluck('id');
+
+        // Récupérer les créneaux d'emploi du temps
+        $schedules = \App\Models\UeSchedule::whereIn('unite_enseignement_id', $ueIds)
+            ->where('is_active', true)
+            ->with('uniteEnseignement')
+            ->get();
+
+        // Jours de la semaine où le vacataire a des cours
+        $scheduledWeekdays = $schedules->pluck('jour_semaine')->unique()->toArray();
+
+        $jourToWeekday = [
+            'lundi' => 1, 'mardi' => 2, 'mercredi' => 3,
+            'jeudi' => 4, 'vendredi' => 5, 'samedi' => 6, 'dimanche' => 7,
+        ];
+
+        // Compter les jours programmés dans le mois
+        $totalScheduledDays = 0;
+        $pastScheduledDays = 0;
+        $date = $startDate->copy();
+
+        while ($date->lte($endDate)) {
+            $dayName = array_search($date->dayOfWeekIso, $jourToWeekday);
+            if ($dayName && in_array($dayName, $scheduledWeekdays)) {
+                $totalScheduledDays++;
+                if ($date->lte($today)) {
+                    $pastScheduledDays++;
+                }
+            }
+            $date->addDay();
+        }
+
+        // Résumé des UE
+        $ueSummary = $schedules->groupBy('unite_enseignement_id')->map(function ($items) {
+            $ue = $items->first()->uniteEnseignement;
+            return [
+                'code_ue' => $ue->code_ue,
+                'nom_matiere' => $ue->nom_matiere,
+                'creneaux_par_semaine' => $items->count(),
+                'jours' => $items->pluck('jour_semaine')->unique()->values()->toArray(),
+            ];
+        })->values();
+
+        return [
+            'total_scheduled_days' => $totalScheduledDays,
+            'past_scheduled_days' => $pastScheduledDays,
+            'scheduled_weekdays' => $scheduledWeekdays,
+            'ue_summary' => $ueSummary,
+        ];
     }
 
     /**

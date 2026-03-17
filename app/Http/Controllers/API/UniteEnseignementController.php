@@ -26,7 +26,7 @@ class UniteEnseignementController extends Controller
         }
 
         // Récupérer les UE activées
-        $unitesActivees = UniteEnseignement::where('vacataire_id', $user->id)
+        $unitesActivees = UniteEnseignement::where('enseignant_id', $user->id)
             ->where('statut', 'activee')
             ->with('presenceIncidents')
             ->orderBy('nom_matiere')
@@ -52,7 +52,7 @@ class UniteEnseignementController extends Controller
             });
 
         // Récupérer les UE non activées
-        $unitesNonActivees = UniteEnseignement::where('vacataire_id', $user->id)
+        $unitesNonActivees = UniteEnseignement::where('enseignant_id', $user->id)
             ->where('statut', 'non_activee')
             ->orderBy('nom_matiere')
             ->get()
@@ -100,7 +100,7 @@ class UniteEnseignementController extends Controller
         $user = Auth::user();
 
         $ue = UniteEnseignement::where('id', $id)
-            ->where('vacataire_id', $user->id)
+            ->where('enseignant_id', $user->id)
             ->with(['presenceIncidents' => function ($query) {
                 $query->orderBy('incident_date', 'desc');
             }])
@@ -163,7 +163,7 @@ class UniteEnseignementController extends Controller
         }
 
         // Uniquement les UE activées avec heures restantes > 0
-        $unitesDisponibles = UniteEnseignement::where('vacataire_id', $user->id)
+        $unitesDisponibles = UniteEnseignement::where('enseignant_id', $user->id)
             ->where('statut', 'activee')
             ->get()
             ->filter(function ($ue) {
@@ -197,7 +197,7 @@ class UniteEnseignementController extends Controller
     {
         $user = Auth::user();
 
-        $unitesActivees = UniteEnseignement::where('vacataire_id', $user->id)
+        $unitesActivees = UniteEnseignement::where('enseignant_id', $user->id)
             ->where('statut', 'activee')
             ->with('presenceIncidents')
             ->get();
