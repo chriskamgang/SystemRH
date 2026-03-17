@@ -141,7 +141,9 @@ class MobileApiController extends Controller
                         'absence_deduction' => $payroll['absence_deduction'] ?? 0,
                         'late_penalty_amount' => $payroll['late_penalty_amount'] ?? 0,
                         'manual_deductions' => $payroll['manual_deductions'] ?? 0,
+                        'loan_deductions' => $payroll['loan_deductions'] ?? 0,
                         'manual_deductions_details' => $manualDeductionsDetails,
+                        'loan_deductions_details' => $payroll['loan_deductions_details'] ?? [],
                     ],
                 ],
             ]);
