@@ -72,10 +72,18 @@
                     <p class="text-gray-600 mb-6">
                         Téléchargez l'application depuis le Google Play Store. Compatible avec Android 8.0 et versions ultérieures.
                     </p>
-                    <a href="#" class="block bg-green-600 text-white px-6 py-4 rounded-xl font-semibold text-center hover:bg-green-700 transition">
+                    <a href="#" class="block bg-green-600 text-white px-6 py-4 rounded-xl font-semibold text-center hover:bg-green-700 transition mb-3">
                         <i class="fab fa-google-play mr-2"></i>
                         Télécharger sur Google Play
                     </a>
+                    <a href="/downloads/insam-presence.apk" class="block bg-gray-800 text-white px-6 py-4 rounded-xl font-semibold text-center hover:bg-gray-900 transition">
+                        <i class="fas fa-download mr-2"></i>
+                        Télécharger l'APK directement
+                    </a>
+                    <p class="text-xs text-gray-500 mt-2 text-center">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Installation directe sans Google Play Store (57 MB)
+                    </p>
                     <div class="mt-4 grid grid-cols-3 gap-4 text-center text-sm text-gray-600">
                         <div>
                             <div class="font-bold text-green-600">Android 8+</div>
