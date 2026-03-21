@@ -44,7 +44,7 @@ class UniteEnseignementController extends Controller
      */
     public function vacataireUnites($vacataireId)
     {
-        $vacataire = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+        $vacataire = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])
             ->findOrFail($vacataireId);
 
         $unitesActivees = UniteEnseignement::where('enseignant_id', $vacataireId)
@@ -83,7 +83,7 @@ class UniteEnseignementController extends Controller
         $vacataireId = $request->get('vacataire_id');
 
         // Récupérer les vacataires ET les semi-permanents
-        $vacataires = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+        $vacataires = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])
             ->where('is_active', true)
             ->orderBy('first_name')
             ->get();
@@ -107,12 +107,12 @@ class UniteEnseignementController extends Controller
         ]);
 
         // Valider que l'utilisateur est bien un enseignant (vacataire ou semi-permanent)
-        $enseignant = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+        $enseignant = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])
             ->find($request->vacataire_id);
 
         if (!$enseignant) {
             return redirect()->back()
-                ->withErrors(['vacataire_id' => 'Cet employé doit être un enseignant (vacataire ou semi-permanent)'])
+                ->withErrors(['vacataire_id' => 'Cet employé doit être un enseignant'])
                 ->withInput();
         }
 
@@ -464,7 +464,7 @@ class UniteEnseignementController extends Controller
     public function assignForm()
     {
         // Récupérer les vacataires ET les semi-permanents
-        $enseignants = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+        $enseignants = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])
             ->where('is_active', true)
             ->orderBy('first_name')
             ->get();
@@ -488,7 +488,7 @@ class UniteEnseignementController extends Controller
         ]);
 
         // Valider que c'est bien un enseignant
-        $enseignant = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+        $enseignant = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])
             ->find($validated['enseignant_id']);
 
         if (!$enseignant) {

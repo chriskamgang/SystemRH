@@ -215,12 +215,6 @@ class VacataireController extends Controller
      */
     public function payments(Request $request)
     {
-        $vacataireRole = Role::where('name', 'vacataire')->first();
-
-        if (!$vacataireRole) {
-            return redirect()->back()->with('error', 'Le rôle vacataire n\'existe pas.');
-        }
-
         // Filtres de période
         $month = $request->filled('month') ? (int) explode('-', $request->month)[1] : Carbon::now()->month;
         $year = $request->filled('month') ? (int) explode('-', $request->month)[0] : Carbon::now()->year;
@@ -228,7 +222,7 @@ class VacataireController extends Controller
         // Filtre par statut
         $statusFilter = $request->filled('status') ? $request->status : '';
 
-        $query = User::where('role_id', $vacataireRole->id)
+        $query = User::where('employee_type', 'enseignant_vacataire')
             ->whereNotNull('hourly_rate')
             ->where('hourly_rate', '>', 0)
             ->with(['department', 'campuses']);
@@ -306,16 +300,7 @@ class VacataireController extends Controller
         $year = $request->year;
         $month = $request->month;
 
-        $vacataireRole = Role::where('name', 'vacataire')->first();
-
-        if (!$vacataireRole) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Le rôle vacataire n\'existe pas.',
-            ], 404);
-        }
-
-        $vacataires = User::where('role_id', $vacataireRole->id)
+        $vacataires = User::where('employee_type', 'enseignant_vacataire')
             ->whereNotNull('hourly_rate')
             ->where('hourly_rate', '>', 0)
             ->get();
@@ -410,8 +395,6 @@ class VacataireController extends Controller
      */
     public function report(Request $request)
     {
-        $vacataireRole = Role::where('name', 'vacataire')->first();
-
         // Filtres
         $startDate = $request->filled('start_date')
             ? Carbon::parse($request->start_date)
@@ -421,7 +404,7 @@ class VacataireController extends Controller
             ? Carbon::parse($request->end_date)
             : Carbon::now()->endOfMonth();
 
-        $query = User::where('role_id', $vacataireRole->id)
+        $query = User::where('employee_type', 'enseignant_vacataire')
             ->with(['campuses']);
 
         if ($request->filled('campus_id')) {

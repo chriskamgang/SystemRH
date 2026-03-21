@@ -430,6 +430,19 @@ class PayrollCalculator
             }
         }
 
+        // ===== AJOUTER LES HEURES VALIDÉES DES UE (paiements manuels vacataires) =====
+        $unitesActivees = \App\Models\UniteEnseignement::where('enseignant_id', $user->id)
+            ->where('statut', 'activee')
+            ->where('heures_effectuees_validees', '>', 0)
+            ->get();
+
+        $totalHeuresValidees = $unitesActivees->sum('heures_effectuees_validees');
+
+        // Utiliser les heures validées si elles sont supérieures aux heures calculées par pointage
+        if ($totalHeuresValidees > $totalHours) {
+            $totalHours = (float) $totalHeuresValidees;
+        }
+
         // Calculer le montant brut
         $grossAmount = $totalHours * $hourlyRate;
 

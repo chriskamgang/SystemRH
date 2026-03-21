@@ -33,7 +33,7 @@ class UeScheduleController extends Controller
             ->orderBy('heure_debut')
             ->paginate(25);
 
-        $enseignants = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent'])
+        $enseignants = User::whereIn('employee_type', ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])
             ->where('is_active', true)
             ->orderBy('last_name')
             ->get();
@@ -57,14 +57,12 @@ class UeScheduleController extends Controller
 
     public function store(Request $request)
     {
+        $validJours = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+
         $request->validate([
             'unite_enseignement_id' => 'required|exists:unites_enseignement,id',
             'campus_id' => 'required|exists:campuses,id',
             'jours' => 'required|array|min:1',
-            'jours.*' => 'in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
-            'heure_debut' => 'required|date_format:H:i',
-            'heure_fin' => 'required|date_format:H:i|after:heure_debut',
-            'salle' => 'nullable|string|max:50',
             'date_debut_validite' => 'nullable|date',
             'date_fin_validite' => 'nullable|date|after_or_equal:date_debut_validite',
         ]);
@@ -72,14 +70,27 @@ class UeScheduleController extends Controller
         $created = 0;
         $skipped = [];
 
-        foreach ($request->jours as $jour) {
+        foreach ($request->jours as $jour => $data) {
+            if (!in_array($jour, $validJours)) {
+                continue;
+            }
+
+            if (empty($data['heure_debut']) || empty($data['heure_fin'])) {
+                continue;
+            }
+
+            if ($data['heure_fin'] <= $data['heure_debut']) {
+                $skipped[] = ucfirst($jour) . ' (heure fin avant début)';
+                continue;
+            }
+
             $exists = UeSchedule::where('unite_enseignement_id', $request->unite_enseignement_id)
                 ->where('jour_semaine', $jour)
-                ->where('heure_debut', $request->heure_debut)
+                ->where('heure_debut', $data['heure_debut'])
                 ->exists();
 
             if ($exists) {
-                $skipped[] = ucfirst($jour);
+                $skipped[] = ucfirst($jour) . ' (déjà existant)';
                 continue;
             }
 
@@ -87,9 +98,9 @@ class UeScheduleController extends Controller
                 'unite_enseignement_id' => $request->unite_enseignement_id,
                 'campus_id' => $request->campus_id,
                 'jour_semaine' => $jour,
-                'heure_debut' => $request->heure_debut,
-                'heure_fin' => $request->heure_fin,
-                'salle' => $request->salle,
+                'heure_debut' => $data['heure_debut'],
+                'heure_fin' => $data['heure_fin'],
+                'salle' => $data['salle'] ?? null,
                 'date_debut_validite' => $request->date_debut_validite,
                 'date_fin_validite' => $request->date_fin_validite,
                 'created_by' => auth()->id(),
@@ -99,7 +110,7 @@ class UeScheduleController extends Controller
 
         $message = "{$created} créneau(x) créé(s) avec succès.";
         if (!empty($skipped)) {
-            $message .= ' Ignorés (déjà existants) : ' . implode(', ', $skipped) . '.';
+            $message .= ' Ignorés : ' . implode(', ', $skipped) . '.';
             return redirect()->route('admin.emploi-du-temps.index')->with('warning', $message);
         }
 

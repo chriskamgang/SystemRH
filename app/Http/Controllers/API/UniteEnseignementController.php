@@ -18,10 +18,10 @@ class UniteEnseignementController extends Controller
         $user = Auth::user();
 
         // Vérifier que c'est un enseignant vacataire ou semi-permanent
-        if ($user->employee_type !== 'enseignant_vacataire' && $user->employee_type !== 'semi_permanent') {
+        if (!in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Accès réservé aux enseignants vacataires et semi-permanents'
+                'message' => 'Accès réservé aux enseignants'
             ], 403);
         }
 
@@ -32,18 +32,23 @@ class UniteEnseignementController extends Controller
             ->orderBy('nom_matiere')
             ->get()
             ->map(function ($ue) use ($user) {
+                $tauxHoraire = (float) ($user->hourly_rate ?? 0);
+                $heuresValidees = (float) $ue->heures_effectuees_validees;
+                $montantPayeValide = $heuresValidees * $tauxHoraire;
+                $montantRestantValide = ((float) $ue->volume_horaire_total - $heuresValidees) * $tauxHoraire;
+
                 return [
                     'id' => $ue->id,
                     'code_ue' => $ue->code_ue,
                     'nom_matiere' => $ue->nom_matiere,
                     'volume_horaire_total' => (float) $ue->volume_horaire_total,
-                    'heures_effectuees' => (float) $ue->heures_effectuees,
-                    'heures_restantes' => (float) $ue->heures_restantes,
-                    'pourcentage_progression' => (float) $ue->pourcentage_progression,
-                    'montant_paye' => (float) $ue->montant_paye,
-                    'montant_restant' => (float) $ue->montant_restant,
+                    'heures_effectuees' => $heuresValidees,
+                    'heures_restantes' => max(0, (float) $ue->volume_horaire_total - $heuresValidees),
+                    'pourcentage_progression' => (float) $ue->pourcentage_progression_validees,
+                    'montant_paye' => $montantPayeValide,
+                    'montant_restant' => max(0, $montantRestantValide),
                     'montant_max' => (float) $ue->montant_max,
-                    'taux_horaire' => (float) $user->hourly_rate,
+                    'taux_horaire' => $tauxHoraire,
                     'annee_academique' => $ue->annee_academique,
                     'semestre' => $ue->semestre,
                     'statut' => 'activee',
@@ -71,7 +76,7 @@ class UniteEnseignementController extends Controller
                 ];
             });
 
-        // Calculer les totaux
+        // Calculer les totaux (basés sur les heures validées)
         $totalHeuresEffectuees = $unitesActivees->sum('heures_effectuees');
         $totalMontantPaye = $unitesActivees->sum('montant_paye');
         $totalMontantRestant = $unitesActivees->sum('montant_restant');
@@ -124,6 +129,11 @@ class UniteEnseignementController extends Controller
             ];
         });
 
+        $tauxHoraire = (float) ($user->hourly_rate ?? 0);
+        $heuresValidees = (float) $ue->heures_effectuees_validees;
+        $montantPayeValide = $heuresValidees * $tauxHoraire;
+        $montantRestantValide = max(0, ((float) $ue->volume_horaire_total - $heuresValidees) * $tauxHoraire);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -131,13 +141,13 @@ class UniteEnseignementController extends Controller
                 'code_ue' => $ue->code_ue,
                 'nom_matiere' => $ue->nom_matiere,
                 'volume_horaire_total' => (float) $ue->volume_horaire_total,
-                'heures_effectuees' => (float) $ue->heures_effectuees,
-                'heures_restantes' => (float) $ue->heures_restantes,
-                'pourcentage_progression' => (float) $ue->pourcentage_progression,
-                'montant_paye' => (float) $ue->montant_paye,
-                'montant_restant' => (float) $ue->montant_restant,
+                'heures_effectuees' => $heuresValidees,
+                'heures_restantes' => max(0, (float) $ue->volume_horaire_total - $heuresValidees),
+                'pourcentage_progression' => (float) $ue->pourcentage_progression_validees,
+                'montant_paye' => $montantPayeValide,
+                'montant_restant' => $montantRestantValide,
                 'montant_max' => (float) $ue->montant_max,
-                'taux_horaire' => (float) $user->hourly_rate,
+                'taux_horaire' => $tauxHoraire,
                 'statut' => $ue->statut,
                 'annee_academique' => $ue->annee_academique,
                 'semestre' => $ue->semestre,
@@ -155,10 +165,10 @@ class UniteEnseignementController extends Controller
         $user = Auth::user();
 
         // Vérifier que c'est un enseignant vacataire ou semi-permanent
-        if ($user->employee_type !== 'enseignant_vacataire' && $user->employee_type !== 'semi_permanent') {
+        if (!in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Accès réservé aux enseignants vacataires et semi-permanents'
+                'message' => 'Accès réservé aux enseignants'
             ], 403);
         }
 
@@ -170,14 +180,15 @@ class UniteEnseignementController extends Controller
                 return $ue->heures_restantes > 0;
             })
             ->map(function ($ue) use ($user) {
+                $heuresValidees = (float) $ue->heures_effectuees_validees;
                 return [
                     'id' => $ue->id,
                     'code_ue' => $ue->code_ue,
                     'nom_matiere' => $ue->nom_matiere,
-                    'heures_effectuees' => (float) $ue->heures_effectuees,
-                    'heures_restantes' => (float) $ue->heures_restantes,
+                    'heures_effectuees' => $heuresValidees,
+                    'heures_restantes' => max(0, (float) $ue->volume_horaire_total - $heuresValidees),
                     'volume_total' => (float) $ue->volume_horaire_total,
-                    'pourcentage' => (float) $ue->pourcentage_progression,
+                    'pourcentage' => (float) $ue->pourcentage_progression_validees,
                     'taux_horaire' => (float) $user->hourly_rate,
                 ];
             })
@@ -202,30 +213,27 @@ class UniteEnseignementController extends Controller
             ->with('presenceIncidents')
             ->get();
 
+        $tauxHoraire = (float) ($user->hourly_rate ?? 0);
         $totalVolumeHoraire = $unitesActivees->sum('volume_horaire_total');
-        $totalHeuresEffectuees = $unitesActivees->sum(function ($ue) {
-            return $ue->heures_effectuees;
-        });
-        $totalHeuresRestantes = $totalVolumeHoraire - $totalHeuresEffectuees;
-        $totalMontantPaye = $unitesActivees->sum(function ($ue) {
-            return $ue->montant_paye;
-        });
-        $totalMontantMax = $totalVolumeHoraire * ($user->hourly_rate ?? 0);
+        $totalHeuresValidees = $unitesActivees->sum('heures_effectuees_validees');
+        $totalHeuresRestantes = max(0, $totalVolumeHoraire - $totalHeuresValidees);
+        $totalMontantPaye = $totalHeuresValidees * $tauxHoraire;
+        $totalMontantMax = $totalVolumeHoraire * $tauxHoraire;
 
         return response()->json([
             'success' => true,
             'data' => [
                 'nombre_ue_activees' => $unitesActivees->count(),
                 'volume_horaire_total' => (float) $totalVolumeHoraire,
-                'heures_effectuees' => (float) $totalHeuresEffectuees,
+                'heures_effectuees' => (float) $totalHeuresValidees,
                 'heures_restantes' => (float) $totalHeuresRestantes,
                 'pourcentage_global' => $totalVolumeHoraire > 0
-                    ? (float) (($totalHeuresEffectuees / $totalVolumeHoraire) * 100)
+                    ? (float) (($totalHeuresValidees / $totalVolumeHoraire) * 100)
                     : 0,
                 'montant_paye' => (float) $totalMontantPaye,
                 'montant_potentiel_max' => (float) $totalMontantMax,
                 'montant_restant' => (float) ($totalMontantMax - $totalMontantPaye),
-                'taux_horaire' => (float) $user->hourly_rate,
+                'taux_horaire' => $tauxHoraire,
             ]
         ]);
     }

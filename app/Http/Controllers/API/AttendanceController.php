@@ -65,8 +65,8 @@ class AttendanceController extends Controller
         $user = $request->user();
         $campus = Campus::findOrFail($request->campus_id);
 
-        // Si enseignant vacataire ou semi-permanent, vérifier l'UE
-        if (($user->employee_type === 'enseignant_vacataire' || $user->employee_type === 'semi_permanent') && $request->unite_enseignement_id) {
+        // Si enseignant, vérifier l'UE
+        if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire']) && $request->unite_enseignement_id) {
             $ue = \App\Models\UniteEnseignement::find($request->unite_enseignement_id);
 
             // Vérifier que l'UE appartient à l'enseignant
