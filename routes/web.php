@@ -17,6 +17,7 @@ Route::get('/tarifs', [LandingController::class, 'pricing'])->name('landing.pric
 Route::get('/temoignages', [LandingController::class, 'testimonials'])->name('landing.testimonials');
 Route::get('/faq', [LandingController::class, 'faq'])->name('landing.faq');
 Route::get('/telecharger', [LandingController::class, 'download'])->name('landing.download');
+Route::post('/telecharger/ios-beta', [LandingController::class, 'registerIosBeta'])->name('landing.ios-beta');
 
 // Authentication routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -322,6 +323,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/{id}/edit', [App\Http\Controllers\Admin\UeScheduleController::class, 'edit'])->name('edit');
         Route::put('/{id}', [App\Http\Controllers\Admin\UeScheduleController::class, 'update'])->name('update');
         Route::delete('/{id}', [App\Http\Controllers\Admin\UeScheduleController::class, 'destroy'])->name('destroy');
+    });
+
+    // iOS Beta Requests
+    Route::prefix('ios-beta')->name('ios-beta.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\IosBetaController::class, 'index'])->name('index');
+        Route::post('/{id}/invite', [App\Http\Controllers\Admin\IosBetaController::class, 'markInvited'])->name('invite');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\IosBetaController::class, 'destroy'])->name('destroy');
     });
 
     // Logout

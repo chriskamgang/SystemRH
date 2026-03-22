@@ -7,11 +7,10 @@ use App\Models\Campus;
 use App\Models\Attendance;
 use App\Models\PresenceCheck;
 use App\Models\Notification;
+use App\Models\NotificationSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use Kreait\Firebase\Messaging\CloudMessage;
-use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
-use Kreait\Firebase\Factory;
+use Google\Auth\Credentials\ServiceAccountCredentials;
 
 class PresenceNotificationService
 {
@@ -26,6 +25,18 @@ class PresenceNotificationService
         $today = $now->toDateString();
 
         Log::info("📱 Envoi des notifications de présence - " . $now->format('H:i'));
+
+        // Vérifier si c'est l'heure de la pause — ne pas envoyer pendant la pause
+        $settings = NotificationSetting::getSettings();
+        if ($settings->isInBreakPeriod($now)) {
+            Log::info("⏸️ Pause déjeuner en cours - notifications de présence ignorées");
+            return [
+                'total' => 0,
+                'sent' => 0,
+                'failed' => 0,
+                'results' => [],
+            ];
+        }
 
         // Récupérer tous les employés qui ont un check-in actif aujourd'hui
         $activeCheckIns = self::getActiveCheckIns($today);
@@ -154,35 +165,81 @@ class PresenceNotificationService
     private static function sendFCMNotification(User $user, PresenceCheck $presenceCheck): bool
     {
         try {
-            // Vérifier si Firebase est configuré
-            $firebaseCredentials = env('FIREBASE_CREDENTIALS');
+            $credentialsPath = config('firebase.credentials') ?? storage_path('firebase-credentials.json');
 
-            if (!$firebaseCredentials || !file_exists($firebaseCredentials)) {
-                Log::warning("Firebase credentials non configuré");
+            if (!file_exists($credentialsPath)) {
+                Log::warning("Firebase credentials non configuré: $credentialsPath");
                 return false;
             }
 
-            $factory = (new Factory)->withServiceAccount($firebaseCredentials);
-            $messaging = $factory->createMessaging();
+            $creds = json_decode(file_get_contents($credentialsPath), true);
+            $projectId = $creds['project_id'] ?? null;
 
-            $notification = FirebaseNotification::create(
-                'Vérification de présence',
-                'Êtes-vous toujours présent sur le site ?'
+            if (!$projectId) {
+                Log::error('Firebase project_id not found');
+                return false;
+            }
+
+            // Obtenir le token OAuth2
+            $sa = new ServiceAccountCredentials(
+                ['https://www.googleapis.com/auth/firebase.messaging'],
+                $creds
             );
+            $token = $sa->fetchAuthToken();
+            $accessToken = $token['access_token'] ?? null;
 
-            $message = CloudMessage::withTarget('token', $user->fcm_token)
-                ->withNotification($notification)
-                ->withData([
-                    'type' => 'presence_check',
-                    'presence_check_id' => (string) $presenceCheck->id,
-                    'check_time' => $presenceCheck->check_time->toIso8601String(),
-                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                ]);
+            if (!$accessToken) {
+                Log::error('Failed to get Firebase access token');
+                return false;
+            }
 
-            $messaging->send($message);
+            $title = 'Vérification de présence';
+            $body = 'Êtes-vous toujours présent sur le site ?';
 
-            Log::info("✅ Notification FCM envoyée à {$user->full_name} (ID: {$user->id})");
-            return true;
+            $payload = [
+                'message' => [
+                    'token' => $user->fcm_token,
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                    ],
+                    'data' => [
+                        'type' => 'presence_check',
+                        'presence_check_id' => (string) $presenceCheck->id,
+                        'check_time' => $presenceCheck->check_time->toIso8601String(),
+                    ],
+                    'apns' => [
+                        'headers' => ['apns-priority' => '10'],
+                        'payload' => ['aps' => ['sound' => 'default']],
+                    ],
+                    'android' => [
+                        'priority' => 'high',
+                        'notification' => ['sound' => 'default', 'channel_id' => 'presence_check_channel'],
+                    ],
+                ],
+            ];
+
+            $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json',
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if ($httpCode === 200) {
+                Log::info("✅ Notification FCM envoyée à {$user->full_name} (ID: {$user->id})");
+                return true;
+            }
+
+            Log::error("❌ FCM API error (HTTP {$httpCode}) pour {$user->full_name}: {$response}");
+            return false;
 
         } catch (\Exception $e) {
             Log::error("❌ Erreur FCM pour {$user->full_name} (ID: {$user->id}): " . $e->getMessage());

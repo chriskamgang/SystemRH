@@ -5,33 +5,55 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Notification;
 use Illuminate\Support\Facades\Log;
-use Kreait\Firebase\Factory;
-use Kreait\Firebase\Messaging\CloudMessage;
-use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
-use Kreait\Firebase\Messaging\AndroidConfig;
-use Kreait\Firebase\Messaging\ApnsConfig;
+use Google\Auth\Credentials\ServiceAccountCredentials;
 
 class PushNotificationService
 {
-    protected $messaging;
+    protected $credentialsPath;
+    protected $projectId;
+    protected $initialized = false;
 
     public function __construct()
     {
         try {
-            // Charger les credentials depuis le fichier JSON
-            $credentialsPath = storage_path('firebase-credentials.json');
+            $this->credentialsPath = storage_path('firebase-credentials.json');
 
-            if (!file_exists($credentialsPath)) {
-                Log::error('Firebase credentials file not found at: ' . $credentialsPath);
+            if (!file_exists($this->credentialsPath)) {
+                Log::error('Firebase credentials file not found at: ' . $this->credentialsPath);
                 return;
             }
 
-            $factory = (new Factory)->withServiceAccount($credentialsPath);
-            $this->messaging = $factory->createMessaging();
+            $creds = json_decode(file_get_contents($this->credentialsPath), true);
+            $this->projectId = $creds['project_id'] ?? null;
 
-            Log::info('✓ Firebase Admin SDK initialized with API V1');
+            if (!$this->projectId) {
+                Log::error('Firebase project_id not found in credentials');
+                return;
+            }
+
+            $this->initialized = true;
+            Log::info('✓ Firebase Push Service initialized (FCM API V1 direct)');
         } catch (\Exception $e) {
-            Log::error('Failed to initialize Firebase Admin SDK: ' . $e->getMessage());
+            Log::error('Failed to initialize Firebase Push Service: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtenir un access token OAuth2
+     */
+    protected function getAccessToken(): ?string
+    {
+        try {
+            $creds = json_decode(file_get_contents($this->credentialsPath), true);
+            $sa = new ServiceAccountCredentials(
+                ['https://www.googleapis.com/auth/firebase.messaging'],
+                $creds
+            );
+            $token = $sa->fetchAuthToken();
+            return $token['access_token'] ?? null;
+        } catch (\Exception $e) {
+            Log::error('Failed to get Firebase access token: ' . $e->getMessage());
+            return null;
         }
     }
 
@@ -88,7 +110,7 @@ class PushNotificationService
     public function sendScanAvailableNotification(User $user, $campus)
     {
         $title = "Pointage disponible";
-        $body = "Vous pouvez déjà scanner au campus {$campus->name}";
+        $body = "Vous êtes à {$campus->name}. Vous pouvez faire votre check-in maintenant !";
 
         $data = [
             'type' => 'scan_available',
@@ -101,68 +123,74 @@ class PushNotificationService
     }
 
     /**
-     * Méthode principale pour envoyer une notification via FCM API V1
+     * Méthode principale pour envoyer une notification via FCM API V1 (appel direct)
      */
     protected function sendNotification($fcmToken, string $title, string $body, array $data, User $user, string $type, bool $withAction = false)
     {
-        if (!$this->messaging) {
-            Log::error('Firebase Messaging not initialized');
+        if (!$this->initialized) {
+            Log::error('Firebase Push Service not initialized');
             return false;
         }
 
         try {
-            // Créer la notification Firebase
-            $notification = FirebaseNotification::create($title, $body);
+            $accessToken = $this->getAccessToken();
 
-            // Configuration Android avec priorité haute
-            $androidConfig = AndroidConfig::fromArray([
-                'priority' => 'high',
-                'notification' => [
-                    'sound' => 'default',
-                    'channel_id' => $withAction ? 'presence_check_channel' : 'attendance_channel',
-                    'priority' => 'max',
-                ],
-            ]);
+            if (!$accessToken) {
+                Log::error('Failed to obtain Firebase access token');
+                $this->saveNotificationToDatabase($user, $title, $body, $type, $data, false);
+                return false;
+            }
 
-            // Configuration iOS avec priorité haute
-            $apnsConfig = ApnsConfig::fromArray([
-                'headers' => [
-                    'apns-priority' => '10',
-                ],
-                'payload' => [
-                    'aps' => [
-                        'alert' => [
-                            'title' => $title,
-                            'body' => $body,
+            // Construire le payload FCM v1
+            $payload = [
+                'message' => [
+                    'token' => $fcmToken,
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                    ],
+                    'data' => $data,
+                    'android' => [
+                        'priority' => 'high',
+                        'notification' => [
+                            'sound' => 'default',
+                            'channel_id' => $withAction ? 'presence_check_channel' : 'attendance_channel',
                         ],
-                        'sound' => 'default',
+                    ],
+                    'apns' => [
+                        'headers' => [
+                            'apns-priority' => '10',
+                        ],
+                        'payload' => [
+                            'aps' => [
+                                'sound' => 'default',
+                            ],
+                        ],
                     ],
                 ],
+            ];
+
+            $url = "https://fcm.googleapis.com/v1/projects/{$this->projectId}/messages:send";
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json',
             ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 
-            // Créer le message
-            $message = CloudMessage::withTarget('token', $fcmToken)
-                ->withNotification($notification)
-                ->withData($data)
-                ->withAndroidConfig($androidConfig)
-                ->withApnsConfig($apnsConfig);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-            // Envoyer le message
-            $this->messaging->send($message);
+            if ($httpCode === 200) {
+                $this->saveNotificationToDatabase($user, $title, $body, $type, $data, true);
+                Log::info("✓ Push notification sent to user {$user->id} via FCM API V1");
+                return true;
+            }
 
-            // Sauvegarder dans la base de données
-            $this->saveNotificationToDatabase($user, $title, $body, $type, $data, true);
-
-            Log::info("✓ Push notification sent successfully to user {$user->id} via API V1");
-            return true;
-
-        } catch (\Kreait\Firebase\Exception\Messaging\NotFound $e) {
-            Log::error("FCM token not found for user {$user->id}: " . $e->getMessage());
-            $this->saveNotificationToDatabase($user, $title, $body, $type, $data, false);
-            return false;
-
-        } catch (\Kreait\Firebase\Exception\MessagingException $e) {
-            Log::error("Firebase messaging error for user {$user->id}: " . $e->getMessage());
+            Log::error("FCM API error (HTTP {$httpCode}) for user {$user->id}: {$response}");
             $this->saveNotificationToDatabase($user, $title, $body, $type, $data, false);
             return false;
 
@@ -208,6 +236,6 @@ class PushNotificationService
      */
     public function isConfigured(): bool
     {
-        return $this->messaging !== null;
+        return $this->initialized;
     }
 }

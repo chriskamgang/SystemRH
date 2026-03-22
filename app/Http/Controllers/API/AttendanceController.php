@@ -228,7 +228,7 @@ class AttendanceController extends Controller
             // Sinon utiliser les horaires de la plage détectée
             $shiftTimes = $this->getShiftTimes($shift);
             $shiftStartTime = Carbon::parse($shiftTimes['start']);
-            $lateTolerance = $campus->late_tolerance ?? 5;
+            $lateTolerance = $campus->late_tolerance ?? (int) Setting::get('late_tolerance', 15);
         }
 
         $toleranceTime = $shiftStartTime->copy()->addMinutes($lateTolerance);
@@ -260,8 +260,8 @@ class AttendanceController extends Controller
             'status' => 'valid',
         ];
 
-        // Ajouter l'UE si vacataire ou semi-permanent
-        if (($user->employee_type === 'enseignant_vacataire' || $user->employee_type === 'semi_permanent') && $request->unite_enseignement_id) {
+        // Ajouter l'UE si enseignant (vacataire, semi-permanent ou titulaire)
+        if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire']) && $request->unite_enseignement_id) {
             $attendanceData['unite_enseignement_id'] = $request->unite_enseignement_id;
         }
 
@@ -361,8 +361,12 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Calculer la durée de cette session
+        // Calculer la durée de cette session (en soustrayant la pause)
         $sessionDurationMinutes = $checkIn->timestamp->diffInMinutes($now);
+        $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+            $checkIn->timestamp, $now, $user->employee_type
+        );
+        $sessionDurationMinutes -= $breakMinutes;
         $sessionDurationHours = round($sessionDurationMinutes / 60, 2);
 
         // Variables pour le plafonnement

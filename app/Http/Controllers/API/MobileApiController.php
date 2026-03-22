@@ -127,8 +127,9 @@ class MobileApiController extends Controller
                     ],
                     'attendance' => [
                         'working_days' => $payroll['working_days'] ?? 0,
-                        'days_worked' => $payroll['days_worked'] ?? 0,
-                        'days_not_worked' => $payroll['days_not_worked'] ?? 0,
+                        'days_worked' => round($payroll['days_worked'] ?? 0, 2),
+                        'total_hours_worked' => $payroll['total_hours_worked'] ?? 0,
+                        'days_not_worked' => round($payroll['days_not_worked'] ?? 0, 2),
                         'days_justified' => $payroll['days_justified'] ?? 0,
                         'days_without_checkout' => $payroll['days_without_checkout'] ?? 0,
                     ],

@@ -223,9 +223,7 @@ class EmployeeController extends Controller
     {
         \Log::info('=== UPDATE EMPLOYEE START ===', [
             'employee_id' => $id,
-            'employee_type' => $request->employee_type,
-            'has_jours_travail' => $request->has('jours_travail'),
-            'jours_travail' => $request->jours_travail,
+            'all_input' => $request->all(),
         ]);
 
         $employee = User::findOrFail($id);

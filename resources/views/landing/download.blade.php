@@ -24,7 +24,7 @@
             <div>
                 <h2 class="text-3xl font-bold text-gray-900 mb-8">Applications Mobile</h2>
 
-                <!-- iOS Download -->
+                <!-- iOS Download - Beta TestFlight -->
                 <div class="bg-white rounded-2xl shadow-lg p-8 mb-6 hover-lift">
                     <div class="flex items-center mb-6">
                         <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
@@ -32,16 +32,101 @@
                         </div>
                         <div>
                             <h3 class="text-2xl font-bold text-gray-900">iOS App</h3>
-                            <p class="text-gray-600">Pour iPhone et iPad</p>
+                            <span class="inline-block bg-orange-100 text-orange-700 text-xs font-semibold px-2 py-1 rounded-full">
+                                <i class="fas fa-flask mr-1"></i>Beta TestFlight
+                            </span>
                         </div>
                     </div>
-                    <p class="text-gray-600 mb-6">
-                        Téléchargez l'application depuis l'App Store. Compatible avec iOS 13.0 et versions ultérieures.
+
+                    <p class="text-gray-600 mb-4">
+                        L'application iOS est actuellement en phase de test via <strong>Apple TestFlight</strong>.
+                        Inscrivez-vous ci-dessous pour recevoir une invitation.
                     </p>
-                    <a href="#" class="block bg-black text-white px-6 py-4 rounded-xl font-semibold text-center hover:bg-gray-800 transition">
-                        <i class="fab fa-apple mr-2"></i>
-                        Télécharger sur l'App Store
-                    </a>
+
+                    <!-- Messages de succès/info -->
+                    @if(session('ios_beta_success'))
+                        <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mt-0.5 mr-3"></i>
+                                <div>
+                                    <p class="text-green-800 font-semibold">{{ session('ios_beta_success') }}</p>
+                                    <p class="text-green-700 text-sm mt-1">Consultez les instructions ci-dessous pour savoir comment installer l'app.</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(session('ios_beta_info'))
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-info-circle text-blue-500 mr-3"></i>
+                                <p class="text-blue-800">{{ session('ios_beta_info') }}</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Formulaire d'inscription -->
+                    <form action="{{ route('landing.ios-beta') }}" method="POST" class="mb-6">
+                        @csrf
+                        <div class="space-y-3">
+                            <div>
+                                <input type="text" name="full_name" placeholder="Votre nom complet"
+                                    value="{{ old('full_name') }}"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                            </div>
+                            <div>
+                                <input type="email" name="email" placeholder="Votre adresse email Apple ID *" required
+                                    value="{{ old('email') }}"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                @error('email')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <button type="submit" class="w-full bg-black text-white px-6 py-4 rounded-xl font-semibold text-center hover:bg-gray-800 transition flex items-center justify-center">
+                                <i class="fab fa-apple mr-2 text-xl"></i>
+                                S'inscrire pour la beta iOS
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 text-center">
+                            <i class="fas fa-lock mr-1"></i>
+                            Utilisez l'email associé à votre Apple ID
+                        </p>
+                    </form>
+
+                    <!-- Instructions TestFlight -->
+                    <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-5">
+                        <h4 class="font-bold text-gray-900 mb-3 flex items-center">
+                            <i class="fas fa-list-ol text-blue-600 mr-2"></i>
+                            Comment installer via TestFlight ?
+                        </h4>
+                        <ol class="space-y-3 text-sm text-gray-700">
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">1</span>
+                                <span>Installez l'app <strong>TestFlight</strong> depuis l'App Store sur votre iPhone
+                                    <a href="https://apps.apple.com/app/testflight/id899247664" target="_blank" class="text-blue-600 underline ml-1">
+                                        <i class="fas fa-external-link-alt text-xs"></i> Ouvrir
+                                    </a>
+                                </span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">2</span>
+                                <span>Inscrivez-vous ci-dessus avec <strong>l'email de votre Apple ID</strong></span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">3</span>
+                                <span>Vous recevrez un <strong>email d'invitation</strong> de la part d'Apple (vérifiez aussi les spams)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">4</span>
+                                <span>Ouvrez le lien dans l'email, puis cliquez sur <strong>"Accepter"</strong> dans TestFlight</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">5</span>
+                                <span>L'application <strong>INSAM Presence</strong> sera installée automatiquement sur votre iPhone</span>
+                            </li>
+                        </ol>
+                    </div>
+
                     <div class="mt-4 grid grid-cols-3 gap-4 text-center text-sm text-gray-600">
                         <div>
                             <div class="font-bold text-blue-600">iOS 13+</div>
@@ -52,8 +137,8 @@
                             <div>Taille</div>
                         </div>
                         <div>
-                            <div class="font-bold text-blue-600">v2.1</div>
-                            <div>Actuelle</div>
+                            <div class="font-bold text-orange-500">Beta</div>
+                            <div>Statut</div>
                         </div>
                     </div>
                 </div>
@@ -82,7 +167,7 @@
                     </a>
                     <p class="text-xs text-gray-500 mt-2 text-center">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Installation directe sans Google Play Store (57 MB)
+                        Installation directe sans Google Play Store (54 MB)
                     </p>
                     <div class="mt-4 grid grid-cols-3 gap-4 text-center text-sm text-gray-600">
                         <div>

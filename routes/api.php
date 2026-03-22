@@ -8,6 +8,7 @@ use App\Http\Controllers\API\CampusController;
 use App\Http\Controllers\API\PresenceCheckController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\SecurityController;
+use App\Http\Controllers\API\BreakController;
 
 // Route de test (accessible via GET dans le navigateur)
 Route::get('/', function () {
@@ -63,6 +64,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/today', [AttendanceController::class, 'today']);
         Route::get('/stats', [AttendanceController::class, 'stats']);
         Route::get('/current-status', [AttendanceController::class, 'currentStatus']);
+    });
+
+    // ========== PAUSE DÉJEUNER ==========
+    Route::prefix('break')->group(function () {
+        Route::post('/start', [BreakController::class, 'start']);
+        Route::post('/end', [BreakController::class, 'end']);
+        Route::get('/status', [BreakController::class, 'status']);
     });
 
     // ========== CAMPUS ==========

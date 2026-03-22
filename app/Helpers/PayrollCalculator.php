@@ -64,11 +64,14 @@ class PayrollCalculator
 
     /**
      * Calculer les statistiques de présence d'un employé pour un mois
+     * Le salaire est progressif : basé sur les heures réellement travaillées
+     * Un "jour travaillé" n'est compté que lorsqu'il y a check-in ET check-out
      */
     public static function calculateAttendanceStats(User $user, int $year, int $month): array
     {
         $startDate = Carbon::create($year, $month, 1)->startOfMonth();
         $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        $workingHoursPerDay = (float) Setting::get('working_hours_per_day', 8);
 
         // ===== 1. PRÉSENCES GPS (Attendance) =====
         $attendances = Attendance::where('user_id', $user->id)
@@ -78,13 +81,14 @@ class PayrollCalculator
 
         // Grouper par date ET par plage (matin/soir)
         $groupedByDateShift = $attendances->groupBy(function ($attendance) {
-            $shift = $attendance->shift ?? 'morning'; // Par défaut morning pour anciennes données
+            $shift = $attendance->shift ?? 'morning';
             return $attendance->timestamp->format('Y-m-d') . '_' . $shift;
         });
 
-        $daysWorked = 0;
+        $totalHoursWorked = 0;
         $totalLateMinutes = 0;
         $daysWithoutCheckout = 0;
+        $completedSessions = 0;
 
         foreach ($groupedByDateShift as $dateShift => $shiftAttendances) {
             list($date, $shift) = explode('_', $dateShift);
@@ -93,28 +97,36 @@ class PayrollCalculator
             $checkOut = $shiftAttendances->where('type', 'check-out')->first();
 
             if ($checkIn) {
-                // Déterminer la valeur du jour selon la plage et le jour de la semaine
-                $carbonDate = Carbon::parse($date);
+                if ($checkOut) {
+                    // Session complète : calculer les heures réelles
+                    $sessionMinutes = $checkIn->timestamp->diffInMinutes($checkOut->timestamp);
 
-                // Pour le matin: jour complet ou demi-journée selon le jour
-                // Pour le soir: toujours compter comme présence (valeur à définir)
-                if ($shift === 'morning') {
-                    $dayValue = $carbonDate->dayOfWeek == 6 ? 0.5 : 1;
+                    // Soustraire la pause déjeuner
+                    $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                        $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
+                    );
+                    $sessionMinutes -= $breakMinutes;
+
+                    $totalHoursWorked += max(0, $sessionMinutes / 60);
+                    $completedSessions++;
                 } else {
-                    // Soir: compter comme 0.5 jour par exemple
-                    $dayValue = 0.5;
+                    // Session en cours (pas de checkout) : compter les heures progressivement
+                    $now = now();
+                    // Ne compter que si c'est aujourd'hui (session active)
+                    if (Carbon::parse($date)->isToday()) {
+                        $sessionMinutes = $checkIn->timestamp->diffInMinutes($now);
+                        $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                            $checkIn->timestamp, $now, $user->employee_type
+                        );
+                        $sessionMinutes -= $breakMinutes;
+                        $totalHoursWorked += max(0, $sessionMinutes / 60);
+                    }
+                    $daysWithoutCheckout++;
                 }
 
-                $daysWorked += $dayValue;
-
-                // Compter les retards (ignorer les valeurs négatives = bug d'anciennes données)
+                // Compter les retards
                 if ($checkIn->is_late && $checkIn->late_minutes > 0) {
                     $totalLateMinutes += $checkIn->late_minutes;
-                }
-
-                // Compter les plages sans checkout
-                if (!$checkOut) {
-                    $daysWithoutCheckout++;
                 }
             }
         }
@@ -125,24 +137,18 @@ class PayrollCalculator
             ->whereMonth('date', $month)
             ->get();
 
-        // Compter les jours travaillés via présences manuelles
         foreach ($manualAttendances as $manualAttendance) {
-            $carbonDate = Carbon::parse($manualAttendance->date);
-
-            // Déterminer la valeur du jour selon le type de session et le jour de la semaine
-            if ($manualAttendance->session_type === 'jour') {
-                // Session de jour = 1 jour complet (ou 0.5 si samedi)
-                $dayValue = $carbonDate->dayOfWeek == 6 ? 0.5 : 1;
-            } else {
-                // Session de soir = 0.5 jour
-                $dayValue = 0.5;
-            }
-
-            $daysWorked += $dayValue;
+            $totalHoursWorked += $manualAttendance->duration_in_hours;
+            $completedSessions++;
         }
+
+        // Calculer les jours travaillés à partir des heures (ex: 8h = 1 jour, 4h = 0.5 jour)
+        $daysWorked = round($totalHoursWorked / $workingHoursPerDay, 2);
 
         return [
             'days_worked' => $daysWorked,
+            'total_hours_worked' => round($totalHoursWorked, 2),
+            'completed_sessions' => $completedSessions,
             'total_late_minutes' => $totalLateMinutes,
             'days_without_checkout' => $daysWithoutCheckout,
         ];
@@ -245,14 +251,15 @@ class PayrollCalculator
         $perMinuteRate = $hourlyRate / 60;
         $perSecondRate = $perMinuteRate / 60;
 
-        // 5. Récupérer les statistiques de présence
+        // 5. Récupérer les statistiques de présence (basé sur les heures réelles)
         $attendanceStats = self::calculateAttendanceStats($user, $year, $month);
-        $daysWorked = $attendanceStats['days_worked'];
+        $totalHoursWorked = $attendanceStats['total_hours_worked'] ?? 0;
+        $daysWorked = $attendanceStats['days_worked']; // Calculé à partir des heures
         $totalLateMinutes = $attendanceStats['total_late_minutes'];
         $daysWithoutCheckout = $attendanceStats['days_without_checkout'];
 
         // 6. Calculer les jours non travaillés
-        $daysNotWorked = $workingDaysInMonth - $daysWorked;
+        $daysNotWorked = max(0, $workingDaysInMonth - $daysWorked);
 
         // 7. Récupérer les justifications
         $justifications = self::getJustifications($user, $year, $month);
@@ -263,9 +270,9 @@ class PayrollCalculator
         $totalLateSeconds = ($totalLateMinutes - $lateMinutesJustified) * 60;
         $latePenaltyAmount = max(0, $totalLateSeconds * $penaltyPerSecond);
 
-        // 9. NOUVEAU SYSTÈME: Calculer le salaire proportionnel aux jours travaillés
-        // Au lieu de déduire les absences, on paie seulement ce qui a été travaillé
-        $salaryForDaysWorked = $daysWorked * $dailyRate;
+        // 9. Calculer le salaire proportionnel aux heures réellement travaillées
+        // Salaire = heures travaillées × taux horaire (progressif)
+        $salaryForDaysWorked = $totalHoursWorked * $hourlyRate;
 
         // On garde le concept de déduction d'absence pour la compatibilité, mais mis à 0
         $absenceDeduction = 0;
@@ -318,6 +325,7 @@ class PayrollCalculator
             'monthly_salary' => $monthlySalary,
             'working_days' => $workingDaysInMonth,
             'days_worked' => $daysWorked,
+            'total_hours_worked' => $totalHoursWorked,
             'days_not_worked' => $daysNotWorked,
             'days_justified' => $daysJustified,
             'total_late_minutes' => $totalLateMinutes,
@@ -387,7 +395,12 @@ class PayrollCalculator
 
             if ($checkIn && $checkOut) {
                 $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
-                $totalHours += $hoursWorked;
+                // Soustraire la pause déjeuner
+                $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                    $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
+                );
+                $hoursWorked -= ($breakMinutes / 60);
+                $totalHours += max(0, $hoursWorked);
 
                 $carbonDate = Carbon::parse($date);
                 // Chaque plage (matin ou soir) compte comme 0.5 jour
@@ -406,10 +419,8 @@ class PayrollCalculator
                 $daysWorked += $dayValue;
             }
 
-            // Compter les retards (ignorer les valeurs négatives = bug d'anciennes données)
-            if ($checkIn && $checkIn->is_late && $checkIn->late_minutes > 0) {
-                $totalLateMinutes += $checkIn->late_minutes;
-            }
+            // Les vacataires n'ont PAS de retard (payés à l'heure effectuée)
+            // Ne pas compter les late_minutes pour les vacataires
         }
 
         // ===== AJOUTER LES PRÉSENCES MANUELLES =====
@@ -446,9 +457,9 @@ class PayrollCalculator
         // Calculer le montant brut
         $grossAmount = $totalHours * $hourlyRate;
 
-        // Pénalité retards
-        $penaltyPerSecond = (float) Setting::get('penalty_per_second', 0.50);
-        $latePenalty = ($totalLateMinutes * 60) * $penaltyPerSecond;
+        // Les vacataires n'ont PAS de pénalité de retard (payés à l'heure)
+        $latePenalty = 0;
+        $totalLateMinutes = 0;
 
         // Montant net
         $netAmount = max(0, $grossAmount - $latePenalty);
@@ -457,9 +468,9 @@ class PayrollCalculator
             'hourly_rate' => $hourlyRate,
             'days_worked' => $daysWorked,
             'hours_worked' => $totalHours,
-            'total_late_minutes' => $totalLateMinutes,
+            'total_late_minutes' => 0,
             'gross_amount' => $grossAmount,
-            'late_penalty' => $latePenalty,
+            'late_penalty' => 0,
             'net_amount' => $netAmount,
         ];
     }

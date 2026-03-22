@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Kreait\Firebase\Exception\MessagingException;
 
 class FirebaseSettingsController extends Controller
 {
@@ -105,56 +105,43 @@ class FirebaseSettingsController extends Controller
                 return redirect()->route('admin.firebase.index')->with('error', 'Aucun fichier Firebase configuré.');
             }
 
-            // Tester en récupérant un utilisateur avec FCM token
-            $user = User::whereNotNull('fcm_token')->first();
+            // Récupérer tous les utilisateurs avec un FCM token
+            $users = User::whereNotNull('fcm_token')->where('fcm_token', '!=', '')->get();
 
-            if (!$user) {
+            if ($users->isEmpty()) {
                 return redirect()->route('admin.firebase.index')->with('warning', 'Configuration Firebase valide, mais aucun utilisateur avec FCM token trouvé pour tester l\'envoi.');
             }
 
-            // Créer une notification de test
-            $notification = Notification::create([
-                'user_id' => $user->id,
-                'title' => 'Test Notification',
-                'body' => 'Ceci est une notification de test envoyée depuis le dashboard admin à ' . now()->format('H:i:s'),
-                'type' => 'system',
-                'data' => json_encode(['test' => true, 'timestamp' => now()->toIso8601String()]),
-            ]);
+            // Envoyer à tous les utilisateurs via PushNotificationService
+            $pushService = new PushNotificationService();
 
-            // Envoyer via Firebase
-            $messaging = app('firebase.messaging');
-            $message = \Kreait\Firebase\Messaging\CloudMessage::withTarget('token', $user->fcm_token)
-                ->withNotification([
-                    'title' => 'Test Notification',
-                    'body' => 'Si vous recevez ceci, Firebase fonctionne correctement !',
-                ])
-                ->withData([
-                    'notification_id' => (string) $notification->id,
-                    'type' => 'system',
-                    'test' => 'true',
-                ]);
-
-            $result = $messaging->send($message);
-
-            Log::info('Firebase test notification sent successfully', [
-                'user_id' => $user->id,
-                'message_id' => $result,
-            ]);
-
-            return redirect()->route('admin.firebase.index')->with('success', "Notification de test envoyée avec succès à {$user->full_name} ! Vérifiez le téléphone.");
-
-        } catch (MessagingException $e) {
-            Log::error('Firebase test failed (Messaging)', [
-                'error' => $e->getMessage(),
-            ]);
-
-            $errorMessage = 'Erreur Firebase : ' . $e->getMessage();
-
-            if (str_contains($e->getMessage(), 'registration-token-not-registered')) {
-                $errorMessage .= ' (Le token FCM est invalide ou expiré)';
+            if (!$pushService->isConfigured()) {
+                return redirect()->route('admin.firebase.index')->with('error', 'Le service Firebase n\'est pas correctement configuré.');
             }
 
-            return redirect()->route('admin.firebase.index')->with('error', $errorMessage);
+            $title = 'Test Notification';
+            $body = 'Ceci est une notification de test envoyée depuis le dashboard admin à ' . now()->format('H:i:s');
+            $data = ['type' => 'test', 'test' => 'true'];
+
+            $successCount = $pushService->sendToMultipleUsers($users, $title, $body, $data, 'system');
+
+            Log::info('Firebase test notifications sent', [
+                'total_users' => $users->count(),
+                'success' => $successCount,
+                'failed' => $users->count() - $successCount,
+            ]);
+
+            $message = "Notification de test envoyée à {$successCount}/{$users->count()} utilisateur(s) : ";
+            $names = $users->pluck('full_name')->implode(', ');
+            $message .= $names;
+
+            if ($successCount === $users->count()) {
+                return redirect()->route('admin.firebase.index')->with('success', $message);
+            } elseif ($successCount > 0) {
+                return redirect()->route('admin.firebase.index')->with('warning', $message);
+            } else {
+                return redirect()->route('admin.firebase.index')->with('error', 'Échec de l\'envoi à tous les utilisateurs.');
+            }
 
         } catch (\Exception $e) {
             Log::error('Firebase test failed', [

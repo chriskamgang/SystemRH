@@ -66,7 +66,13 @@ class PresenceAlertController extends Controller
     {
         $settings = NotificationSetting::getSettings();
 
-        return view('admin.presence-alerts.settings', compact('settings'));
+        $workSchedule = [
+            'morning_start_time' => Setting::get('morning_start_time', '08:15'),
+            'morning_end_time' => Setting::get('morning_end_time', '18:00'),
+            'late_tolerance' => Setting::get('late_tolerance', '15'),
+        ];
+
+        return view('admin.presence-alerts.settings', compact('settings', 'workSchedule'));
     }
 
     /**
@@ -81,20 +87,48 @@ class PresenceAlertController extends Controller
             'response_delay_minutes' => 'required|integer|min:5|max:180',
             'penalty_hours' => 'required|numeric|min:0.25|max:24',
             'is_active' => 'boolean',
+            'break_enabled' => 'boolean',
+            'break_start_time' => 'nullable|date_format:H:i',
+            'break_end_time' => 'nullable|date_format:H:i',
+            'morning_start_time' => 'required|date_format:H:i',
+            'morning_end_time' => 'required|date_format:H:i',
+            'late_tolerance' => 'required|integer|min:0|max:60',
         ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
 
+        // Sauvegarder les horaires de travail
+        Setting::set('morning_start_time', $request->morning_start_time);
+        Setting::set('morning_end_time', $request->morning_end_time);
+        Setting::set('late_tolerance', $request->late_tolerance);
+
         $settings = NotificationSetting::getSettings();
-        $settings->update([
+
+        $updateData = [
             'permanent_semi_permanent_time' => $request->permanent_semi_permanent_time . ':00',
             'temporary_time' => $request->temporary_time . ':00',
             'response_delay_minutes' => $request->response_delay_minutes,
             'penalty_hours' => $request->penalty_hours,
             'is_active' => $request->has('is_active'),
-        ]);
+            'break_enabled' => $request->has('break_enabled'),
+        ];
+
+        if ($request->break_start_time) {
+            $updateData['break_start_time'] = $request->break_start_time . ':00';
+        }
+        if ($request->break_end_time) {
+            $updateData['break_end_time'] = $request->break_end_time . ':00';
+        }
+
+        $settings->update($updateData);
+
+        // Sauvegarder les paramètres de rappels de cours
+        Setting::set('course_reminders_enabled', $request->has('course_reminders_enabled') ? '1' : '0');
+        if ($request->course_reminder_minutes) {
+            Setting::set('course_reminder_minutes', $request->course_reminder_minutes);
+        }
 
         return back()->with('success', 'Paramètres mis à jour avec succès');
     }

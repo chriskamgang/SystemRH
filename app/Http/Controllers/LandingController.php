@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\IosBetaRequest;
 use Illuminate\Http\Request;
 
 class LandingController extends Controller
@@ -60,5 +61,29 @@ class LandingController extends Controller
     public function download()
     {
         return view('landing.download');
+    }
+
+    /**
+     * Inscription beta iOS
+     */
+    public function registerIosBeta(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'full_name' => 'nullable|string|max:255',
+        ]);
+
+        $existing = IosBetaRequest::where('email', $request->email)->first();
+
+        if ($existing) {
+            return back()->with('ios_beta_info', 'Cet email est déjà enregistré. Vous serez notifié dès que votre accès sera prêt.');
+        }
+
+        IosBetaRequest::create([
+            'email' => $request->email,
+            'full_name' => $request->full_name,
+        ]);
+
+        return back()->with('ios_beta_success', 'Merci ! Votre email a été enregistré. Vous recevrez une invitation TestFlight prochainement.');
     }
 }
