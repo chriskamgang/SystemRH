@@ -16,10 +16,23 @@ class PushNotificationService
     public function __construct()
     {
         try {
-            $this->credentialsPath = storage_path('firebase-credentials.json');
+            // Chercher le fichier dans les emplacements possibles
+            $possiblePaths = [
+                storage_path('app/firebase/firebase-credentials.json'),
+                storage_path('firebase-credentials.json'),
+                config('firebase.credentials'),
+            ];
 
-            if (!file_exists($this->credentialsPath)) {
-                Log::error('Firebase credentials file not found at: ' . $this->credentialsPath);
+            $this->credentialsPath = null;
+            foreach ($possiblePaths as $path) {
+                if ($path && file_exists($path)) {
+                    $this->credentialsPath = $path;
+                    break;
+                }
+            }
+
+            if (!$this->credentialsPath) {
+                Log::error('Firebase credentials file not found in any location');
                 return;
             }
 
