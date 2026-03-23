@@ -407,6 +407,74 @@
             </form>
         </div>
 
+        <!-- Taux Horaires par Niveau (Vacataires) -->
+        <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                <i class="fas fa-graduation-cap text-indigo-600 mr-2"></i>
+                Taux Horaires par Niveau (Vacataires)
+            </h3>
+            <p class="text-sm text-gray-600 mb-4">
+                Définissez les taux horaires par défaut pour les UE de Licence et Master.
+                Pour les BTS, le taux horaire du vacataire (dans sa fiche employé) est utilisé.
+            </p>
+
+            <form method="POST" action="{{ route('admin.settings.update') }}">
+                @csrf
+                @method('PUT')
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Taux Licence -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-book text-blue-500 mr-1"></i>
+                            Taux horaire Licence (FCFA/h)
+                        </label>
+                        <input type="number" step="100" min="0" name="taux_horaire_licence"
+                               value="{{ \App\Models\Setting::get('taux_horaire_licence', '5000') }}"
+                               placeholder="5000"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <p class="mt-1 text-xs text-gray-500">
+                            Ce taux sera appliqué automatiquement aux UE de niveau Licence
+                        </p>
+                    </div>
+
+                    <!-- Taux Master -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-user-graduate text-purple-500 mr-1"></i>
+                            Taux horaire Master (FCFA/h)
+                        </label>
+                        <input type="number" step="100" min="0" name="taux_horaire_master"
+                               value="{{ \App\Models\Setting::get('taux_horaire_master', '7500') }}"
+                               placeholder="7500"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <p class="mt-1 text-xs text-gray-500">
+                            Ce taux sera appliqué automatiquement aux UE de niveau Master
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <h4 class="font-medium text-indigo-800 mb-2">
+                        <i class="fas fa-info-circle mr-1"></i> Fonctionnement
+                    </h4>
+                    <ul class="text-sm text-indigo-700 list-disc ml-5 space-y-1">
+                        <li><strong>BTS 1 & 2</strong> : Utilise le taux horaire personnel du vacataire (fiche employé)</li>
+                        <li><strong>Licence</strong> : Utilise le taux configuré ci-dessus (pré-rempli à la création de la UE)</li>
+                        <li><strong>Master</strong> : Utilise le taux configuré ci-dessus (pré-rempli à la création de la UE)</li>
+                        <li>Le taux peut être modifié individuellement sur chaque UE si nécessaire</li>
+                    </ul>
+                </div>
+
+                <div class="mt-6">
+                    <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Enregistrer les taux horaires
+                    </button>
+                </div>
+            </form>
+        </div>
+
         <!-- Configuration des Jours de Travail -->
         <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
             <h3 class="text-lg font-medium text-gray-900 mb-4">

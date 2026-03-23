@@ -26,6 +26,7 @@ class UniteEnseignement extends Model
         'date_activation',
         'created_by',
         'activated_by',
+        'taux_horaire',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class UniteEnseignement extends Model
         'date_attribution' => 'datetime',
         'date_activation' => 'datetime',
         'semestre' => 'integer',
+        'taux_horaire' => 'decimal:2',
     ];
 
     /**
@@ -239,7 +241,21 @@ class UniteEnseignement extends Model
         return min(100, ($this->heures_effectuees / $this->volume_horaire_total) * 100);
     }
 
-    // Calculer le montant payé (heures effectuées × taux horaire)
+    // Obtenir le taux horaire effectif pour cette UE
+    // Priorité : taux_horaire de la UE > hourly_rate du vacataire
+    public function getTauxHoraireEffectifAttribute(): float
+    {
+        // Si la UE a son propre taux (Licence/Master), l'utiliser
+        if ($this->taux_horaire !== null && $this->taux_horaire > 0) {
+            return (float) $this->taux_horaire;
+        }
+
+        // Sinon, utiliser le taux horaire du vacataire (BTS)
+        $enseignant = $this->enseignant;
+        return (float) ($enseignant->hourly_rate ?? 0);
+    }
+
+    // Calculer le montant payé (heures effectuées × taux horaire effectif)
     // Note: Seulement pour les vacataires, pas pour les semi-permanents
     public function getMontantPayeAttribute(): float
     {
@@ -250,8 +266,7 @@ class UniteEnseignement extends Model
             return 0;
         }
 
-        $tauxHoraire = $enseignant->hourly_rate ?? 0;
-        return $this->heures_effectuees * $tauxHoraire;
+        return $this->heures_effectuees * $this->taux_horaire_effectif;
     }
 
     // Calculer le montant potentiel restant
@@ -264,8 +279,7 @@ class UniteEnseignement extends Model
             return 0;
         }
 
-        $tauxHoraire = $enseignant->hourly_rate ?? 0;
-        return $this->heures_restantes * $tauxHoraire;
+        return $this->heures_restantes * $this->taux_horaire_effectif;
     }
 
     // Calculer le montant maximum possible
@@ -278,8 +292,7 @@ class UniteEnseignement extends Model
             return 0;
         }
 
-        $tauxHoraire = $enseignant->hourly_rate ?? 0;
-        return $this->volume_horaire_total * $tauxHoraire;
+        return $this->volume_horaire_total * $this->taux_horaire_effectif;
     }
 
     // Ajouter des heures validées

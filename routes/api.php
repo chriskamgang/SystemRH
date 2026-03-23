@@ -110,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/salary-status', [\App\Http\Controllers\Api\MobileApiController::class, 'getSalaryStatus']);
         Route::get('/manual-deductions', [\App\Http\Controllers\Api\MobileApiController::class, 'getManualDeductions']);
         Route::get('/loans', [\App\Http\Controllers\Api\MobileApiController::class, 'getLoans']);
+        Route::get('/payslip', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadPayslip']);
     });
 
     // ========== PRESENCE NOTIFICATIONS ==========

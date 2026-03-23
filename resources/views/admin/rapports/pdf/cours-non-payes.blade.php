@@ -21,7 +21,7 @@
         @php
             $montantEstime = 0;
             if ($ue->enseignant && !$ue->enseignant->isSemiPermanent()) {
-                $montantEstime = $ue->volume_horaire_total * ($ue->enseignant->hourly_rate ?? 0);
+                $montantEstime = $ue->volume_horaire_total * $ue->taux_horaire_effectif;
             }
         @endphp
         <tr>

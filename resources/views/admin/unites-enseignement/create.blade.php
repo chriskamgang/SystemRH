@@ -142,7 +142,56 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Niveau -->
+                <div>
+                    <label for="niveau" class="block text-sm font-medium text-gray-700 mb-2">
+                        Niveau
+                    </label>
+                    <select
+                        name="niveau"
+                        id="niveau"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('niveau') border-red-500 @enderror"
+                        onchange="onNiveauChange()"
+                    >
+                        <option value="">Sélectionner un niveau</option>
+                        <option value="BTS 1" {{ old('niveau') == 'BTS 1' ? 'selected' : '' }}>BTS 1</option>
+                        <option value="BTS 2" {{ old('niveau') == 'BTS 2' ? 'selected' : '' }}>BTS 2</option>
+                        <option value="Licence 1" {{ old('niveau') == 'Licence 1' ? 'selected' : '' }}>Licence 1</option>
+                        <option value="Licence 2" {{ old('niveau') == 'Licence 2' ? 'selected' : '' }}>Licence 2</option>
+                        <option value="Licence 3" {{ old('niveau') == 'Licence 3' ? 'selected' : '' }}>Licence 3</option>
+                        <option value="Master 1" {{ old('niveau') == 'Master 1' ? 'selected' : '' }}>Master 1</option>
+                        <option value="Master 2" {{ old('niveau') == 'Master 2' ? 'selected' : '' }}>Master 2</option>
+                    </select>
+                    @error('niveau')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Taux horaire de la UE -->
+                <div>
+                    <label for="taux_horaire" class="block text-sm font-medium text-gray-700 mb-2">
+                        Taux horaire UE (FCFA/h)
+                    </label>
+                    <input
+                        type="number"
+                        name="taux_horaire"
+                        id="taux_horaire"
+                        value="{{ old('taux_horaire') }}"
+                        placeholder="Auto selon niveau"
+                        step="100"
+                        min="0"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('taux_horaire') border-red-500 @enderror"
+                        oninput="calculerMontantMax()"
+                    >
+                    @error('taux_horaire')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                    <p class="text-xs text-gray-500 mt-1" id="tauxHoraireHint">
+                        Licence/Master : taux spécifique. BTS : taux du vacataire.
+                    </p>
+                </div>
+
                 <!-- Année académique -->
                 <div>
                     <label for="annee_academique" class="block text-sm font-medium text-gray-700 mb-2">
@@ -161,7 +210,9 @@
                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+            </div>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Semestre -->
                 <div>
                     <label for="semestre" class="block text-sm font-medium text-gray-700 mb-2">
@@ -219,6 +270,12 @@
 
 @push('scripts')
 <script>
+// Taux configurés par l'admin dans les paramètres
+const tauxParNiveau = {
+    'licence': {{ \App\Models\Setting::get('taux_horaire_licence', 5000) }},
+    'master': {{ \App\Models\Setting::get('taux_horaire_master', 7500) }},
+};
+
 function updateEnseignantInfo() {
     const select = document.getElementById('vacataire_id');
     const selectedOption = select.options[select.selectedIndex];
@@ -229,27 +286,55 @@ function updateEnseignantInfo() {
     const semiPermanentInfo = document.getElementById('semiPermanentInfo');
     const tauxValue = document.getElementById('tauxValue');
 
-    // Cacher tous les infos d'abord
     tauxInfo.classList.add('hidden');
     semiPermanentInfo.classList.add('hidden');
 
     if (type === 'enseignant_vacataire' && taux && taux > 0) {
-        // Afficher info vacataire
         tauxValue.textContent = new Intl.NumberFormat('fr-FR').format(taux);
         tauxInfo.classList.remove('hidden');
-        calculerMontantMax();
+        onNiveauChange();
     } else if (type === 'semi_permanent') {
-        // Afficher info semi-permanent
         semiPermanentInfo.classList.remove('hidden');
-        // Pas de calcul de montant pour semi-permanent
         document.getElementById('montantMaxInfo')?.classList.add('hidden');
     }
+}
+
+function onNiveauChange() {
+    const niveau = document.getElementById('niveau').value.toLowerCase();
+    const tauxInput = document.getElementById('taux_horaire');
+    const hint = document.getElementById('tauxHoraireHint');
+
+    if (niveau.includes('licence')) {
+        tauxInput.value = tauxParNiveau.licence;
+        hint.textContent = 'Taux Licence pré-rempli (' + new Intl.NumberFormat('fr-FR').format(tauxParNiveau.licence) + ' FCFA/h). Modifiable.';
+        hint.className = 'text-xs text-blue-600 mt-1';
+    } else if (niveau.includes('master')) {
+        tauxInput.value = tauxParNiveau.master;
+        hint.textContent = 'Taux Master pré-rempli (' + new Intl.NumberFormat('fr-FR').format(tauxParNiveau.master) + ' FCFA/h). Modifiable.';
+        hint.className = 'text-xs text-purple-600 mt-1';
+    } else if (niveau.includes('bts')) {
+        tauxInput.value = '';
+        hint.textContent = 'BTS : le taux horaire du vacataire sera utilisé.';
+        hint.className = 'text-xs text-green-600 mt-1';
+    } else {
+        tauxInput.value = '';
+        hint.textContent = 'Licence/Master : taux spécifique. BTS : taux du vacataire.';
+        hint.className = 'text-xs text-gray-500 mt-1';
+    }
+
+    calculerMontantMax();
 }
 
 function calculerMontantMax() {
     const select = document.getElementById('vacataire_id');
     const selectedOption = select.options[select.selectedIndex];
-    const taux = parseFloat(selectedOption.getAttribute('data-taux')) || 0;
+    const tauxVacataire = parseFloat(selectedOption.getAttribute('data-taux')) || 0;
+
+    const tauxUeInput = document.getElementById('taux_horaire');
+    const tauxUe = parseFloat(tauxUeInput.value) || 0;
+
+    // Utiliser le taux UE si défini, sinon le taux du vacataire
+    const taux = tauxUe > 0 ? tauxUe : tauxVacataire;
 
     const volumeInput = document.getElementById('volume_horaire_total');
     const volume = parseFloat(volumeInput.value) || 0;
@@ -266,7 +351,6 @@ function calculerMontantMax() {
     }
 }
 
-// Initialiser si un vacataire est déjà sélectionné
 document.addEventListener('DOMContentLoaded', function() {
     const vacataireSelect = document.getElementById('vacataire_id');
     if (vacataireSelect.value) {

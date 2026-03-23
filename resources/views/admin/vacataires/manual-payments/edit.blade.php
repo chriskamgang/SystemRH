@@ -144,13 +144,14 @@ function editPaymentForm() {
     return {
         month: {{ $payment->month }},
         year: {{ $payment->year }},
-        tauxHoraire: {{ $payment->user->hourly_rate }},
-        ues: @json($payment->details->map(function($detail) use ($payment) {
+        ues: @json($payment->details->map(function($detail) {
+            $ue = $detail->uniteEnseignement;
             return [
                 'id' => $detail->unite_enseignement_id,
                 'code_ue' => $detail->code_ue,
                 'nom_matiere' => $detail->nom_matiere,
-                'volume_horaire_total' => $detail->uniteEnseignement->volume_horaire_total ?? 0,
+                'volume_horaire_total' => $ue->volume_horaire_total ?? 0,
+                'taux_horaire' => $ue ? $ue->taux_horaire_effectif : $detail->taux_horaire,
                 'heures_saisies' => $detail->heures_saisies,
                 'montant' => $detail->montant,
             ];
@@ -164,7 +165,7 @@ function editPaymentForm() {
 
         calculateMontant(ue) {
             const heures = parseFloat(ue.heures_saisies) || 0;
-            ue.montant = heures * this.tauxHoraire;
+            ue.montant = heures * (ue.taux_horaire || 0);
         },
 
         calculateTotal() {

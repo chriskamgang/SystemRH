@@ -149,6 +149,14 @@
                                     <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                                         <i class="fas fa-check mr-1"></i> Activée
                                     </span>
+                                    @if($ue->niveau)
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ str_contains(strtolower($ue->niveau), 'licence') ? 'bg-blue-100 text-blue-700' : (str_contains(strtolower($ue->niveau), 'master') ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700') }}">
+                                            {{ $ue->niveau }}
+                                        </span>
+                                    @endif
+                                    <span class="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                                        {{ number_format($ue->taux_horaire_effectif, 0, ',', ' ') }} FCFA/h
+                                    </span>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -184,7 +192,7 @@
                                     </div>
                                     <div class="bg-orange-50 rounded-lg p-3">
                                         <p class="text-xs text-gray-600">Montant restant</p>
-                                        <p class="text-lg font-bold text-orange-600">{{ number_format($ue->heures_restantes_validees * $vacataire->hourly_rate, 0, ',', ' ') }} FCFA</p>
+                                        <p class="text-lg font-bold text-orange-600">{{ number_format($ue->heures_restantes_validees * $ue->taux_horaire_effectif, 0, ',', ' ') }} FCFA</p>
                                     </div>
                                     <div class="bg-purple-50 rounded-lg p-3">
                                         <p class="text-xs text-gray-600">Montant maximum</p>

@@ -142,7 +142,7 @@
                     @php
                         $montantEstime = 0;
                         if ($ue->enseignant && !$ue->enseignant->isSemiPermanent()) {
-                            $montantEstime = $ue->volume_horaire_total * ($ue->enseignant->hourly_rate ?? 0);
+                            $montantEstime = $ue->volume_horaire_total * $ue->taux_horaire_effectif;
                         }
                     @endphp
                     <tr class="hover:bg-gray-50">
@@ -159,7 +159,7 @@
                                     @if($ue->enseignant->isSemiPermanent())
                                         <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Semi-permanent</span>
                                     @else
-                                        {{ number_format($ue->enseignant->hourly_rate, 0) }} FCFA/h
+                                        {{ number_format($ue->taux_horaire_effectif, 0) }} FCFA/h
                                     @endif
                                 </div>
                             @else

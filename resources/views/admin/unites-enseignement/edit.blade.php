@@ -25,11 +25,60 @@
             @csrf
             @method('PUT')
 
-            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p class="text-sm text-blue-800">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Taux horaire du vacataire: <strong>{{ number_format($ue->vacataire->hourly_rate, 0, ',', ' ') }} FCFA/h</strong>
-                </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Niveau -->
+                <div>
+                    <label for="niveau" class="block text-sm font-medium text-gray-700 mb-2">
+                        Niveau
+                    </label>
+                    <select
+                        name="niveau"
+                        id="niveau"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="onNiveauChange()"
+                    >
+                        <option value="">Sélectionner</option>
+                        @foreach(['BTS 1', 'BTS 2', 'Licence 1', 'Licence 2', 'Licence 3', 'Master 1', 'Master 2'] as $niv)
+                            <option value="{{ $niv }}" {{ old('niveau', $ue->niveau) == $niv ? 'selected' : '' }}>{{ $niv }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Taux horaire UE -->
+                <div>
+                    <label for="taux_horaire" class="block text-sm font-medium text-gray-700 mb-2">
+                        Taux horaire UE (FCFA/h)
+                    </label>
+                    <input
+                        type="number"
+                        name="taux_horaire"
+                        id="taux_horaire"
+                        value="{{ old('taux_horaire', $ue->taux_horaire) }}"
+                        placeholder="Taux du vacataire si vide"
+                        step="100"
+                        min="0"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        oninput="calculerMontantMax()"
+                    >
+                    <p class="text-xs text-gray-500 mt-1" id="tauxHoraireHint">
+                        @if($ue->taux_horaire)
+                            Taux spécifique à cette UE
+                        @else
+                            Vide = taux du vacataire ({{ number_format($ue->vacataire->hourly_rate, 0, ',', ' ') }} FCFA/h)
+                        @endif
+                    </p>
+                </div>
+
+                <!-- Taux vacataire (info) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Taux vacataire (BTS)
+                    </label>
+                    <div class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
+                        {{ number_format($ue->vacataire->hourly_rate, 0, ',', ' ') }} FCFA/h
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Taux personnel du vacataire (non modifiable ici)</p>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -110,7 +159,7 @@
                         <p class="text-2xl font-bold text-purple-600" id="montantMaxValue">
                             {{ number_format($ue->montant_max, 0, ',', ' ') }} FCFA
                         </p>
-                        <p class="text-xs text-gray-500 mt-1">Volume × Taux horaire du vacataire</p>
+                        <p class="text-xs text-gray-500 mt-1">Volume × Taux horaire effectif</p>
                     </div>
                     <i class="fas fa-calculator text-purple-300 text-3xl"></i>
                 </div>
@@ -172,15 +221,45 @@
 
 @push('scripts')
 <script>
-const tauxHoraire = {{ $ue->vacataire->hourly_rate }};
+const tauxVacataire = {{ $ue->vacataire->hourly_rate }};
+const tauxParNiveau = {
+    'licence': {{ \App\Models\Setting::get('taux_horaire_licence', 5000) }},
+    'master': {{ \App\Models\Setting::get('taux_horaire_master', 7500) }},
+};
+
+function onNiveauChange() {
+    const niveau = document.getElementById('niveau').value.toLowerCase();
+    const tauxInput = document.getElementById('taux_horaire');
+    const hint = document.getElementById('tauxHoraireHint');
+
+    // Ne pas écraser si l'utilisateur a déjà un taux personnalisé
+    if (tauxInput.value && parseFloat(tauxInput.value) > 0) {
+        calculerMontantMax();
+        return;
+    }
+
+    if (niveau.includes('licence')) {
+        tauxInput.value = tauxParNiveau.licence;
+        hint.textContent = 'Taux Licence pré-rempli. Modifiable.';
+    } else if (niveau.includes('master')) {
+        tauxInput.value = tauxParNiveau.master;
+        hint.textContent = 'Taux Master pré-rempli. Modifiable.';
+    } else if (niveau.includes('bts')) {
+        tauxInput.value = '';
+        hint.textContent = 'BTS : taux du vacataire (' + new Intl.NumberFormat('fr-FR').format(tauxVacataire) + ' FCFA/h)';
+    }
+
+    calculerMontantMax();
+}
 
 function calculerMontantMax() {
-    const volumeInput = document.getElementById('volume_horaire_total');
-    const volume = parseFloat(volumeInput.value) || 0;
+    const tauxUe = parseFloat(document.getElementById('taux_horaire').value) || 0;
+    const taux = tauxUe > 0 ? tauxUe : tauxVacataire;
+    const volume = parseFloat(document.getElementById('volume_horaire_total').value) || 0;
     const montantMaxValue = document.getElementById('montantMaxValue');
 
-    if (volume > 0) {
-        const montantMax = tauxHoraire * volume;
+    if (volume > 0 && taux > 0) {
+        const montantMax = taux * volume;
         montantMaxValue.textContent = new Intl.NumberFormat('fr-FR').format(montantMax) + ' FCFA';
     }
 }

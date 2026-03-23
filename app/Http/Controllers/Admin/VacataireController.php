@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Campus;
 use App\Models\Role;
 use App\Models\Attendance;
+use App\Models\VacatairePayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
@@ -395,17 +396,14 @@ class VacataireController extends Controller
      */
     public function report(Request $request)
     {
-        // Filtres
-        $startDate = $request->filled('start_date')
-            ? Carbon::parse($request->start_date)
-            : Carbon::now()->startOfMonth();
-
-        $endDate = $request->filled('end_date')
-            ? Carbon::parse($request->end_date)
-            : Carbon::now()->endOfMonth();
+        // Filtres par mois/année (plus pertinent pour les vacataires)
+        $month = $request->filled('month') ? (int) $request->month : now()->month;
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
 
         $query = User::where('employee_type', 'enseignant_vacataire')
-            ->with(['campuses']);
+            ->with(['campuses', 'unitesEnseignement' => function ($q) {
+                $q->where('statut', 'activee');
+            }]);
 
         if ($request->filled('campus_id')) {
             $query->whereHas('campuses', function ($q) use ($request) {
@@ -413,44 +411,48 @@ class VacataireController extends Controller
             });
         }
 
-        $vacataires = $query->get()->map(function ($vacataire) use ($startDate, $endDate) {
-            // Statistiques
-            $attendances = Attendance::where('user_id', $vacataire->id)
-                ->whereBetween('timestamp', [$startDate, $endDate])
-                ->get()
-                ->groupBy(function ($attendance) {
-                    return $attendance->timestamp->format('Y-m-d');
-                });
+        $vacataires = $query->get()->map(function ($vacataire) use ($month, $year) {
+            // UE actives
+            $ues = $vacataire->unitesEnseignement;
+            $vacataire->total_ues = $ues->count();
 
-            $totalDays = $attendances->count();
-            $totalHours = 0;
-            $totalLate = 0;
+            // Heures totales validées (toutes périodes confondues)
+            $vacataire->total_heures_validees = $ues->sum('heures_effectuees_validees');
+            $vacataire->total_volume_horaire = $ues->sum('volume_horaire_total');
+            $vacataire->total_heures_restantes = $ues->sum('heures_restantes_validees');
 
-            foreach ($attendances as $date => $dayAttendances) {
-                $checkIn = $dayAttendances->where('type', 'check-in')->first();
-                $checkOut = $dayAttendances->where('type', 'check-out')->first();
+            // Paiements du mois sélectionné
+            $paiementsMois = VacatairePayment::where('user_id', $vacataire->id)
+                ->where('month', $month)
+                ->where('year', $year)
+                ->get();
 
-                if ($checkIn && $checkOut) {
-                    $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp);
-                    $totalHours += $hoursWorked;
-                }
+            $vacataire->heures_mois = $paiementsMois->sum('hours_worked');
+            $vacataire->montant_mois = $paiementsMois->sum('net_amount');
+            $vacataire->nb_paiements_mois = $paiementsMois->count();
+            $vacataire->statut_paiement = $paiementsMois->isEmpty() ? 'non_paye' :
+                ($paiementsMois->where('status', 'paid')->count() === $paiementsMois->count() ? 'paye' :
+                ($paiementsMois->where('status', 'pending')->count() > 0 ? 'en_attente' : 'valide'));
 
-                if ($checkIn && $checkIn->is_late) {
-                    $totalLate++;
-                }
-            }
-
-            $vacataire->total_days = $totalDays;
-            $vacataire->total_hours = $totalHours;
-            $vacataire->total_late = $totalLate;
-            $vacataire->total_pay = $totalHours * ($vacataire->hourly_rate ?? 0);
+            // Montant total tous mois confondus
+            $vacataire->montant_total = VacatairePayment::where('user_id', $vacataire->id)
+                ->where('year', $year)
+                ->sum('net_amount');
 
             return $vacataire;
         });
 
         $campuses = Campus::orderBy('name')->get();
 
-        return view('admin.vacataires.report', compact('vacataires', 'campuses', 'startDate', 'endDate'));
+        $months = [
+            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
+            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
+            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+        ];
+
+        $years = range(date('Y') - 1, date('Y') + 1);
+
+        return view('admin.vacataires.report', compact('vacataires', 'campuses', 'month', 'year', 'months', 'years'));
     }
 
     /**

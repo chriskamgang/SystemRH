@@ -18,9 +18,13 @@
     @endif
 
     <div class="bg-white rounded-lg shadow-lg p-8">
-        <form method="POST" action="{{ route('admin.employees.update', $employee->id) }}" enctype="multipart/form-data" novalidate>
+        <form id="employee-form" method="POST" action="{{ route('admin.employees.update', $employee->id) }}" enctype="multipart/form-data" novalidate>
             @csrf
             @method('PUT')
+            <input type="hidden" name="employee_type" id="employee_type_hidden" value="{{ old('employee_type', $employee->employee_type) }}">
+            <input type="hidden" name="monthly_salary" id="monthly_salary_hidden" value="{{ old('monthly_salary', $employee->monthly_salary) }}">
+            <input type="hidden" name="hourly_rate" id="hourly_rate_hidden" value="{{ old('hourly_rate', $employee->hourly_rate) }}">
+            <input type="hidden" name="volume_horaire_hebdomadaire" id="volume_horaire_hidden" value="{{ old('volume_horaire_hebdomadaire', $employee->volume_horaire_hebdomadaire) }}">
 
             <!-- Informations Personnelles -->
             <div class="mb-8">
@@ -70,7 +74,6 @@
                             type="text"
                             name="first_name"
                             value="{{ old('first_name', $employee->first_name) }}"
-                            required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('first_name') border-red-500 @enderror"
                         >
                         @error('first_name')
@@ -85,7 +88,6 @@
                             type="text"
                             name="last_name"
                             value="{{ old('last_name', $employee->last_name) }}"
-                            required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('last_name') border-red-500 @enderror"
                         >
                         @error('last_name')
@@ -100,7 +102,6 @@
                             type="email"
                             name="email"
                             value="{{ old('email', $employee->email) }}"
-                            required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('email') border-red-500 @enderror"
                         >
                         @error('email')
@@ -167,12 +168,10 @@
                             <p class="text-xs text-gray-600">{{ $employee->device_os }}</p>
                             <p class="text-xs text-gray-500 mt-1">ID: {{ substr($employee->device_id, 0, 20) }}...</p>
                         </div>
-                        <form method="POST" action="{{ route('admin.employees.reset-device', $employee->id) }}" class="inline" onsubmit="return confirm('Réinitialiser l\'appareil ? L\'employé devra se reconnecter.');">
-                            @csrf
-                            <button type="submit" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition text-sm">
-                                <i class="fas fa-redo mr-2"></i> Réinitialiser
-                            </button>
-                        </form>
+                        <button type="button" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition text-sm"
+                            onclick="if(confirm('Réinitialiser l\'appareil ? L\'employé devra se reconnecter.')) { document.getElementById('reset-device-form').submit(); }">
+                            <i class="fas fa-redo mr-2"></i> Réinitialiser
+                        </button>
                     </div>
                 </div>
             </div>
@@ -222,13 +221,9 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Type d'employé *</label>
 
-                        <!-- Input caché pour garantir l'envoi -->
-                        <input type="hidden" name="employee_type" id="employee_type_hidden" value="{{ old('employee_type', $employee->employee_type) }}">
-
                         <select
                             id="employee_type"
-                            required
-                            onchange="document.getElementById('employee_type_hidden').value = this.value; toggleSalaryFields();"
+                            onchange="document.getElementById('employee_type_hidden').value=this.value; toggleSalaryFields();"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('employee_type') border-red-500 @enderror"
                         >
                             <option value="">Sélectionner un type</option>
@@ -253,8 +248,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Salaire Mensuel (FCFA)</label>
                         <input
                             type="number"
-                            name="monthly_salary"
                             id="monthly_salary"
+                            oninput="document.getElementById('monthly_salary_hidden').value=this.value"
                             step="1000"
                             min="0"
                             value="{{ old('monthly_salary', $employee->monthly_salary) }}"
@@ -272,8 +267,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Taux Horaire (FCFA/h)</label>
                         <input
                             type="number"
-                            name="hourly_rate"
                             id="hourly_rate"
+                            oninput="document.getElementById('hourly_rate_hidden').value=this.value"
                             step="100"
                             min="0"
                             value="{{ old('hourly_rate', $employee->hourly_rate) }}"
@@ -291,8 +286,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Volume Horaire Hebdomadaire (h) *</label>
                         <input
                             type="number"
-                            name="volume_horaire_hebdomadaire"
                             id="volume_horaire_hebdomadaire"
+                            oninput="document.getElementById('volume_horaire_hidden').value=this.value"
                             value="{{ old('volume_horaire_hebdomadaire', $employee->volume_horaire_hebdomadaire) }}"
                             min="0"
                             max="168"
@@ -456,6 +451,10 @@
                 </button>
             </div>
         </form>
+        <!-- Form reset-device hors du form principal -->
+        <form id="reset-device-form" method="POST" action="{{ route('admin.employees.reset-device', $employee->id) }}" style="display:none;">
+            @csrf
+        </form>
     </div>
 </div>
 
@@ -482,25 +481,15 @@ function toggleSalaryFields() {
     hourlyRateInput.removeAttribute('required');
     volumeHoraireInput.removeAttribute('required');
 
-    // Afficher les champs selon le type
+    // Afficher les champs selon le type (validation gérée côté serveur)
     if (employeeType === 'enseignant_vacataire') {
-        // Vacataire : taux horaire uniquement
         hourlyRateField.style.display = 'block';
-        hourlyRateInput.setAttribute('required', 'required');
-        console.log('Showing hourly rate field');
     } else if (employeeType === 'semi_permanent') {
-        // Semi-permanent : salaire mensuel + volume horaire + jours travail
         monthlySalaryField.style.display = 'block';
         volumeHoraireField.style.display = 'block';
         joursTravailField.style.display = 'block';
-        monthlySalaryInput.setAttribute('required', 'required');
-        volumeHoraireInput.setAttribute('required', 'required');
-        console.log('Showing monthly salary, volume horaire and jours travail fields for semi-permanent');
     } else if (employeeType && employeeType !== '') {
-        // Autres types : salaire mensuel uniquement
         monthlySalaryField.style.display = 'block';
-        monthlySalaryInput.setAttribute('required', 'required');
-        console.log('Showing monthly salary field');
     }
 }
 
@@ -511,27 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleSalaryFields();
     console.log('Salary fields initialized');
 
-    // Déboguer la soumission du formulaire
-    const form = document.querySelector('form[method="POST"]');
-    console.log('Form trouvé:', form ? 'OUI' : 'NON');
-
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            console.log('=== FORM SOUMIS ===');
-            // Ne rien bloquer, laisser soumettre
-        });
-    }
-
-    // Test du bouton
-    const btn = document.getElementById('submit-btn');
-    console.log('Bouton trouvé:', btn ? 'OUI' : 'NON');
-    if (btn) {
-        btn.addEventListener('click', function(e) {
-            console.log('=== BOUTON SUBMIT CLIQUE ===');
-            console.log('Laissant le formulaire se soumettre normalement...');
-            // NE PAS faire e.preventDefault() - laisser le bouton soumettre normalement
-        });
-    }
+    // Pas besoin de listener submit - plus de required dans le HTML
 
     // Gestion des plages horaires
     toggleShiftAssignment();

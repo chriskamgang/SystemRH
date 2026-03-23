@@ -209,6 +209,9 @@ class DashboardController extends Controller
             // Paramètres de géofencing
             'geofence_notification_enabled' => 'sometimes|boolean',
             'geofence_notification_cooldown_minutes' => 'sometimes|integer|min:30|max:1440',
+            // Taux horaires par niveau (vacataires)
+            'taux_horaire_licence' => 'sometimes|numeric|min:0',
+            'taux_horaire_master' => 'sometimes|numeric|min:0',
         ]);
 
         // Save map provider

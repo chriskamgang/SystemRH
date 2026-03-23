@@ -15,7 +15,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Volume horaire (heures) *</label>
-                    <input type="number" name="volume_horaire_total" value="{{ old('volume_horaire_total') }}" required placeholder="Ex: 18" step="0.5" class="w-full px-4 py-2 border rounded-lg @error('volume_horaire_total') border-red-500 @enderror">
+                    <input type="number" name="volume_horaire_total" id="volume_horaire_total" value="{{ old('volume_horaire_total') }}" required placeholder="Ex: 18" step="0.5" class="w-full px-4 py-2 border rounded-lg @error('volume_horaire_total') border-red-500 @enderror">
                     @error('volume_horaire_total')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div class="md:col-span-2">
@@ -31,8 +31,8 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Semestre</label>
                     <select name="semestre" class="w-full px-4 py-2 border rounded-lg">
                         <option value="">Aucun</option>
-                        <option value="1">Semestre 1</option>
-                        <option value="2">Semestre 2</option>
+                        <option value="1" {{ old('semestre') == '1' ? 'selected' : '' }}>Semestre 1</option>
+                        <option value="2" {{ old('semestre') == '2' ? 'selected' : '' }}>Semestre 2</option>
                     </select>
                 </div>
                 <div>
@@ -41,7 +41,24 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Niveau</label>
-                    <input type="text" name="niveau" value="{{ old('niveau') }}" placeholder="Ex: Licence 1" class="w-full px-4 py-2 border rounded-lg">
+                    <select name="niveau" id="niveau" class="w-full px-4 py-2 border rounded-lg" onchange="onNiveauChange()">
+                        <option value="">Sélectionner un niveau</option>
+                        @foreach(['BTS 1', 'BTS 2', 'Licence 1', 'Licence 2', 'Licence 3', 'Master 1', 'Master 2'] as $niv)
+                            <option value="{{ $niv }}" {{ old('niveau') == $niv ? 'selected' : '' }}>{{ $niv }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Taux horaire -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Taux horaire (FCFA/h)
+                    </label>
+                    <input type="number" name="taux_horaire" id="taux_horaire" value="{{ old('taux_horaire') }}" placeholder="Auto selon niveau" step="100" min="0" class="w-full px-4 py-2 border rounded-lg @error('taux_horaire') border-red-500 @enderror">
+                    @error('taux_horaire')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                    <p class="text-xs text-gray-500 mt-1" id="tauxHoraireHint">
+                        Licence/Master : taux spécifique. BTS : taux du vacataire.
+                    </p>
                 </div>
             </div>
             <div class="flex justify-end gap-4 mt-6 pt-6 border-t">
@@ -51,4 +68,43 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+const tauxParNiveau = {
+    'licence': {{ \App\Models\Setting::get('taux_horaire_licence', 5000) }},
+    'master': {{ \App\Models\Setting::get('taux_horaire_master', 7500) }},
+};
+
+function onNiveauChange() {
+    const niveau = document.getElementById('niveau').value.toLowerCase();
+    const tauxInput = document.getElementById('taux_horaire');
+    const hint = document.getElementById('tauxHoraireHint');
+
+    if (niveau.includes('licence')) {
+        tauxInput.value = tauxParNiveau.licence;
+        hint.textContent = 'Taux Licence pré-rempli (' + new Intl.NumberFormat('fr-FR').format(tauxParNiveau.licence) + ' FCFA/h). Modifiable.';
+        hint.className = 'text-xs text-blue-600 mt-1';
+    } else if (niveau.includes('master')) {
+        tauxInput.value = tauxParNiveau.master;
+        hint.textContent = 'Taux Master pré-rempli (' + new Intl.NumberFormat('fr-FR').format(tauxParNiveau.master) + ' FCFA/h). Modifiable.';
+        hint.className = 'text-xs text-purple-600 mt-1';
+    } else if (niveau.includes('bts')) {
+        tauxInput.value = '';
+        hint.textContent = 'BTS : le taux horaire du vacataire sera utilisé.';
+        hint.className = 'text-xs text-green-600 mt-1';
+    } else {
+        tauxInput.value = '';
+        hint.textContent = 'Licence/Master : taux spécifique. BTS : taux du vacataire.';
+        hint.className = 'text-xs text-gray-500 mt-1';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('niveau').value) {
+        onNiveauChange();
+    }
+});
+</script>
+@endpush
 @endsection

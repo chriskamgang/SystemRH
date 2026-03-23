@@ -356,122 +356,168 @@ class PayrollCalculator
         $startDate = Carbon::create($year, $month, 1)->startOfMonth();
         $endDate = Carbon::create($year, $month, 1)->endOfMonth();
 
-        // Récupérer le taux horaire
-        $hourlyRate = (float) $user->hourly_rate;
+        // Taux horaire par défaut du vacataire (utilisé pour les UE sans taux spécifique, ex: BTS)
+        $defaultHourlyRate = (float) $user->hourly_rate;
 
-        if ($hourlyRate <= 0) {
-            return [
-                'hourly_rate' => 0,
-                'days_worked' => 0,
-                'hours_worked' => 0,
-                'total_late_minutes' => 0,
-                'gross_amount' => 0,
-                'late_penalty' => 0,
-                'net_amount' => 0,
-            ];
-        }
+        // Récupérer toutes les UE actives du vacataire
+        $unitesActivees = \App\Models\UniteEnseignement::where('enseignant_id', $user->id)
+            ->where('statut', 'activee')
+            ->get();
 
-        // Récupérer toutes les présences
+        // Récupérer toutes les présences du mois
         $attendances = Attendance::where('user_id', $user->id)
             ->whereBetween('timestamp', [$startDate, $endDate])
             ->orderBy('timestamp', 'asc')
             ->get();
 
-        // Grouper par date ET par plage (matin/soir)
-        $groupedByDateShift = $attendances->groupBy(function ($attendance) {
-            $shift = $attendance->shift ?? 'morning';
-            return $attendance->timestamp->format('Y-m-d') . '_' . $shift;
-        });
-
+        // ===== CALCULER LES HEURES PAR UE =====
+        $ueBreakdown = [];
         $totalHours = 0;
-        $totalLateMinutes = 0;
+        $totalGross = 0;
         $daysWorked = 0;
 
-        foreach ($groupedByDateShift as $dateShift => $shiftAttendances) {
-            list($date, $shift) = explode('_', $dateShift);
+        // Grouper les présences par UE
+        $attendancesByUe = $attendances->groupBy('unite_enseignement_id');
 
-            $checkIn = $shiftAttendances->where('type', 'check-in')->first();
-            $checkOut = $shiftAttendances->where('type', 'check-out')->first();
+        foreach ($unitesActivees as $ue) {
+            $ueAttendances = $attendancesByUe->get($ue->id, collect());
+            $ueHours = 0;
 
-            if ($checkIn && $checkOut) {
-                $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
-                // Soustraire la pause déjeuner
-                $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
-                    $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
-                );
-                $hoursWorked -= ($breakMinutes / 60);
-                $totalHours += max(0, $hoursWorked);
+            // Grouper par date + shift
+            $groupedByDateShift = $ueAttendances->groupBy(function ($att) {
+                $shift = $att->shift ?? 'morning';
+                return $att->timestamp->format('Y-m-d') . '_' . $shift;
+            });
 
-                $carbonDate = Carbon::parse($date);
-                // Chaque plage (matin ou soir) compte comme 0.5 jour
-                $dayValue = 0.5;
-                $daysWorked += $dayValue;
-            } elseif ($checkIn) {
-                // Si pas de checkout, compter les heures par défaut selon la plage
-                if ($shift === 'morning') {
-                    $totalHours += 8; // 8h pour le matin
-                } else {
-                    $totalHours += 3.5; // 3h30 pour le soir
+            foreach ($groupedByDateShift as $dateShift => $shiftAttendances) {
+                list($date, $shift) = explode('_', $dateShift);
+
+                $checkIn = $shiftAttendances->where('type', 'check-in')->first();
+                $checkOut = $shiftAttendances->where('type', 'check-out')->first();
+
+                if ($checkIn && $checkOut) {
+                    $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
+                    $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                        $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
+                    );
+                    $hoursWorked -= ($breakMinutes / 60);
+                    $ueHours += max(0, $hoursWorked);
+                    $daysWorked += 0.5;
+                } elseif ($checkIn) {
+                    $ueHours += ($shift === 'morning') ? 8 : 3.5;
+                    $daysWorked += 0.5;
                 }
-
-                $carbonDate = Carbon::parse($date);
-                $dayValue = 0.5;
-                $daysWorked += $dayValue;
             }
 
-            // Les vacataires n'ont PAS de retard (payés à l'heure effectuée)
-            // Ne pas compter les late_minutes pour les vacataires
+            // Ajouter les présences manuelles pour cette UE
+            $manualAttendances = ManualAttendance::where('user_id', $user->id)
+                ->where('unite_enseignement_id', $ue->id)
+                ->whereYear('date', $year)
+                ->whereMonth('date', $month)
+                ->get();
+
+            foreach ($manualAttendances as $manual) {
+                $ueHours += $manual->duration_in_hours;
+                $daysWorked += ($manual->session_type === 'jour') ? 1 : 0.5;
+            }
+
+            // Utiliser les heures validées si supérieures
+            if ($ue->heures_effectuees_validees > $ueHours) {
+                $ueHours = (float) $ue->heures_effectuees_validees;
+            }
+
+            // Taux effectif : taux de la UE si défini, sinon taux du vacataire
+            $effectiveRate = ($ue->taux_horaire !== null && $ue->taux_horaire > 0)
+                ? (float) $ue->taux_horaire
+                : $defaultHourlyRate;
+
+            $ueMontant = $ueHours * $effectiveRate;
+
+            $ueBreakdown[] = [
+                'ue_id' => $ue->id,
+                'code_ue' => $ue->code_ue,
+                'nom_matiere' => $ue->nom_matiere,
+                'niveau' => $ue->niveau,
+                'taux_horaire' => $effectiveRate,
+                'heures' => round($ueHours, 2),
+                'montant' => round($ueMontant, 2),
+            ];
+
+            $totalHours += $ueHours;
+            $totalGross += $ueMontant;
         }
 
-        // ===== AJOUTER LES PRÉSENCES MANUELLES =====
-        $manualAttendances = ManualAttendance::where('user_id', $user->id)
-            ->whereYear('date', $year)
-            ->whereMonth('date', $month)
-            ->get();
+        // ===== PRÉSENCES SANS UE (pointages génériques) =====
+        $attendancesSansUe = $attendancesByUe->get(null, collect())
+            ->merge($attendancesByUe->get('', collect()));
 
-        foreach ($manualAttendances as $manualAttendance) {
-            // Ajouter les heures de la présence manuelle
-            $totalHours += $manualAttendance->duration_in_hours;
+        if ($attendancesSansUe->isNotEmpty()) {
+            $genericHours = 0;
 
-            // Compter les jours selon le type de session
-            if ($manualAttendance->session_type === 'jour') {
-                $daysWorked += 1; // Session complète
-            } else {
-                $daysWorked += 0.5; // Session de soir
+            $groupedGeneric = $attendancesSansUe->groupBy(function ($att) {
+                $shift = $att->shift ?? 'morning';
+                return $att->timestamp->format('Y-m-d') . '_' . $shift;
+            });
+
+            foreach ($groupedGeneric as $dateShift => $shiftAttendances) {
+                list($date, $shift) = explode('_', $dateShift);
+
+                $checkIn = $shiftAttendances->where('type', 'check-in')->first();
+                $checkOut = $shiftAttendances->where('type', 'check-out')->first();
+
+                if ($checkIn && $checkOut) {
+                    $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
+                    $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                        $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
+                    );
+                    $hoursWorked -= ($breakMinutes / 60);
+                    $genericHours += max(0, $hoursWorked);
+                    $daysWorked += 0.5;
+                } elseif ($checkIn) {
+                    $genericHours += ($shift === 'morning') ? 8 : 3.5;
+                    $daysWorked += 0.5;
+                }
+            }
+
+            // Présences manuelles sans UE
+            $manualSansUe = ManualAttendance::where('user_id', $user->id)
+                ->whereNull('unite_enseignement_id')
+                ->whereYear('date', $year)
+                ->whereMonth('date', $month)
+                ->get();
+
+            foreach ($manualSansUe as $manual) {
+                $genericHours += $manual->duration_in_hours;
+                $daysWorked += ($manual->session_type === 'jour') ? 1 : 0.5;
+            }
+
+            if ($genericHours > 0) {
+                $genericMontant = $genericHours * $defaultHourlyRate;
+                $ueBreakdown[] = [
+                    'ue_id' => null,
+                    'code_ue' => null,
+                    'nom_matiere' => 'Autres pointages',
+                    'niveau' => null,
+                    'taux_horaire' => $defaultHourlyRate,
+                    'heures' => round($genericHours, 2),
+                    'montant' => round($genericMontant, 2),
+                ];
+                $totalHours += $genericHours;
+                $totalGross += $genericMontant;
             }
         }
 
-        // ===== AJOUTER LES HEURES VALIDÉES DES UE (paiements manuels vacataires) =====
-        $unitesActivees = \App\Models\UniteEnseignement::where('enseignant_id', $user->id)
-            ->where('statut', 'activee')
-            ->where('heures_effectuees_validees', '>', 0)
-            ->get();
-
-        $totalHeuresValidees = $unitesActivees->sum('heures_effectuees_validees');
-
-        // Utiliser les heures validées si elles sont supérieures aux heures calculées par pointage
-        if ($totalHeuresValidees > $totalHours) {
-            $totalHours = (float) $totalHeuresValidees;
-        }
-
-        // Calculer le montant brut
-        $grossAmount = $totalHours * $hourlyRate;
-
-        // Les vacataires n'ont PAS de pénalité de retard (payés à l'heure)
-        $latePenalty = 0;
-        $totalLateMinutes = 0;
-
-        // Montant net
-        $netAmount = max(0, $grossAmount - $latePenalty);
+        $netAmount = max(0, $totalGross);
 
         return [
-            'hourly_rate' => $hourlyRate,
+            'hourly_rate' => $defaultHourlyRate,
             'days_worked' => $daysWorked,
-            'hours_worked' => $totalHours,
+            'hours_worked' => round($totalHours, 2),
             'total_late_minutes' => 0,
-            'gross_amount' => $grossAmount,
+            'gross_amount' => round($totalGross, 2),
             'late_penalty' => 0,
-            'net_amount' => $netAmount,
+            'net_amount' => round($netAmount, 2),
+            'ue_breakdown' => $ueBreakdown,
         ];
     }
 }

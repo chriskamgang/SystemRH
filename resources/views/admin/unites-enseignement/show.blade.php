@@ -67,7 +67,12 @@
                 </p>
                 @if($ue->enseignant && $ue->enseignant->isVacataire())
                     <p class="text-xs text-gray-600 mt-1">
-                        Taux: {{ number_format($ue->enseignant->hourly_rate, 0, ',', ' ') }} FCFA/h
+                        Taux UE: <strong>{{ number_format($ue->taux_horaire_effectif, 0, ',', ' ') }} FCFA/h</strong>
+                        @if($ue->taux_horaire)
+                            <span class="text-blue-600">(spécifique {{ $ue->niveau ?? '' }})</span>
+                        @else
+                            <span class="text-green-600">(taux vacataire)</span>
+                        @endif
                     </p>
                 @endif
             </div>

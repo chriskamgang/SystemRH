@@ -72,6 +72,8 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code UE</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mati\u00e8re</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Niveau</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Taux/h</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vol. Total</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">D\u00e9j\u00e0 Valid\u00e9</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Restant</th>
@@ -84,6 +86,13 @@
                             <tr>
                                 <td class="px-4 py-3 text-sm text-gray-900" x-text="ue.code_ue"></td>
                                 <td class="px-4 py-3 text-sm text-gray-900" x-text="ue.nom_matiere"></td>
+                                <td class="px-4 py-3 text-sm">
+                                    <span x-show="ue.niveau" class="px-2 py-1 rounded-full text-xs font-medium"
+                                          :class="ue.niveau && ue.niveau.toLowerCase().includes('licence') ? 'bg-blue-100 text-blue-700' : (ue.niveau && ue.niveau.toLowerCase().includes('master') ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700')"
+                                          x-text="ue.niveau"></span>
+                                    <span x-show="!ue.niveau" class="text-gray-400">-</span>
+                                </td>
+                                <td class="px-4 py-3 text-sm font-medium text-gray-900" x-text="formatNumber(ue.taux_horaire) + ' FCFA'"></td>
                                 <td class="px-4 py-3 text-sm text-gray-900" x-text="ue.volume_horaire_total + 'h'"></td>
                                 <td class="px-4 py-3 text-sm text-gray-900" x-text="ue.heures_effectuees_validees + 'h'"></td>
                                 <td class="px-4 py-3 text-sm font-medium" :class="ue.heures_restantes > 0 ? 'text-green-600' : 'text-red-600'" x-text="ue.heures_restantes + 'h'"></td>
@@ -102,9 +111,10 @@
                                             type="number"
                                             step="0.5"
                                             min="0"
+                                            :max="ue.heures_restantes"
                                             :name="'ue_details[' + index + '][heures_saisies]'"
                                             x-model="ue.heures_saisies"
-                                            @input="calculateMontant(ue); calculateTotal()"
+                                            @input="capHeures(ue); calculateMontant(ue); calculateTotal()"
                                             class="w-20 border-2 rounded-lg text-center text-sm font-bold"
                                             :class="ue.heures_saisies > 0 ? 'border-green-500 bg-green-50' : 'border-gray-300'"
                                             placeholder="0"
@@ -129,10 +139,10 @@
                                         </button>
                                     </div>
                                     <input type="hidden" :name="'ue_details[' + index + '][unite_enseignement_id]'" :value="ue.id" />
-                                    <div x-show="ue.heures_saisies > ue.heures_restantes" class="text-xs text-red-500 mt-1 font-semibold">
-                                        <i class="fas fa-exclamation-triangle"></i> D\u00e9passe les heures restantes !
+                                    <div x-show="ue.heures_saisies > 0 && ue.heures_saisies >= ue.heures_restantes" class="text-xs text-orange-600 mt-1 font-semibold">
+                                        <i class="fas fa-check-double"></i> Maximum atteint (<span x-text="ue.heures_restantes"></span>h)
                                     </div>
-                                    <div x-show="ue.heures_saisies > 0 && ue.heures_saisies <= ue.heures_restantes" class="text-xs text-green-600 mt-1">
+                                    <div x-show="ue.heures_saisies > 0 && ue.heures_saisies < ue.heures_restantes" class="text-xs text-green-600 mt-1">
                                         <i class="fas fa-check"></i> <span x-text="formatNumber(ue.heures_saisies)"></span>h saisies
                                     </div>
                                 </td>
@@ -142,7 +152,7 @@
                     </tbody>
                     <tfoot class="bg-gray-100">
                         <tr>
-                            <td colspan="5" class="px-4 py-3 text-right font-bold">TOTAL:</td>
+                            <td colspan="7" class="px-4 py-3 text-right font-bold">TOTAL:</td>
                             <td class="px-4 py-3 font-bold" x-text="formatNumber(totalHeures) + 'h'"></td>
                             <td class="px-4 py-3 font-bold text-lg text-blue-600" x-text="formatNumber(totalMontant) + ' FCFA'"></td>
                         </tr>
@@ -308,7 +318,7 @@ function paymentForm() {
 
         calculateMontant(ue) {
             const heures = parseFloat(ue.heures_saisies) || 0;
-            ue.montant = heures * (this.vacataireInfo?.taux_horaire || 0);
+            ue.montant = heures * (ue.taux_horaire || 0);
         },
 
         calculateTotal() {
@@ -320,10 +330,21 @@ function paymentForm() {
             this.montantNet = this.totalMontant - this.impotRetenu;
         },
 
-        // Incrémenter les heures (+0.5h)
+        // Plafonner les heures au maximum restant
+        capHeures(ue) {
+            const val = parseFloat(ue.heures_saisies) || 0;
+            if (val > ue.heures_restantes) {
+                ue.heures_saisies = ue.heures_restantes;
+            }
+            if (val < 0) {
+                ue.heures_saisies = 0;
+            }
+        },
+
+        // Incrémenter les heures (+0.5h) sans dépasser le max
         incrementHeures(ue) {
             const current = parseFloat(ue.heures_saisies) || 0;
-            ue.heures_saisies = current + 0.5;
+            ue.heures_saisies = Math.min(current + 0.5, ue.heures_restantes);
             this.calculateMontant(ue);
             this.calculateTotal();
         },

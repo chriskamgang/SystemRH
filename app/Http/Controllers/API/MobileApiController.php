@@ -8,6 +8,7 @@ use App\Models\ManualDeduction;
 use App\Helpers\PayrollCalculator;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class MobileApiController extends Controller
 {
@@ -46,7 +47,7 @@ class MobileApiController extends Controller
             });
 
             if ($isVacataire) {
-                // Calcul spécifique vacataire : basé sur les heures et le taux horaire
+                // Calcul spécifique vacataire : basé sur les heures et le taux horaire par UE
                 $payroll = PayrollCalculator::calculateVacatairePayroll($user, $year, $month);
 
                 // Calculer les jours programmés via l'emploi du temps
@@ -96,6 +97,7 @@ class MobileApiController extends Controller
                             'manual_deductions_details' => $manualDeductionsDetails,
                         ],
                         'ue_summary' => $scheduledDays['ue_summary'],
+                        'ue_breakdown' => $payroll['ue_breakdown'] ?? [],
                     ],
                 ]);
             }
@@ -339,5 +341,71 @@ class MobileApiController extends Controller
             'success' => true,
             'data' => $formattedLoans,
         ]);
+    }
+
+    /**
+     * Télécharger la fiche de paie en PDF
+     * GET /api/user/payslip?month=3&year=2026
+     */
+    public function downloadPayslip(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $month = (int) $request->query('month', now()->month);
+            $year = (int) $request->query('year', now()->year);
+
+            $isVacataire = $user->employee_type === 'enseignant_vacataire';
+            $periodName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY');
+
+            // Calculer la paie
+            if ($isVacataire) {
+                $payroll = PayrollCalculator::calculateVacatairePayroll($user, $year, $month);
+                $netSalary = $payroll['net_amount'] ?? 0;
+            } else {
+                $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+                $netSalary = $payroll['net_salary'] ?? 0;
+            }
+
+            // Déductions manuelles
+            $manualDeductionsTotal = ManualDeduction::where('user_id', $user->id)
+                ->where('month', $month)
+                ->where('year', $year)
+                ->where('status', 'active')
+                ->sum('amount');
+
+            if ($isVacataire) {
+                $netSalary = max(0, $netSalary - $manualDeductionsTotal);
+            }
+
+            // Labels type employé
+            $typeLabels = [
+                'enseignant_vacataire' => 'Enseignant Vacataire',
+                'enseignant_titulaire' => 'Enseignant Titulaire',
+                'semi_permanent' => 'Semi-Permanent',
+                'administratif' => 'Personnel Administratif',
+                'technique' => 'Personnel Technique',
+                'direction' => 'Direction',
+            ];
+            $employeeTypeLabel = $typeLabels[$user->employee_type] ?? $user->employee_type;
+
+            $pdf = Pdf::loadView('admin.rapports.pdf.fiche-paie', compact(
+                'user', 'payroll', 'isVacataire', 'periodName',
+                'netSalary', 'manualDeductionsTotal', 'employeeTypeLabel'
+            ));
+
+            $filename = 'fiche-paie-' . strtolower(str_replace(' ', '-', $user->full_name)) . '-' . $month . '-' . $year . '.pdf';
+
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération fiche de paie: ' . $e->getMessage(), [
+                'user_id' => $request->user()->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la génération de la fiche de paie',
+            ], 500);
+        }
     }
 }

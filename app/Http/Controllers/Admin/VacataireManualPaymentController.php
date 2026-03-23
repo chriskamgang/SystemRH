@@ -99,15 +99,16 @@ class VacataireManualPaymentController extends Controller
         $ues = UniteEnseignement::where('enseignant_id', $vacataire->id)
             ->where('statut', 'activee')
             ->get()
-            ->map(function ($ue) use ($vacataire) {
+            ->map(function ($ue) {
                 return [
                     'id' => $ue->id,
                     'code_ue' => $ue->code_ue,
                     'nom_matiere' => $ue->nom_matiere,
+                    'niveau' => $ue->niveau,
                     'volume_horaire_total' => $ue->volume_horaire_total,
                     'heures_effectuees_validees' => $ue->heures_effectuees_validees,
                     'heures_restantes' => $ue->heures_restantes_validees,
-                    'taux_horaire' => $vacataire->hourly_rate,
+                    'taux_horaire' => $ue->taux_horaire_effectif,
                 ];
             });
 
@@ -133,26 +134,46 @@ class VacataireManualPaymentController extends Controller
             'year' => 'required|integer|min:2020|max:2030',
             'ue_details' => 'required|array|min:1',
             'ue_details.*.unite_enseignement_id' => 'required|exists:unites_enseignement,id',
-            'ue_details.*.heures_saisies' => 'required|numeric|min:0.01',
+            'ue_details.*.heures_saisies' => 'required|numeric|min:0',
             'appliquer_impot' => 'nullable|boolean',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        // Filtrer les UE avec 0 heures
+        $validated['ue_details'] = array_filter($validated['ue_details'], function ($ueData) {
+            return (float) $ueData['heures_saisies'] > 0;
+        });
+
+        if (empty($validated['ue_details'])) {
+            return back()->withInput()->with('error', 'Veuillez saisir au moins une heure pour une matière.');
+        }
 
         DB::beginTransaction();
 
         try {
             $vacataire = User::findOrFail($validated['vacataire_id']);
 
-            // Calculer le total
+            // Calculer le total en utilisant le taux horaire de chaque UE
             $totalHeures = 0;
             $totalMontant = 0;
+            $ueCalculations = [];
 
             foreach ($validated['ue_details'] as $ueData) {
+                $ue = UniteEnseignement::findOrFail($ueData['unite_enseignement_id']);
                 $heures = (float) $ueData['heures_saisies'];
-                $montant = $heures * $vacataire->hourly_rate;
+                $tauxEffectif = $ue->taux_horaire_effectif;
+                $montant = $heures * $tauxEffectif;
 
                 $totalHeures += $heures;
                 $totalMontant += $montant;
+
+                $ueCalculations[] = [
+                    'ue' => $ue,
+                    'heures' => $heures,
+                    'taux' => $tauxEffectif,
+                    'montant' => $montant,
+                    'notes' => $ueData['notes'] ?? null,
+                ];
             }
 
             // Calculer l'impôt si demandé (5% du montant brut)
@@ -176,25 +197,23 @@ class VacataireManualPaymentController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            // Créer les détails pour chaque UE
-            foreach ($validated['ue_details'] as $ueData) {
-                $ue = UniteEnseignement::findOrFail($ueData['unite_enseignement_id']);
-                $heures = (float) $ueData['heures_saisies'];
-                $montant = $heures * $vacataire->hourly_rate;
+            // Créer les détails pour chaque UE avec le taux effectif
+            foreach ($ueCalculations as $calc) {
+                $ue = $calc['ue'];
 
                 VacatairePaymentDetail::create([
                     'payment_id' => $payment->id,
                     'unite_enseignement_id' => $ue->id,
                     'code_ue' => $ue->code_ue,
                     'nom_matiere' => $ue->nom_matiere,
-                    'heures_saisies' => $heures,
-                    'taux_horaire' => $vacataire->hourly_rate,
-                    'montant' => $montant,
-                    'notes' => $ueData['notes'] ?? null,
+                    'heures_saisies' => $calc['heures'],
+                    'taux_horaire' => $calc['taux'],
+                    'montant' => $calc['montant'],
+                    'notes' => $calc['notes'],
                 ]);
 
                 // Mettre à jour les heures validées de l'UE
-                $ue->ajouterHeuresValidees($heures);
+                $ue->ajouterHeuresValidees($calc['heures']);
             }
 
             DB::commit();
@@ -261,9 +280,18 @@ class VacataireManualPaymentController extends Controller
             'year' => 'required|integer|min:2020|max:2030',
             'ue_details' => 'required|array|min:1',
             'ue_details.*.unite_enseignement_id' => 'required|exists:unites_enseignement,id',
-            'ue_details.*.heures_saisies' => 'required|numeric|min:0.01',
+            'ue_details.*.heures_saisies' => 'required|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        // Filtrer les UE avec 0 heures
+        $validated['ue_details'] = array_filter($validated['ue_details'], function ($ueData) {
+            return (float) $ueData['heures_saisies'] > 0;
+        });
+
+        if (empty($validated['ue_details'])) {
+            return back()->withInput()->with('error', 'Veuillez saisir au moins une heure pour une matière.');
+        }
 
         DB::beginTransaction();
 
@@ -280,16 +308,27 @@ class VacataireManualPaymentController extends Controller
             // Supprimer les anciens détails
             $payment->details()->delete();
 
-            // Recalculer le total
+            // Recalculer le total avec le taux effectif de chaque UE
             $totalHeures = 0;
             $totalMontant = 0;
+            $ueCalculations = [];
 
             foreach ($validated['ue_details'] as $ueData) {
+                $ue = UniteEnseignement::findOrFail($ueData['unite_enseignement_id']);
                 $heures = (float) $ueData['heures_saisies'];
-                $montant = $heures * $vacataire->hourly_rate;
+                $tauxEffectif = $ue->taux_horaire_effectif;
+                $montant = $heures * $tauxEffectif;
 
                 $totalHeures += $heures;
                 $totalMontant += $montant;
+
+                $ueCalculations[] = [
+                    'ue' => $ue,
+                    'heures' => $heures,
+                    'taux' => $tauxEffectif,
+                    'montant' => $montant,
+                    'notes' => $ueData['notes'] ?? null,
+                ];
             }
 
             // Mettre à jour le paiement
@@ -302,25 +341,23 @@ class VacataireManualPaymentController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            // Créer les nouveaux détails
-            foreach ($validated['ue_details'] as $ueData) {
-                $ue = UniteEnseignement::findOrFail($ueData['unite_enseignement_id']);
-                $heures = (float) $ueData['heures_saisies'];
-                $montant = $heures * $vacataire->hourly_rate;
+            // Créer les nouveaux détails avec le taux effectif
+            foreach ($ueCalculations as $calc) {
+                $ue = $calc['ue'];
 
                 VacatairePaymentDetail::create([
                     'payment_id' => $payment->id,
                     'unite_enseignement_id' => $ue->id,
                     'code_ue' => $ue->code_ue,
                     'nom_matiere' => $ue->nom_matiere,
-                    'heures_saisies' => $heures,
-                    'taux_horaire' => $vacataire->hourly_rate,
-                    'montant' => $montant,
-                    'notes' => $ueData['notes'] ?? null,
+                    'heures_saisies' => $calc['heures'],
+                    'taux_horaire' => $calc['taux'],
+                    'montant' => $calc['montant'],
+                    'notes' => $calc['notes'],
                 ]);
 
                 // Ajouter les nouvelles heures
-                $ue->ajouterHeuresValidees($heures);
+                $ue->ajouterHeuresValidees($calc['heures']);
             }
 
             DB::commit();

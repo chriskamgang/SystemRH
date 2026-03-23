@@ -103,6 +103,8 @@ class UniteEnseignementController extends Controller
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
             'semestre' => 'nullable|integer|between:1,9',
+            'niveau' => 'nullable|string|max:255',
+            'taux_horaire' => 'nullable|numeric|min:0',
             'activer_immediatement' => 'boolean',
         ]);
 
@@ -166,6 +168,8 @@ class UniteEnseignementController extends Controller
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
             'semestre' => 'nullable|integer|between:1,9',
+            'niveau' => 'nullable|string|max:255',
+            'taux_horaire' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -179,7 +183,9 @@ class UniteEnseignementController extends Controller
             'nom_matiere',
             'volume_horaire_total',
             'annee_academique',
-            'semestre'
+            'semestre',
+            'niveau',
+            'taux_horaire',
         ]));
 
         return redirect()
@@ -366,6 +372,7 @@ class UniteEnseignementController extends Controller
             'semestre' => 'nullable|integer|in:1,2',
             'specialite' => 'nullable|string|max:255',
             'niveau' => 'nullable|string|max:255',
+            'taux_horaire' => 'nullable|numeric|min:0',
         ]);
 
         $validated['statut'] = 'non_activee';

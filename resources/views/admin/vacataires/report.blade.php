@@ -9,7 +9,7 @@
     <div class="flex justify-between items-center">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Rapport des Vacataires</h2>
-            <p class="text-gray-600 mt-1">Statistiques et performances des vacataires</p>
+            <p class="text-gray-600 mt-1">Suivi des heures et paiements par période</p>
         </div>
         <a href="{{ route('admin.vacataires.report.export', request()->query()) }}" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition">
             <i class="fas fa-file-export mr-2"></i> Exporter
@@ -20,23 +20,21 @@
     <div class="bg-white rounded-lg shadow p-6">
         <form method="GET" action="{{ route('admin.vacataires.report') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Date début</label>
-                <input
-                    type="date"
-                    name="start_date"
-                    value="{{ request('start_date', $startDate->format('Y-m-d')) }}"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                <label class="block text-sm font-medium text-gray-700 mb-2">Mois</label>
+                <select name="month" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    @foreach($months as $num => $name)
+                        <option value="{{ $num }}" {{ $month == $num ? 'selected' : '' }}>{{ $name }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Date fin</label>
-                <input
-                    type="date"
-                    name="end_date"
-                    value="{{ request('end_date', $endDate->format('Y-m-d')) }}"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                <label class="block text-sm font-medium text-gray-700 mb-2">Année</label>
+                <select name="year" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    @foreach($years as $y)
+                        <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <div>
@@ -60,11 +58,11 @@
     </div>
 
     <!-- Statistiques globales -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Total Vacataires</p>
+                    <p class="text-sm text-gray-600">Vacataires</p>
                     <p class="text-3xl font-bold text-gray-800">{{ $vacataires->count() }}</p>
                 </div>
                 <div class="p-3 bg-purple-100 rounded-full">
@@ -76,11 +74,11 @@
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Total Jours</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ $vacataires->sum('total_days') }}</p>
+                    <p class="text-sm text-gray-600">UE Actives</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ $vacataires->sum('total_ues') }}</p>
                 </div>
                 <div class="p-3 bg-blue-100 rounded-full">
-                    <i class="fas fa-calendar text-2xl text-blue-600"></i>
+                    <i class="fas fa-book text-2xl text-blue-600"></i>
                 </div>
             </div>
         </div>
@@ -88,8 +86,8 @@
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Total Heures</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ number_format($vacataires->sum('total_hours'), 0) }}h</p>
+                    <p class="text-sm text-gray-600">Heures ce mois</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ number_format($vacataires->sum('heures_mois'), 1) }}h</p>
                 </div>
                 <div class="p-3 bg-green-100 rounded-full">
                     <i class="fas fa-clock text-2xl text-green-600"></i>
@@ -100,11 +98,25 @@
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Total Retards</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ $vacataires->sum('total_late') }}</p>
+                    <p class="text-sm text-gray-600">Montant ce mois</p>
+                    <p class="text-2xl font-bold text-green-600">{{ number_format($vacataires->sum('montant_mois'), 0, ',', ' ') }}</p>
+                    <p class="text-xs text-gray-500">FCFA</p>
                 </div>
-                <div class="p-3 bg-red-100 rounded-full">
-                    <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                <div class="p-3 bg-green-100 rounded-full">
+                    <i class="fas fa-money-bill-wave text-2xl text-green-600"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Total {{ $year }}</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ number_format($vacataires->sum('montant_total'), 0, ',', ' ') }}</p>
+                    <p class="text-xs text-gray-500">FCFA</p>
+                </div>
+                <div class="p-3 bg-blue-100 rounded-full">
+                    <i class="fas fa-chart-line text-2xl text-blue-600"></i>
                 </div>
             </div>
         </div>
@@ -121,17 +133,20 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Campus
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Jours travaillés
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        UE Actives
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Heures totales
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Progression
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Retards
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Heures ce mois
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Montant gagné
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Montant ce mois
+                    </th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Statut
                     </th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -165,43 +180,77 @@
                         </div>
                     </td>
 
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ $vacataire->total_days }} jours</div>
+                    <td class="px-6 py-4 text-center">
+                        <span class="text-sm font-semibold text-gray-900">{{ $vacataire->total_ues }}</span>
                     </td>
 
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-semibold text-gray-900">{{ number_format($vacataire->total_hours, 1) }}h</div>
+                    <td class="px-6 py-4">
+                        @if($vacataire->total_volume_horaire > 0)
+                            @php
+                                $progression = round(($vacataire->total_heures_validees / $vacataire->total_volume_horaire) * 100);
+                            @endphp
+                            <div class="w-full">
+                                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>{{ number_format($vacataire->total_heures_validees, 1) }}h / {{ number_format($vacataire->total_volume_horaire, 1) }}h</span>
+                                    <span>{{ $progression }}%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="h-2 rounded-full {{ $progression >= 100 ? 'bg-green-500' : ($progression >= 50 ? 'bg-blue-500' : 'bg-orange-400') }}"
+                                         style="width: {{ min($progression, 100) }}%"></div>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">Restant: {{ number_format($vacataire->total_heures_restantes, 1) }}h</div>
+                            </div>
+                        @else
+                            <span class="text-xs text-gray-400">Aucune UE</span>
+                        @endif
                     </td>
 
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        @if($vacataire->total_late > 0)
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                {{ $vacataire->total_late }} retard(s)
+                    <td class="px-6 py-4 text-center">
+                        <div class="text-sm font-semibold text-gray-900">{{ number_format($vacataire->heures_mois, 1) }}h</div>
+                    </td>
+
+                    <td class="px-6 py-4 text-right">
+                        <div class="text-sm font-bold text-green-600">{{ number_format($vacataire->montant_mois, 0, ',', ' ') }} FCFA</div>
+                        @if($vacataire->montant_total > 0)
+                            <div class="text-xs text-gray-500">Total {{ $year }}: {{ number_format($vacataire->montant_total, 0, ',', ' ') }} FCFA</div>
+                        @endif
+                    </td>
+
+                    <td class="px-6 py-4 text-center">
+                        @if($vacataire->statut_paiement === 'paye')
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                <i class="fas fa-check-circle mr-1"></i>Payé
+                            </span>
+                        @elseif($vacataire->statut_paiement === 'valide')
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                <i class="fas fa-check mr-1"></i>Validé
+                            </span>
+                        @elseif($vacataire->statut_paiement === 'en_attente')
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-hourglass-half mr-1"></i>En attente
                             </span>
                         @else
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                Aucun retard
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                                <i class="fas fa-minus-circle mr-1"></i>Non payé
                             </span>
                         @endif
                     </td>
 
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-bold text-green-600">{{ number_format($vacataire->total_pay, 0, ',', ' ') }} FCFA</div>
-                    </td>
-
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         <a href="{{ route('admin.vacataires.show', $vacataire->id) }}" class="text-blue-600 hover:text-blue-900" title="Voir détails">
                             <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ route('admin.vacataires.manual-payments.create') }}" class="text-green-600 hover:text-green-900" title="Nouveau paiement">
+                            <i class="fas fa-plus-circle"></i>
                         </a>
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="px-6 py-12 text-center">
+                    <td colspan="8" class="px-6 py-12 text-center">
                         <div class="text-gray-400">
                             <i class="fas fa-chart-bar text-6xl mb-4"></i>
-                            <p class="text-lg">Aucune donnée disponible</p>
-                            <p class="text-gray-500 mt-2">Aucun vacataire n'a travaillé sur cette période</p>
+                            <p class="text-lg">Aucun vacataire trouvé</p>
                         </div>
                     </td>
                 </tr>
