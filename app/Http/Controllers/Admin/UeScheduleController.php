@@ -61,7 +61,6 @@ class UeScheduleController extends Controller
 
         $request->validate([
             'unite_enseignement_id' => 'required|exists:unites_enseignement,id',
-            'campus_id' => 'required|exists:campuses,id',
             'jours' => 'required|array|min:1',
             'date_debut_validite' => 'nullable|date',
             'date_fin_validite' => 'nullable|date|after_or_equal:date_debut_validite',
@@ -70,42 +69,55 @@ class UeScheduleController extends Controller
         $created = 0;
         $skipped = [];
 
-        foreach ($request->jours as $jour => $data) {
+        foreach ($request->jours as $jour => $slots) {
             if (!in_array($jour, $validJours)) {
                 continue;
             }
 
-            if (empty($data['heure_debut']) || empty($data['heure_fin'])) {
-                continue;
+            // Supporter l'ancien format (un seul créneau) et le nouveau (tableau de créneaux)
+            if (isset($slots['heure_debut'])) {
+                $slots = [$slots];
             }
 
-            if ($data['heure_fin'] <= $data['heure_debut']) {
-                $skipped[] = ucfirst($jour) . ' (heure fin avant début)';
-                continue;
+            foreach ($slots as $data) {
+                if (empty($data['heure_debut']) || empty($data['heure_fin'])) {
+                    continue;
+                }
+
+                if ($data['heure_fin'] <= $data['heure_debut']) {
+                    $skipped[] = ucfirst($jour) . ' (heure fin avant début)';
+                    continue;
+                }
+
+                $campusId = $data['campus_id'] ?? $request->campus_id;
+                if (empty($campusId)) {
+                    $skipped[] = ucfirst($jour) . ' (campus non sélectionné)';
+                    continue;
+                }
+
+                $exists = UeSchedule::where('unite_enseignement_id', $request->unite_enseignement_id)
+                    ->where('jour_semaine', $jour)
+                    ->where('heure_debut', $data['heure_debut'])
+                    ->exists();
+
+                if ($exists) {
+                    $skipped[] = ucfirst($jour) . ' ' . $data['heure_debut'] . ' (déjà existant)';
+                    continue;
+                }
+
+                UeSchedule::create([
+                    'unite_enseignement_id' => $request->unite_enseignement_id,
+                    'campus_id' => $campusId,
+                    'jour_semaine' => $jour,
+                    'heure_debut' => $data['heure_debut'],
+                    'heure_fin' => $data['heure_fin'],
+                    'salle' => $data['salle'] ?? null,
+                    'date_debut_validite' => $request->date_debut_validite,
+                    'date_fin_validite' => $request->date_fin_validite,
+                    'created_by' => auth()->id(),
+                ]);
+                $created++;
             }
-
-            $exists = UeSchedule::where('unite_enseignement_id', $request->unite_enseignement_id)
-                ->where('jour_semaine', $jour)
-                ->where('heure_debut', $data['heure_debut'])
-                ->exists();
-
-            if ($exists) {
-                $skipped[] = ucfirst($jour) . ' (déjà existant)';
-                continue;
-            }
-
-            UeSchedule::create([
-                'unite_enseignement_id' => $request->unite_enseignement_id,
-                'campus_id' => $request->campus_id,
-                'jour_semaine' => $jour,
-                'heure_debut' => $data['heure_debut'],
-                'heure_fin' => $data['heure_fin'],
-                'salle' => $data['salle'] ?? null,
-                'date_debut_validite' => $request->date_debut_validite,
-                'date_fin_validite' => $request->date_fin_validite,
-                'created_by' => auth()->id(),
-            ]);
-            $created++;
         }
 
         $message = "{$created} créneau(x) créé(s) avec succès.";
