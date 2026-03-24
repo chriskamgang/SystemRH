@@ -144,9 +144,11 @@ class AttendanceController extends Controller
 
         // Vérifier si l'utilisateur est dans la zone géographique
         if (!$campus->isUserInZone($request->latitude, $request->longitude)) {
+            $distance = round($campus->distanceToUser($request->latitude, $request->longitude));
             return response()->json([
-                'message' => 'Vous n\'êtes pas dans la zone du campus. Veuillez vous rapprocher.',
-                'distance_info' => 'Vous devez être dans un rayon de ' . $campus->radius . ' mètres.',
+                'message' => "Vous êtes à {$distance}m du campus. Rapprochez-vous à moins de {$campus->radius}m.",
+                'distance' => $distance,
+                'radius' => $campus->radius,
             ], 400);
         }
 

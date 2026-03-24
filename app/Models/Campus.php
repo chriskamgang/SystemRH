@@ -72,9 +72,11 @@ class Campus extends Model
     /**
      * Helper methods
      */
-    public function isUserInZone($latitude, $longitude)
+    /**
+     * Calculer la distance entre l'utilisateur et le campus en mètres
+     */
+    public function distanceToUser($latitude, $longitude): float
     {
-        // Calcul de la distance en mètres entre deux points GPS
         $earthRadius = 6371000; // en mètres
 
         $latFrom = deg2rad($this->latitude);
@@ -88,8 +90,17 @@ class Campus extends Model
         $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) +
             cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
 
-        $distance = $angle * $earthRadius;
+        return $angle * $earthRadius;
+    }
 
-        return $distance <= $this->radius;
+    /**
+     * Vérifier si l'utilisateur est dans la zone du campus
+     * Marge de tolérance GPS de 50m pour compenser l'imprécision des téléphones
+     */
+    public function isUserInZone($latitude, $longitude): bool
+    {
+        $distance = $this->distanceToUser($latitude, $longitude);
+        $tolerance = 50; // mètres de marge GPS
+        return $distance <= ($this->radius + $tolerance);
     }
 }
