@@ -317,7 +317,7 @@ class AttendanceController extends Controller
         $user = $request->user();
         $campus = Campus::findOrFail($request->campus_id);
 
-        // Vérifier si l'utilisateur est dans la zone
+        // Vérifier si l'utilisateur est dans la zone du campus indiqué
         if (!$campus->isUserInZone($request->latitude, $request->longitude)) {
             return response()->json([
                 'message' => 'Vous n\'êtes pas dans la zone du campus pour faire le check-out.',
@@ -328,9 +328,8 @@ class AttendanceController extends Controller
         $now = now();
         $shift = $this->detectShift($now);
 
-        // Vérifier s'il y a un check-in sans check-out pour CETTE plage
+        // Chercher un check-in actif sur N'IMPORTE QUEL campus (pas forcément le même)
         $todayCheckInsThisShift = Attendance::where('user_id', $user->id)
-            ->where('campus_id', $campus->id)
             ->where('type', 'check-in')
             ->where('shift', $shift)
             ->whereDate('timestamp', today())
@@ -340,7 +339,6 @@ class AttendanceController extends Controller
         $checkIn = null;
         foreach ($todayCheckInsThisShift as $ci) {
             $hasCheckOut = Attendance::where('user_id', $user->id)
-                ->where('campus_id', $campus->id)
                 ->where('shift', $shift)
                 ->where('type', 'check-out')
                 ->where('timestamp', '>', $ci->timestamp)
@@ -356,7 +354,7 @@ class AttendanceController extends Controller
         if (!$checkIn) {
             $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
             return response()->json([
-                'message' => "Aucun check-in actif trouvé pour la plage du {$shiftLabel} sur ce campus aujourd'hui.",
+                'message' => "Aucun check-in actif trouvé pour la plage du {$shiftLabel} aujourd'hui.",
                 'shift' => $shift,
             ], 400);
         }
