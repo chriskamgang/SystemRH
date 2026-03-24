@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\BreakLog;
 use App\Models\Attendance;
+use App\Models\Campus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,12 @@ class BreakController extends Controller
             ], 403);
         }
 
+        // Vérifier la position GPS
+        $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
         // Vérifier qu'il a un check-in actif
         $activeCheckIn = Attendance::where('user_id', $user->id)
             ->where('type', 'check-in')
@@ -40,6 +47,15 @@ class BreakController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Vous devez avoir un check-in actif pour prendre une pause.',
+            ], 400);
+        }
+
+        // Vérifier que l'utilisateur est dans la zone du campus
+        $campus = Campus::find($activeCheckIn->campus_id);
+        if ($campus && !$campus->isUserInZone($request->latitude, $request->longitude)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous devez être sur le campus pour démarrer votre pause.',
             ], 400);
         }
 
@@ -88,6 +104,12 @@ class BreakController extends Controller
         $now = Carbon::now();
         $today = $now->toDateString();
 
+        // Vérifier la position GPS
+        $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
         // Trouver la pause active
         $activeBreak = BreakLog::where('user_id', $user->id)
             ->where('date', $today)
@@ -98,6 +120,15 @@ class BreakController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Aucune pause en cours.',
+            ], 400);
+        }
+
+        // Vérifier que l'utilisateur est revenu dans la zone du campus
+        $campus = Campus::find($activeBreak->campus_id);
+        if ($campus && !$campus->isUserInZone($request->latitude, $request->longitude)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous devez être sur le campus pour signaler votre retour de pause.',
             ], 400);
         }
 
