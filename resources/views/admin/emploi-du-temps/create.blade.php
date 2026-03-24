@@ -25,18 +25,19 @@
         <form method="POST" action="{{ route('admin.emploi-du-temps.store') }}">
             @csrf
 
-            {{-- UE --}}
+            {{-- UE principale --}}
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Unité d'Enseignement</label>
-                <select name="unite_enseignement_id" required class="w-full border rounded-lg px-3 py-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Unité d'Enseignement principale</label>
+                <select name="unite_enseignement_id" x-model="defaultUeId" required class="w-full border rounded-lg px-3 py-2">
                     <option value="">Sélectionner une UE</option>
                     @foreach($ues as $ue)
-                        <option value="{{ $ue->id }}" {{ old('unite_enseignement_id') == $ue->id ? 'selected' : '' }}>
+                        <option value="{{ $ue->id }}">
                             {{ $ue->code_ue }} - {{ $ue->nom_matiere }}
                             @if($ue->enseignant) ({{ $ue->enseignant->last_name }} {{ $ue->enseignant->first_name }}) @endif
                         </option>
                     @endforeach
                 </select>
+                <p class="text-xs text-gray-500 mt-1">Cette UE sera utilisée par défaut pour tous les créneaux.</p>
             </div>
 
             {{-- Sélection des jours --}}
@@ -72,13 +73,40 @@
                         </div>
 
                         <template x-for="(slot, slotIndex) in jour.slots" :key="slotIndex">
-                            <div class="mb-3 last:mb-0">
-                                <div x-show="jour.slots.length > 1" class="flex items-center mb-2">
-                                    <span class="text-xs font-bold text-blue-600" x-text="'Créneau ' + (slotIndex + 1)"></span>
-                                    <button type="button" @click="removeSlot(jourName, slotIndex)" class="ml-2 text-red-400 hover:text-red-600 text-xs">
-                                        <i class="fas fa-trash"></i> Supprimer
-                                    </button>
+                            <div class="mb-4 last:mb-0" :class="slotIndex > 0 ? 'pt-3 border-t border-blue-200' : ''">
+                                <div class="flex items-center mb-2">
+                                    <span class="text-xs font-bold" :class="slotIndex > 0 ? 'text-green-600' : 'text-blue-600'" x-text="'Créneau ' + (slotIndex + 1)"></span>
+                                    <template x-if="slotIndex > 0">
+                                        <span class="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Autre cours</span>
+                                    </template>
+                                    <template x-if="jour.slots.length > 1">
+                                        <button type="button" @click="removeSlot(jourName, slotIndex)" class="ml-2 text-red-400 hover:text-red-600 text-xs">
+                                            <i class="fas fa-trash"></i> Supprimer
+                                        </button>
+                                    </template>
                                 </div>
+
+                                {{-- UE spécifique pour les créneaux supplémentaires --}}
+                                <template x-if="slotIndex > 0">
+                                    <div class="mb-3">
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                                            <i class="fas fa-book mr-1"></i>UE pour ce créneau
+                                        </label>
+                                        <select :name="'jours[' + jourName + '][' + slotIndex + '][unite_enseignement_id]'"
+                                                x-model="slot.unite_enseignement_id"
+                                                required
+                                                class="w-full border rounded-lg px-3 py-2 text-sm border-green-300 bg-green-50">
+                                            <option value="">Sélectionner une UE</option>
+                                            @foreach($ues as $ue)
+                                                <option value="{{ $ue->id }}">
+                                                    {{ $ue->code_ue }} - {{ $ue->nom_matiere }}
+                                                    @if($ue->enseignant) ({{ $ue->enseignant->last_name }} {{ $ue->enseignant->first_name }}) @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </template>
+
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600 mb-1">Campus</label>
@@ -166,14 +194,15 @@
 <script>
 function scheduleForm() {
     return {
+        defaultUeId: '',
         jours: {
-            lundi:    { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }] },
-            mardi:    { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }] },
-            mercredi: { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }] },
-            jeudi:    { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }] },
-            vendredi: { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }] },
-            samedi:   { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }] },
-            dimanche: { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }] },
+            lundi:    { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }] },
+            mardi:    { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }] },
+            mercredi: { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }] },
+            jeudi:    { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }] },
+            vendredi: { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }] },
+            samedi:   { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }] },
+            dimanche: { active: false, slots: [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }] },
         },
         get activeCount() {
             return Object.values(this.jours).filter(j => j.active).length;
@@ -184,11 +213,11 @@ function scheduleForm() {
         toggleJour(jour) {
             this.jours[jour].active = !this.jours[jour].active;
             if (!this.jours[jour].active) {
-                this.jours[jour].slots = [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '' }];
+                this.jours[jour].slots = [{ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' }];
             }
         },
         addSlot(jour) {
-            this.jours[jour].slots.push({ campus_id: '', heure_debut: '', heure_fin: '', salle: '' });
+            this.jours[jour].slots.push({ campus_id: '', heure_debut: '', heure_fin: '', salle: '', unite_enseignement_id: '' });
         },
         removeSlot(jour, index) {
             if (this.jours[jour].slots.length > 1) {

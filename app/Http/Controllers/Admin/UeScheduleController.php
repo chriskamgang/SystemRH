@@ -95,7 +95,10 @@ class UeScheduleController extends Controller
                     continue;
                 }
 
-                $exists = UeSchedule::where('unite_enseignement_id', $request->unite_enseignement_id)
+                // Utiliser l'UE spécifique du créneau si fournie, sinon l'UE principale
+                $ueId = !empty($data['unite_enseignement_id']) ? $data['unite_enseignement_id'] : $request->unite_enseignement_id;
+
+                $exists = UeSchedule::where('unite_enseignement_id', $ueId)
                     ->where('jour_semaine', $jour)
                     ->where('heure_debut', $data['heure_debut'])
                     ->exists();
@@ -106,7 +109,7 @@ class UeScheduleController extends Controller
                 }
 
                 UeSchedule::create([
-                    'unite_enseignement_id' => $request->unite_enseignement_id,
+                    'unite_enseignement_id' => $ueId,
                     'campus_id' => $campusId,
                     'jour_semaine' => $jour,
                     'heure_debut' => $data['heure_debut'],
