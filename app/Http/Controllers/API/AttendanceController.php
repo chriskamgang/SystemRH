@@ -92,6 +92,20 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Normaliser l'heure de check-out : plafonner à l'heure de fin (pas d'heures sup)
+     * 18h00 par défaut, 21h30 si cours le soir
+     */
+    private function normalizeCheckOutTime(Carbon $timestamp, $user): Carbon
+    {
+        $endTime = $this->getEffectiveEndTime($user);
+        $workEnd = Carbon::parse($endTime)->setDate($timestamp->year, $timestamp->month, $timestamp->day);
+        if ($timestamp->gt($workEnd)) {
+            return $workEnd;
+        }
+        return $timestamp;
+    }
+
+    /**
      * Check-in - Pointage d'entrée
      */
     public function checkIn(Request $request)
@@ -408,11 +422,14 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Normaliser le check-in : si avant 8h, compter à partir de 8h
+        // Normaliser les heures pour le calcul :
+        // - Check-in avant 8h → compter à partir de 8h
+        // - Check-out après 18h (ou 21h30 si cours le soir) → plafonner
         $effectiveCheckIn = $this->normalizeCheckInTime($checkIn->timestamp);
+        $effectiveCheckOut = $this->normalizeCheckOutTime($now, $user);
 
         // Calculer la durée de cette session (en soustrayant la pause)
-        $sessionDurationMinutes = $effectiveCheckIn->diffInMinutes($now);
+        $sessionDurationMinutes = $effectiveCheckIn->diffInMinutes($effectiveCheckOut);
         $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
             $checkIn->timestamp, $now, $user->employee_type
         );
