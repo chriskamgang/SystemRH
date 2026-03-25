@@ -401,6 +401,12 @@
                     <span class="ml-3">Firebase</span>
                 </a>
 
+                <!-- iOS Beta -->
+                <a href="{{ route('admin.ios-beta.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.ios-beta.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fab fa-apple w-5 text-gray-300"></i>
+                    <span class="ml-3">iOS Beta</span>
+                </a>
+
                 <!-- Brochure PDF -->
                 <a href="{{ route('admin.brochure.preview') }}" target="_blank" class="flex items-center px-4 py-3 mb-2 rounded-lg hover:bg-gray-800" title="Télécharger la brochure pour vacataires">
                     <i class="fas fa-file-pdf w-5 text-red-400"></i>
