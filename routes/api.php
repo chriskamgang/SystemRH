@@ -136,10 +136,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/notifications/mark-all-as-read', [UserController::class, 'markAllNotificationsAsRead']);
 
         // Salary and deductions endpoints
-        Route::get('/salary-status', [\App\Http\Controllers\Api\MobileApiController::class, 'getSalaryStatus']);
-        Route::get('/manual-deductions', [\App\Http\Controllers\Api\MobileApiController::class, 'getManualDeductions']);
-        Route::get('/loans', [\App\Http\Controllers\Api\MobileApiController::class, 'getLoans']);
-        Route::get('/payslip', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadPayslip']);
+        Route::get('/salary-status', [\App\Http\Controllers\API\MobileApiController::class, 'getSalaryStatus']);
+        Route::get('/manual-deductions', [\App\Http\Controllers\API\MobileApiController::class, 'getManualDeductions']);
+        Route::get('/loans', [\App\Http\Controllers\API\MobileApiController::class, 'getLoans']);
+        Route::get('/payslip', [\App\Http\Controllers\API\MobileApiController::class, 'downloadPayslip']);
     });
 
     // ========== PRESENCE NOTIFICATIONS ==========
