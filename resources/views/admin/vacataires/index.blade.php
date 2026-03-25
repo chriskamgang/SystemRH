@@ -80,6 +80,9 @@
                         Taux horaire
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Appareil
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Statut
                     </th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -123,6 +126,20 @@
                     </td>
 
                     <td class="px-6 py-4 whitespace-nowrap">
+                        @if($vacataire->device_model)
+                            <div class="flex items-center">
+                                <i class="fas fa-mobile-alt text-green-500 mr-2"></i>
+                                <div>
+                                    <div class="text-sm text-gray-900">{{ $vacataire->device_model }}</div>
+                                    <div class="text-xs text-gray-500">{{ $vacataire->device_os ?? '' }}</div>
+                                </div>
+                            </div>
+                        @else
+                            <span class="text-xs text-gray-400"><i class="fas fa-times-circle mr-1"></i>Non configuré</span>
+                        @endif
+                    </td>
+
+                    <td class="px-6 py-4 whitespace-nowrap">
                         @if($vacataire->is_active)
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                 Actif
@@ -157,7 +174,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="7" class="px-6 py-12 text-center">
                         <div class="text-gray-400">
                             <i class="fas fa-user-clock text-6xl mb-4"></i>
                             <p class="text-lg">Aucun vacataire trouvé</p>
