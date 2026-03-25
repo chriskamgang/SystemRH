@@ -32,6 +32,35 @@ Route::get('/', function () {
 // Routes publiques
 Route::post('/login', [AuthController::class, 'login']);
 
+// Vérification de mise à jour de l'app mobile
+Route::get('/check-update', function (Request $request) {
+    $platform = $request->query('platform', 'android');
+
+    // Versions configurables — mettre à jour ici à chaque release
+    $config = [
+        'android' => [
+            'latest_version' => '2.0.0',
+            'min_version' => '2.0.0',       // En dessous → mise à jour obligatoire
+            'download_url' => url('/downloads/insam-presence.apk'),
+        ],
+        'ios' => [
+            'latest_version' => '2.0.0',
+            'min_version' => '2.0.0',
+            'download_url' => '', // App Store URL quand disponible
+        ],
+    ];
+
+    $platformConfig = $config[$platform] ?? $config['android'];
+
+    return response()->json([
+        'success' => true,
+        'latest_version' => $platformConfig['latest_version'],
+        'min_version' => $platformConfig['min_version'],
+        'download_url' => $platformConfig['download_url'],
+        'release_notes' => 'Améliorations des notifications iOS, normalisation des horaires de présence, correction GPS.',
+    ]);
+});
+
 // ========== ROUTE DE TEST (À SUPPRIMER EN PRODUCTION) ==========
 Route::get('/test-notifications', function () {
     $result = \App\Services\PresenceNotificationService::sendPresenceCheckNotifications();
