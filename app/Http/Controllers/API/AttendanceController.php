@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\Campus;
 use App\Models\Tardiness;
 use App\Models\Setting;
+use App\Models\UeSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,15 +38,57 @@ class AttendanceController extends Controller
     {
         if ($shift === 'morning') {
             return [
-                'start' => Setting::get('morning_start_time', '08:15'),
-                'end' => Setting::get('morning_end_time', '17:00'),
+                'start' => Setting::get('morning_start_time', '08:00'),
+                'end' => Setting::get('morning_end_time', '18:00'),
             ];
         } else {
             return [
-                'start' => Setting::get('evening_start_time', '17:30'),
-                'end' => Setting::get('evening_end_time', '21:00'),
+                'start' => Setting::get('evening_start_time', '18:00'),
+                'end' => Setting::get('evening_end_time', '21:30'),
             ];
         }
+    }
+
+    /**
+     * Vérifier si un enseignant a cours le soir aujourd'hui (via emploi du temps)
+     */
+    private function hasEveningClass($user): bool
+    {
+        $jourSemaine = strtolower(Carbon::now()->locale('fr')->isoFormat('dddd'));
+
+        return UeSchedule::whereHas('uniteEnseignement', function ($q) use ($user) {
+                $q->where('enseignant_id', $user->id);
+            })
+            ->where('jour_semaine', $jourSemaine)
+            ->where('heure_debut', '>=', '17:00')
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    /**
+     * Obtenir l'heure de fin effective pour un utilisateur
+     * 18h00 par défaut, 21h30 si cours le soir
+     */
+    private function getEffectiveEndTime($user): string
+    {
+        if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])) {
+            if ($this->hasEveningClass($user)) {
+                return '21:30';
+            }
+        }
+        return '18:00';
+    }
+
+    /**
+     * Normaliser l'heure de check-in : si avant 8h00, compter à partir de 8h00
+     */
+    private function normalizeCheckInTime(Carbon $timestamp): Carbon
+    {
+        $workStart = Carbon::parse('08:00')->setDate($timestamp->year, $timestamp->month, $timestamp->day);
+        if ($timestamp->lt($workStart)) {
+            return $workStart;
+        }
+        return $timestamp;
     }
 
     /**
@@ -214,10 +257,9 @@ class AttendanceController extends Controller
             }
         }
 
-        // Obtenir les horaires : d'abord personnalisés, sinon ceux de la plage
+        // Obtenir les horaires de travail
         $currentTime = Carbon::parse($now->format('H:i:s'));
 
-        // Si l'utilisateur a des horaires personnalisés, les utiliser
         if ($user->hasCustomWorkHours()) {
             $shiftStartTime = Carbon::parse($user->custom_start_time);
             $shiftEndTime = Carbon::parse($user->custom_end_time);
@@ -227,21 +269,26 @@ class AttendanceController extends Controller
                 'end' => $user->custom_end_time,
             ];
         } else {
-            // Sinon utiliser les horaires de la plage détectée
-            $shiftTimes = $this->getShiftTimes($shift);
-            $shiftStartTime = Carbon::parse($shiftTimes['start']);
+            // Horaire standard : 8h00 - 18h00 (ou 21h30 si cours le soir)
+            $effectiveEnd = $this->getEffectiveEndTime($user);
+            $shiftTimes = [
+                'start' => '08:00',
+                'end' => $effectiveEnd,
+            ];
+            $shiftStartTime = Carbon::parse('08:00');
+            // Retard après 8h15 (15 min de tolérance)
             $lateTolerance = $campus->late_tolerance ?? (int) Setting::get('late_tolerance', 15);
         }
 
         $toleranceTime = $shiftStartTime->copy()->addMinutes($lateTolerance);
 
         // Déterminer si en retard
-        // Pour les vacataires: pas de calcul de retard (payés à l'heure effectuée)
+        // Vacataires : pas de retard (payés à l'heure)
         if ($user->employee_type === 'enseignant_vacataire') {
             $isLate = false;
             $lateMinutes = 0;
         } else {
-            // Pour personnel permanent/semi-permanent/agents: calcul du retard
+            // Personnel enseignant et administratif : retard après 8h15
             $isLate = $currentTime->gt($toleranceTime);
             $lateMinutes = $isLate ? $shiftStartTime->diffInMinutes($currentTime) : 0;
         }
@@ -361,8 +408,11 @@ class AttendanceController extends Controller
             ], 400);
         }
 
+        // Normaliser le check-in : si avant 8h, compter à partir de 8h
+        $effectiveCheckIn = $this->normalizeCheckInTime($checkIn->timestamp);
+
         // Calculer la durée de cette session (en soustrayant la pause)
-        $sessionDurationMinutes = $checkIn->timestamp->diffInMinutes($now);
+        $sessionDurationMinutes = $effectiveCheckIn->diffInMinutes($now);
         $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
             $checkIn->timestamp, $now, $user->employee_type
         );
