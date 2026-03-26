@@ -108,7 +108,10 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Supprimer le token actuel
+        // Supprimer le token FCM pour ne plus recevoir de notifications
+        $request->user()->update(['fcm_token' => null]);
+
+        // Supprimer le token d'authentification
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
