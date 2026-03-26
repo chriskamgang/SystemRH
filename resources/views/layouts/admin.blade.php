@@ -462,6 +462,12 @@
                     <i class="fas fa-external-link-alt w-3 ml-auto text-gray-400"></i>
                 </a>
 
+                <!-- Identifiants Personnel -->
+                <a href="{{ route('admin.credentials.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.credentials.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-id-card w-5 text-yellow-400"></i>
+                    <span class="ml-3">Identifiants PDF</span>
+                </a>
+
                 @if($can('settings'))
                 <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.settings') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-cog w-5"></i>

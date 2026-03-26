@@ -332,6 +332,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::delete('/{id}', [App\Http\Controllers\Admin\IosBetaController::class, 'destroy'])->name('destroy');
     });
 
+    // Identifiants Personnel (PDF)
+    Route::prefix('credentials')->name('credentials.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\CredentialsPdfController::class, 'index'])->name('index');
+        Route::post('/download', [App\Http\Controllers\Admin\CredentialsPdfController::class, 'download'])->name('download');
+        Route::post('/reset', [App\Http\Controllers\Admin\CredentialsPdfController::class, 'resetPasswords'])->name('reset');
+    });
+
     // Gestion des Rôles & Permissions
     Route::prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\RoleController::class, 'index'])->name('index');
