@@ -79,14 +79,6 @@
             border-radius: 3px;
             color: #92400e;
         }
-        .count-badge {
-            background-color: #dbeafe;
-            color: #1e40af;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-        }
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -113,14 +105,14 @@
 
     @php $totalEmployees = 0; @endphp
 
-    @foreach($grouped as $type => $employees)
-        @if(!$loop->first && $employees->count() > 30)
+    @foreach($grouped as $catKey => $category)
+        @if(!$loop->first && $category['employees']->count() > 30)
             <div class="page-break"></div>
         @endif
 
         <div class="section-title">
-            {{ $typeLabels[$type] ?? ucfirst($type) }}
-            <span style="float: right; font-size: 11px;">{{ $employees->count() }} personne(s)</span>
+            {{ $category['label'] }}
+            <span style="float: right; font-size: 11px;">{{ $category['employees']->count() }} personne(s)</span>
         </div>
 
         <table>
@@ -134,7 +126,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($employees as $index => $employee)
+                @foreach($category['employees'] as $index => $employee)
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td><strong>{{ $employee->last_name }} {{ $employee->first_name }}</strong></td>

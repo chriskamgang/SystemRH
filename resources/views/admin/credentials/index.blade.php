@@ -45,10 +45,10 @@
                 <p class="text-sm text-gray-600 mb-4">Sélectionnez les types d'employés à inclure dans le PDF :</p>
 
                 <div class="space-y-3 mb-6">
-                    @foreach($stats as $type => $data)
+                    @foreach($stats as $key => $data)
                     <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                         <div class="flex items-center gap-3">
-                            <input type="checkbox" name="types[]" value="{{ $type }}" checked
+                            <input type="checkbox" name="categories[]" value="{{ $key }}" checked
                                 class="w-5 h-5 text-blue-600 rounded">
                             <span class="text-sm font-medium text-gray-700">{{ $data['label'] }}</span>
                         </div>
@@ -75,14 +75,14 @@
                   onsubmit="return confirm('Attention ! Tous les mots de passe des types sélectionnés seront réinitialisés à password123. Continuer ?')">
                 @csrf
                 <p class="text-sm text-gray-600 mb-4">
-                    Réinitialiser les mots de passe à <strong>password123</strong> pour les types sélectionnés :
+                    Réinitialiser les mots de passe à <strong>password123</strong> pour les catégories sélectionnées :
                 </p>
 
                 <div class="space-y-3 mb-6">
-                    @foreach($stats as $type => $data)
+                    @foreach($stats as $key => $data)
                     <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                         <div class="flex items-center gap-3">
-                            <input type="checkbox" name="types[]" value="{{ $type }}"
+                            <input type="checkbox" name="categories[]" value="{{ $key }}"
                                 class="w-5 h-5 text-orange-600 rounded">
                             <span class="text-sm font-medium text-gray-700">{{ $data['label'] }}</span>
                         </div>
