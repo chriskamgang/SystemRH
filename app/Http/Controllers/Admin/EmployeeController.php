@@ -90,7 +90,7 @@ class EmployeeController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'nullable|string|min:6|confirmed',
             'phone' => 'nullable|string|max:20',
             'banque' => 'nullable|string|max:255',
             'numero_compte' => 'nullable|string|max:255',
@@ -148,8 +148,8 @@ class EmployeeController extends Controller
             $validated['photo_url'] = $path;
         }
 
-        // Hasher le mot de passe
-        $validated['password'] = Hash::make($validated['password']);
+        // Hasher le mot de passe (password123 par défaut si non fourni)
+        $validated['password'] = Hash::make($validated['password'] ?? 'password123');
 
         // Créer l'employé
         $employee = User::create($validated);

@@ -137,13 +137,14 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Mot de passe -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe *</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
                         <input
                             type="password"
                             name="password"
-                            required
+                            placeholder="Par défaut : password123"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('password') border-red-500 @enderror"
                         >
+                        <p class="text-gray-500 text-xs mt-1">Laissez vide pour utiliser le mot de passe par défaut : <strong>password123</strong></p>
                         @error('password')
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror
@@ -151,11 +152,11 @@
 
                     <!-- Confirmation mot de passe -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe *</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
                         <input
                             type="password"
                             name="password_confirmation"
-                            required
+                            placeholder="Confirmer si mot de passe personnalisé"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                     </div>
