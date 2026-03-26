@@ -31,15 +31,22 @@ class LoginController extends Controller
         if (Auth::attempt($credentials, $request->filled('remember'))) {
             $request->session()->regenerate();
 
-            // Vérifier que l'utilisateur est admin (role_id = 1)
-            if (Auth::user()->role_id == 1) {
+            $user = Auth::user();
+
+            // Admin (role_id=1) a toujours accès
+            if ($user->isAdmin()) {
                 return redirect()->intended('/admin/dashboard');
             }
 
-            // Si pas admin, déconnecter
+            // Vérifier si l'utilisateur a la permission d'accéder au dashboard
+            if ($user->hasPermission('access_dashboard')) {
+                return redirect()->intended('/admin/dashboard');
+            }
+
+            // Si pas de permission dashboard, déconnecter
             Auth::logout();
             throw ValidationException::withMessages([
-                'email' => ['Accès réservé aux administrateurs.'],
+                'email' => ['Vous n\'avez pas les droits d\'accès au panneau d\'administration.'],
             ]);
         }
 

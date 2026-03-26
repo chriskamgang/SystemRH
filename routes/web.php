@@ -332,6 +332,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::delete('/{id}', [App\Http\Controllers\Admin\IosBetaController::class, 'destroy'])->name('destroy');
     });
 
+    // Gestion des Rôles & Permissions
+    Route::prefix('roles')->name('roles.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\RoleController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\Admin\RoleController::class, 'store'])->name('store');
+        Route::put('/{id}', [App\Http\Controllers\Admin\RoleController::class, 'update'])->name('update');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\RoleController::class, 'destroy'])->name('destroy');
+        Route::get('/admins', [App\Http\Controllers\Admin\RoleController::class, 'admins'])->name('admins');
+        Route::post('/admins', [App\Http\Controllers\Admin\RoleController::class, 'storeAdmin'])->name('store-admin');
+        Route::put('/admins/{id}', [App\Http\Controllers\Admin\RoleController::class, 'updateAdmin'])->name('update-admin');
+    });
+
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 

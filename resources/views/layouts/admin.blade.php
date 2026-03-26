@@ -352,13 +352,13 @@
                     </div>
                 </div>
 
-                <!-- Utilisateurs (Gestion des accès) -->
-                {{-- Temporairement désactivé jusqu'à la création du module
-                <a href="{{ route('admin.users.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.users.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
-                    <i class="fas fa-user-shield w-5"></i>
-                    <span class="ml-3">Utilisateurs</span>
+                <!-- Gestion des Rôles & Permissions -->
+                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('roles.view'))
+                <a href="{{ route('admin.roles.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.roles.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-user-shield w-5 text-purple-400"></i>
+                    <span class="ml-3">Rôles & Permissions</span>
                 </a>
-                --}}
+                @endif
 
                 <!-- Suivi en Temps Réel -->
                 <a href="{{ route('admin.real-time-tracking.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.real-time-tracking.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
