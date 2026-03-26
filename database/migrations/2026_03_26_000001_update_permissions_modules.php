@@ -8,9 +8,11 @@ return new class extends Migration
     public function up(): void
     {
         // Supprimer les anciennes permissions
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         DB::table('role_permissions')->truncate();
         DB::table('user_permissions')->truncate();
         DB::table('permissions')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // Nouvelles permissions par module avec actions CRUD
         $modules = [
