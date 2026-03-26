@@ -28,7 +28,7 @@ class CredentialsPdfController extends Controller
         foreach ($types as $type => $label) {
             $stats[$type] = [
                 'label' => $label,
-                'count' => User::where('employee_type', $type)->where('is_active', true)->count(),
+                'count' => User::where('employee_type', $type)->where('is_active', true)->where('role_id', '!=', 1)->count(),
             ];
         }
 
@@ -44,6 +44,7 @@ class CredentialsPdfController extends Controller
 
         $employees = User::whereIn('employee_type', $selectedTypes)
             ->where('is_active', true)
+            ->where('role_id', '!=', 1) // Exclure le super admin
             ->orderBy('employee_type')
             ->orderBy('last_name')
             ->orderBy('first_name')
@@ -72,6 +73,7 @@ class CredentialsPdfController extends Controller
 
         $count = User::whereIn('employee_type', $selectedTypes)
             ->where('is_active', true)
+            ->where('role_id', '!=', 1) // Ne jamais toucher au super admin
             ->update(['password' => Hash::make('password123')]);
 
         return back()->with('success', "{$count} mot(s) de passe réinitialisé(s) à password123.");
