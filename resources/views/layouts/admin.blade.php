@@ -111,32 +111,51 @@
             </div>
 
             <!-- Navigation -->
+            @php
+                $u = auth()->user();
+                $isAdmin = $u->isAdmin();
+                // Helper: admin voit tout, sinon vérifier module.view
+                $can = function($module) use ($u, $isAdmin) {
+                    return $isAdmin || $u->hasPermission($module . '.view');
+                };
+            @endphp
             <nav class="flex-1 overflow-y-auto mt-8 px-4 pb-24">
+                @if($can('dashboard'))
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.dashboard') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-home w-5"></i>
                     <span class="ml-3">Dashboard</span>
                 </a>
+                @endif
 
+                @if($can('employees'))
                 <a href="{{ route('admin.employees.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.employees.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-users w-5"></i>
                     <span class="ml-3">Employés</span>
                 </a>
+                @endif
 
+                @if($can('campus'))
                 <a href="{{ route('admin.campuses.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.campuses.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-building w-5"></i>
                     <span class="ml-3">Campus</span>
                 </a>
+                @endif
 
+                @if($can('attendance'))
                 <a href="{{ route('admin.attendances.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.attendances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-clock w-5"></i>
                     <span class="ml-3">Présences</span>
                 </a>
+                @endif
 
+                @if($can('manual_attendance'))
                 <a href="{{ route('admin.manual-attendances.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.manual-attendances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-edit w-5"></i>
                     <span class="ml-3">Présences Manuelles</span>
                 </a>
+                @endif
 
+                @if($can('ue'))
                 <!-- Unités d'Enseignement (UE) Section with Submenu -->
                 <div x-data="{ open: {{ request()->routeIs('admin.unites-enseignement.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.unites-enseignement.*') ? 'bg-blue-600' : '' }}">
@@ -166,6 +185,9 @@
                     </div>
                 </div>
 
+                @endif
+
+                @if($can('schedule'))
                 <!-- Emploi du Temps -->
                 <div x-data="{ open: {{ request()->routeIs('admin.emploi-du-temps.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.emploi-du-temps.*') ? 'bg-blue-600' : '' }}">
@@ -191,6 +213,9 @@
                     </div>
                 </div>
 
+                @endif
+
+                @if($can('vacataires'))
                 <!-- Vacataires Section with Submenu -->
                 <div x-data="{ open: {{ request()->routeIs('admin.vacataires.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.vacataires.*') ? 'bg-blue-600' : '' }}">
@@ -220,6 +245,9 @@
                     </div>
                 </div>
 
+                @endif
+
+                @if($can('semi_permanents'))
                 <!-- Semi-permanents Section with Submenu -->
                 <div x-data="{ open: {{ request()->routeIs('admin.semi-permanents.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.semi-permanents.*') ? 'bg-blue-600' : '' }}">
@@ -245,11 +273,16 @@
                     </div>
                 </div>
 
+                @endif
+
+                @if($can('realtime_map'))
                 <a href="{{ route('admin.realtime') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.realtime') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-map w-5"></i>
                     <span class="ml-3">Carte en temps réel</span>
                 </a>
+                @endif
 
+                @if($can('reports'))
                 <!-- Ancien module Rapports (à garder pour compatibilité) -->
                 <a href="{{ route('admin.reports.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.reports.*') && !request()->routeIs('admin.rapports.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-chart-bar w-5"></i>
@@ -308,19 +341,25 @@
                     <i class="fas fa-calculator w-5"></i>
                     <span class="ml-3">Calculateur Générique</span>
                 </a>
+                @endif
 
+                @if($can('deductions'))
                 <!-- Déductions Manuelles -->
                 <a href="{{ route('admin.manual-deductions.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.manual-deductions.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-minus-circle w-5"></i>
                     <span class="ml-3">Déductions Manuelles</span>
                 </a>
+                @endif
 
+                @if($can('loans'))
                 <!-- Prêts -->
                 <a href="{{ route('admin.loans.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.loans.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-hand-holding-usd w-5"></i>
                     <span class="ml-3">Prêts</span>
                 </a>
+                @endif
 
+                @if($can('presence_alerts'))
                 <!-- Alertes de Présence (Notifications Push) -->
                 <div x-data="{ open: {{ request()->routeIs('admin.presence-alerts.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.presence-alerts.*') ? 'bg-blue-600' : '' }}">
@@ -352,14 +391,17 @@
                     </div>
                 </div>
 
+                @endif
+
+                @if($can('roles'))
                 <!-- Gestion des Rôles & Permissions -->
-                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('roles.view'))
                 <a href="{{ route('admin.roles.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.roles.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-user-shield w-5 text-purple-400"></i>
                     <span class="ml-3">Rôles & Permissions</span>
                 </a>
                 @endif
 
+                @if($can('realtime_tracking'))
                 <!-- Suivi en Temps Réel -->
                 <a href="{{ route('admin.real-time-tracking.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.real-time-tracking.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-map-marked-alt w-5 text-green-500"></i>
@@ -368,7 +410,9 @@
                         <span class="px-2 py-1 text-xs font-bold text-white bg-green-500 rounded-full animate-pulse">LIVE</span>
                     </span>
                 </a>
+                @endif
 
+                @if($can('security'))
                 <!-- Sécurité Anti-Fraude -->
                 <div x-data="{ open: {{ request()->routeIs('admin.security.*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.security.*') ? 'bg-blue-600' : '' }}">
@@ -396,6 +440,9 @@
                     </div>
                 </div>
 
+                @endif
+
+                @if($can('firebase'))
                 <a href="{{ route('admin.firebase.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.firebase.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-fire w-5 text-orange-500"></i>
                     <span class="ml-3">Firebase</span>
@@ -406,6 +453,7 @@
                     <i class="fab fa-apple w-5 text-gray-300"></i>
                     <span class="ml-3">iOS Beta</span>
                 </a>
+                @endif
 
                 <!-- Brochure PDF -->
                 <a href="{{ route('admin.brochure.preview') }}" target="_blank" class="flex items-center px-4 py-3 mb-2 rounded-lg hover:bg-gray-800" title="Télécharger la brochure pour vacataires">
@@ -414,10 +462,12 @@
                     <i class="fas fa-external-link-alt w-3 ml-auto text-gray-400"></i>
                 </a>
 
+                @if($can('settings'))
                 <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.settings') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-cog w-5"></i>
                     <span class="ml-3">Paramètres</span>
                 </a>
+                @endif
             </nav>
 
             <!-- User Info -->
