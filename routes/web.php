@@ -339,6 +339,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/reset', [App\Http\Controllers\Admin\CredentialsPdfController::class, 'resetPasswords'])->name('reset');
     });
 
+    // Documentation utilisateur (PDF)
+    Route::get('/user-guide', function () {
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('docs.user-guide')
+            ->setPaper('a4', 'portrait');
+        return $pdf->download('Guide-Utilisateur-INSAM-Presence.pdf');
+    })->name('user-guide');
+
     // Gestion des Rôles & Permissions
     Route::prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\RoleController::class, 'index'])->name('index');
