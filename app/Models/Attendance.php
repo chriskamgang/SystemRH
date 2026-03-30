@@ -21,6 +21,7 @@ class Attendance extends Model
         'accuracy',
         'is_late',
         'late_minutes',
+        'is_half_day',
         'device_info',
         'notes',
         'status',
@@ -33,6 +34,7 @@ class Attendance extends Model
         'accuracy' => 'float',
         'is_late' => 'boolean',
         'late_minutes' => 'integer',
+        'is_half_day' => 'boolean',
         'device_info' => 'array',
     ];
 

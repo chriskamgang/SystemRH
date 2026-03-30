@@ -141,6 +141,12 @@
                                 <div class="text-2xl font-bold text-red-600">{{ $employee->total_late }}</div>
                                 <div class="text-xs text-gray-500">Retards ({{ $employee->late_percentage }}%)</div>
                             </div>
+                            @if($employee->total_half_days > 0)
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-orange-500">{{ $employee->total_half_days }}</div>
+                                <div class="text-xs text-gray-500">Demi-journées</div>
+                            </div>
+                            @endif
                         </div>
 
                         <!-- Icône d'expansion -->
@@ -215,8 +221,10 @@
                                     @if($attendance->check_out_time)
                                     <div class="text-sm text-gray-900">{{ $attendance->check_out_time->format('H:i:s') }}</div>
                                     <div class="text-xs text-gray-500">{{ $attendance->check_out_time->diffForHumans() }}</div>
-                                    @else
+                                    @elseif($attendance->check_in_time && $attendance->check_in_time->isToday())
                                     <span class="text-xs text-yellow-600 font-medium">En cours...</span>
+                                    @else
+                                    <span class="text-xs text-orange-600 font-medium">Pas de sortie</span>
                                     @endif
                                 </td>
 
@@ -235,7 +243,11 @@
 
                                 <!-- Statut -->
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    @if($attendance->is_late)
+                                    @if($attendance->check_in && $attendance->check_in->is_half_day)
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                                            <i class="fas fa-adjust mr-1"></i> Demi-journée
+                                        </span>
+                                    @elseif($attendance->is_late)
                                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                             <i class="fas fa-exclamation-circle mr-1"></i> {{ $attendance->late_minutes }} min
                                         </span>

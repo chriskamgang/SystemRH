@@ -298,6 +298,7 @@ class AttendanceController extends Controller
 
         // Déterminer si en retard
         // Vacataires : pas de retard (payés à l'heure)
+        $isHalfDay = false;
         if ($user->employee_type === 'enseignant_vacataire') {
             $isLate = false;
             $lateMinutes = 0;
@@ -305,6 +306,12 @@ class AttendanceController extends Controller
             // Personnel enseignant et administratif : retard après 8h15
             $isLate = $currentTime->gt($toleranceTime);
             $lateMinutes = $isLate ? $shiftStartTime->diffInMinutes($currentTime) : 0;
+
+            // Si retard > 2h (120 min) → demi-journée (arrivée très tardive)
+            $halfDayThreshold = (int) Setting::get('half_day_threshold_minutes', 120);
+            if ($isLate && $lateMinutes >= $halfDayThreshold) {
+                $isHalfDay = true;
+            }
         }
 
         // Créer le pointage
@@ -319,6 +326,7 @@ class AttendanceController extends Controller
             'accuracy' => $request->accuracy,
             'is_late' => $isLate,
             'late_minutes' => $lateMinutes,
+            'is_half_day' => $isHalfDay,
             'device_info' => $request->device_info,
             'status' => 'valid',
         ];
@@ -347,9 +355,13 @@ class AttendanceController extends Controller
         $attendance->load(['campus', 'tardiness']);
 
         $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
-        $message = $isLate
-            ? "Check-in enregistré pour la plage du {$shiftLabel} avec retard de {$lateMinutes} minutes."
-            : "Check-in enregistré avec succès pour la plage du {$shiftLabel}.";
+        if ($isHalfDay) {
+            $message = "Check-in enregistré pour la plage du {$shiftLabel}. Demi-journée comptabilisée (arrivée tardive).";
+        } elseif ($isLate) {
+            $message = "Check-in enregistré pour la plage du {$shiftLabel} avec retard de {$lateMinutes} minutes.";
+        } else {
+            $message = "Check-in enregistré avec succès pour la plage du {$shiftLabel}.";
+        }
 
         return response()->json([
             'message' => $message,
@@ -359,6 +371,7 @@ class AttendanceController extends Controller
             'shift_start_time' => $shiftTimes['start'],
             'shift_end_time' => $shiftTimes['end'],
             'is_late' => $isLate,
+            'is_half_day' => $isHalfDay,
             'late_minutes' => $lateMinutes,
             'timestamp' => $now,
         ], 201);

@@ -59,6 +59,12 @@ Schedule::command('schedule:auto-checkout')
     ->name('auto-checkout-ue')
     ->withoutOverlapping();
 
+// Auto-checkout fin de journée : clôturer les check-ins sans check-out → demi-journée
+Schedule::command('attendance:auto-checkout')
+    ->dailyAt('06:00')
+    ->name('auto-checkout-end-of-day')
+    ->withoutOverlapping();
+
 // Rappels de cours : notifie les enseignants X minutes avant leur cours
 Schedule::command('schedule:send-course-reminders')
     ->everyMinute()

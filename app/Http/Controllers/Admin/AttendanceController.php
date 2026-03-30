@@ -70,13 +70,15 @@ class AttendanceController extends Controller
                     'check_out_time' => $checkOut ? $checkOut->timestamp : null,
                     'is_late' => $checkIn ? $checkIn->is_late : false,
                     'late_minutes' => $checkIn ? $checkIn->late_minutes : 0,
+                    'is_half_day' => $checkIn ? ($checkIn->is_half_day ?? false) : false,
                     'unite_enseignement' => $checkIn ? $checkIn->uniteEnseignement : null,
                 ];
             })->sortByDesc('date')->values();
 
             // Calculer les statistiques
             $totalDays = $dailyAttendances->count();
-            $totalLate = $dailyAttendances->where('is_late', true)->count();
+            $totalLate = $dailyAttendances->where('is_late', true)->where('is_half_day', false)->count();
+            $totalHalfDays = $dailyAttendances->where('is_half_day', true)->count();
             $totalCheckIns = $userAttendances->where('type', 'check-in')->count();
             $totalCheckOuts = $userAttendances->where('type', 'check-out')->count();
 
@@ -86,6 +88,7 @@ class AttendanceController extends Controller
                 'total_check_ins' => $totalCheckIns,
                 'total_check_outs' => $totalCheckOuts,
                 'total_late' => $totalLate,
+                'total_half_days' => $totalHalfDays,
                 'late_percentage' => $totalCheckIns > 0 ? round(($totalLate / $totalCheckIns) * 100, 1) : 0,
                 'attendances' => $dailyAttendances,
                 'first_attendance' => $dailyAttendances->first(),
