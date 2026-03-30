@@ -272,7 +272,7 @@
         <h1>INSAM PRESENCE</h1>
         <h2>Guide Utilisateur - Application Mobile</h2>
         <p class="subtitle">Systeme de Pointage par Geolocalisation</p>
-        <p class="subtitle">IUEs/INSAM - Institut Universitaire</p>
+        <p class="subtitle">IUEs/INSAM - Institut Universitaire Strategique de l'Estuaire</p>
         <div class="version">Version 2.0.1</div>
         <p class="date">{{ now()->format('d/m/Y') }}</p>
     </div>
