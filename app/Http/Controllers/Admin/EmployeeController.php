@@ -370,15 +370,25 @@ class EmployeeController extends Controller
     {
         $employee = User::findOrFail($id);
 
+        // Supprimer l'enregistrement device_usage du jour (libérer le téléphone)
+        \App\Models\DeviceUsage::where('user_id', $employee->id)
+            ->whereDate('usage_date', now()->toDateString())
+            ->delete();
+
+        // Supprimer les tokens d'authentification (forcer la déconnexion)
+        $employee->tokens()->delete();
+
+        // Réinitialiser l'appareil
         $employee->update([
             'device_id' => null,
             'device_model' => null,
             'device_os' => null,
+            'fcm_token' => null,
         ]);
 
         return redirect()
             ->back()
-            ->with('success', 'Appareil réinitialisé. L\'employé pourra se connecter depuis un nouvel appareil.');
+            ->with('success', 'Appareil réinitialisé et employé déconnecté. Le téléphone est libéré.');
     }
 
     /**

@@ -108,19 +108,14 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $user = $request->user();
-
         // Supprimer le token FCM pour ne plus recevoir de notifications
-        $user->update(['fcm_token' => null]);
+        $request->user()->update(['fcm_token' => null]);
 
-        // Libérer le téléphone : supprimer l'enregistrement device_usage du jour
-        // Permet à un autre utilisateur d'utiliser ce téléphone après déconnexion
-        DeviceUsage::where('user_id', $user->id)
-            ->whereDate('usage_date', now()->toDateString())
-            ->delete();
+        // Le device_usage reste en base (anti-fraude)
+        // Seul l'admin peut libérer un téléphone
 
         // Supprimer le token d'authentification
-        $user->currentAccessToken()->delete();
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'message' => 'Déconnexion réussie',
