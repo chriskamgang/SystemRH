@@ -351,6 +351,18 @@
                 </a>
                 @endif
 
+                <!-- Avances sur Salaire -->
+                <a href="{{ route('admin.salary-advances.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.salary-advances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-money-check-alt w-5"></i>
+                    <span class="ml-3">Avances Salaire</span>
+                    @php
+                        $pendingAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count();
+                    @endphp
+                    @if($pendingAdvances > 0)
+                        <span class="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingAdvances }}</span>
+                    @endif
+                </a>
+
                 <!-- Taches -->
                 <a href="{{ route('admin.tasks.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.tasks.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-tasks w-5"></i>

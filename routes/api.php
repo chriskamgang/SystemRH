@@ -188,6 +188,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ues-disponibles-maintenant', [\App\Http\Controllers\API\UeScheduleApiController::class, 'uesDisponiblesMaintenant']);
     });
 
+    // ========== AVANCES SUR SALAIRE ==========
+    Route::prefix('salary-advances')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\SalaryAdvanceController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\API\SalaryAdvanceController::class, 'store']);
+    });
+
     // ========== TACHES (Tasks) ==========
     Route::prefix('tasks')->group(function () {
         Route::get('/', [\App\Http\Controllers\API\TaskController::class, 'index']);

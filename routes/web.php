@@ -235,6 +235,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::delete('/{id}', [App\Http\Controllers\Admin\ManualDeductionController::class, 'destroy'])->name('destroy');
     });
 
+    // Demandes d'avance sur salaire
+    Route::prefix('salary-advances')->name('salary-advances.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'index'])->name('index');
+        Route::post('/{id}/approve', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'reject'])->name('reject');
+    });
+
     // Taches (Tasks)
     Route::prefix('tasks')->name('tasks.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\TaskController::class, 'index'])->name('index');
