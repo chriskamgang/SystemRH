@@ -24,4 +24,3 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 storage/firebase-credentials.json
-public/downloads/*.apk
