@@ -188,6 +188,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ues-disponibles-maintenant', [\App\Http\Controllers\API\UeScheduleApiController::class, 'uesDisponiblesMaintenant']);
     });
 
+    // ========== TACHES (Tasks) ==========
+    Route::prefix('tasks')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\TaskController::class, 'index']);
+        Route::get('/{id}', [\App\Http\Controllers\API\TaskController::class, 'show']);
+        Route::put('/{id}/status', [\App\Http\Controllers\API\TaskController::class, 'updateStatus']);
+    });
+
     // Test route
     Route::get('/test', function () {
         return response()->json([

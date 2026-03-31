@@ -351,6 +351,12 @@
                 </a>
                 @endif
 
+                <!-- Taches -->
+                <a href="{{ route('admin.tasks.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.tasks.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-tasks w-5"></i>
+                    <span class="ml-3">Tâches</span>
+                </a>
+
                 @if($can('loans'))
                 <!-- Prêts -->
                 <a href="{{ route('admin.loans.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.loans.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">

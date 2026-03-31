@@ -190,6 +190,14 @@ class User extends Authenticatable
         return $this->hasMany(SecurityViolation::class);
     }
 
+    // Taches assignées
+    public function tasks()
+    {
+        return $this->belongsToMany(Task::class, 'task_user')
+            ->withPivot('status', 'note', 'completed_at')
+            ->withTimestamps();
+    }
+
     /**
      * Accessors
      */

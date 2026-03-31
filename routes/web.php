@@ -235,6 +235,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::delete('/{id}', [App\Http\Controllers\Admin\ManualDeductionController::class, 'destroy'])->name('destroy');
     });
 
+    // Taches (Tasks)
+    Route::prefix('tasks')->name('tasks.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\TaskController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\Admin\TaskController::class, 'store'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'show'])->name('show');
+        Route::put('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'update'])->name('update');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'destroy'])->name('destroy');
+    });
+
     // Prêts (Loans)
     Route::prefix('loans')->name('loans.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\LoanController::class, 'index'])->name('index');
