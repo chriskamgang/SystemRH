@@ -242,6 +242,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'show'])->name('show');
         Route::put('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'update'])->name('update');
         Route::delete('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'destroy'])->name('destroy');
+        Route::post('/{taskId}/approve-penalty/{userId}', [App\Http\Controllers\Admin\TaskController::class, 'approvePenalty'])->name('approve-penalty');
+        Route::post('/{taskId}/cancel-penalty/{userId}', [App\Http\Controllers\Admin\TaskController::class, 'cancelPenalty'])->name('cancel-penalty');
     });
 
     // Prêts (Loans)

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TaskController extends Controller
 {
@@ -38,6 +39,7 @@ class TaskController extends Controller
             'description' => 'nullable|string',
             'priority' => 'required|in:low,medium,high',
             'due_date' => 'nullable|date',
+            'penalty_amount' => 'nullable|numeric|min:0',
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'exists:users,id',
         ]);
@@ -47,6 +49,7 @@ class TaskController extends Controller
             'description' => $request->description,
             'priority' => $request->priority,
             'due_date' => $request->due_date,
+            'penalty_amount' => $request->penalty_amount ?? 0,
             'created_by' => auth()->id(),
         ]);
 
@@ -69,6 +72,7 @@ class TaskController extends Controller
             'priority' => 'required|in:low,medium,high',
             'status' => 'required|in:pending,in_progress,completed,cancelled',
             'due_date' => 'nullable|date',
+            'penalty_amount' => 'nullable|numeric|min:0',
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'exists:users,id',
         ]);
@@ -80,6 +84,7 @@ class TaskController extends Controller
             'priority' => $request->priority,
             'status' => $request->status,
             'due_date' => $request->due_date,
+            'penalty_amount' => $request->penalty_amount ?? 0,
         ]);
 
         $task->users()->sync($request->user_ids);
@@ -92,5 +97,49 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
         $task->delete();
         return response()->json(['success' => true, 'message' => 'Tâche supprimée avec succès.']);
+    }
+
+    /**
+     * Approuver la coupure/pénalité pour un employé qui n'a pas fait sa tâche.
+     */
+    public function approvePenalty(Request $request, $taskId, $userId)
+    {
+        $task = Task::findOrFail($taskId);
+
+        DB::table('task_user')
+            ->where('task_id', $taskId)
+            ->where('user_id', $userId)
+            ->update([
+                'penalty_approved' => true,
+                'penalty_approved_at' => now(),
+                'penalty_approved_by' => auth()->id(),
+            ]);
+
+        $user = User::findOrFail($userId);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Coupure de {$task->penalty_amount} FCFA approuvée pour {$user->full_name}.",
+        ]);
+    }
+
+    /**
+     * Annuler une pénalité approuvée.
+     */
+    public function cancelPenalty(Request $request, $taskId, $userId)
+    {
+        DB::table('task_user')
+            ->where('task_id', $taskId)
+            ->where('user_id', $userId)
+            ->update([
+                'penalty_approved' => false,
+                'penalty_approved_at' => null,
+                'penalty_approved_by' => null,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Coupure annulée.',
+        ]);
     }
 }

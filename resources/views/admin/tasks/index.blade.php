@@ -62,6 +62,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tâche</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priorité</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pénalité</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Échéance</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assignés</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -96,6 +97,13 @@
                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Annulée</span>
                         @endif
                     </td>
+                    <td class="px-6 py-4">
+                        @if($task->penalty_amount > 0)
+                            <span class="text-sm font-semibold text-red-600">{{ number_format($task->penalty_amount, 0, ',', '.') }} FCFA</span>
+                        @else
+                            <span class="text-sm text-gray-400">-</span>
+                        @endif
+                    </td>
                     <td class="px-6 py-4 text-sm text-gray-500">
                         @if($task->due_date)
                             <span class="{{ $task->due_date->isPast() && $task->status != 'completed' ? 'text-red-600 font-semibold' : '' }}">
@@ -117,6 +125,9 @@
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex gap-2">
+                            <button onclick="openDetailModal({{ $task->id }})" class="text-green-600 hover:text-green-900" title="Détails & Pénalités">
+                                <i class="fas fa-eye"></i>
+                            </button>
                             <button onclick="openEditModal({{ $task->id }})" class="text-blue-600 hover:text-blue-900" title="Modifier">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -128,7 +139,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                         <i class="fas fa-tasks text-4xl mb-4 block text-gray-300"></i>
                         Aucune tâche trouvée
                     </td>
@@ -170,7 +181,7 @@
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Priorité *</label>
                             <select id="taskPriority"
@@ -191,11 +202,20 @@
                                 <option value="cancelled">Annulée</option>
                             </select>
                         </div>
+                    </div>
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Échéance</label>
                             <input type="date" id="taskDueDate"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Montant pénalité (FCFA)</label>
+                            <input type="number" id="taskPenalty" min="0" step="500" placeholder="0"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Montant à couper si la tâche n'est pas faite</p>
                         </div>
                     </div>
 
@@ -225,6 +245,24 @@
     </div>
 </div>
 
+<!-- Modal Détails & Pénalités -->
+<div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="detailTitle" class="text-xl font-bold text-gray-800">Détails de la Tâche</h3>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div id="detailContent">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -236,9 +274,9 @@
         document.getElementById('taskDescription').value = '';
         document.getElementById('taskPriority').value = 'medium';
         document.getElementById('taskDueDate').value = '';
+        document.getElementById('taskPenalty').value = '';
         document.getElementById('statusField').classList.add('hidden');
 
-        // Deselect all users
         const select = document.getElementById('taskUsers');
         Array.from(select.options).forEach(opt => opt.selected = false);
 
@@ -260,9 +298,9 @@
             document.getElementById('taskPriority').value = task.priority;
             document.getElementById('taskStatus').value = task.status;
             document.getElementById('taskDueDate').value = task.due_date ? task.due_date.substring(0, 10) : '';
+            document.getElementById('taskPenalty').value = task.penalty_amount || '';
             document.getElementById('statusField').classList.remove('hidden');
 
-            // Select assigned users
             const select = document.getElementById('taskUsers');
             const assignedIds = task.users.map(u => u.id.toString());
             Array.from(select.options).forEach(opt => {
@@ -275,8 +313,126 @@
         }
     }
 
+    async function openDetailModal(taskId) {
+        try {
+            const response = await fetch(`{{ url('admin/tasks') }}/${taskId}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
+            const task = data.task;
+
+            const penaltyAmount = task.penalty_amount || 0;
+            const formattedPenalty = penaltyAmount > 0 ? penaltyAmount.toLocaleString('fr-FR') + ' FCFA' : 'Aucune';
+
+            let html = `
+                <div class="mb-6">
+                    <h4 class="text-lg font-semibold">${task.title}</h4>
+                    <p class="text-gray-600 mt-1">${task.description || 'Pas de description'}</p>
+                    <div class="mt-3 flex gap-3">
+                        <span class="text-sm"><strong>Pénalité :</strong> <span class="text-red-600 font-semibold">${formattedPenalty}</span></span>
+                        <span class="text-sm"><strong>Échéance :</strong> ${task.due_date ? new Date(task.due_date).toLocaleDateString('fr-FR') : '-'}</span>
+                    </div>
+                </div>
+
+                <h4 class="text-md font-semibold mb-3">Employés assignés</h4>
+                <div class="space-y-3">
+            `;
+
+            task.users.forEach(user => {
+                const pivot = user.pivot;
+                const statusLabels = {pending: 'En attente', in_progress: 'En cours', completed: 'Terminée'};
+                const statusColors = {pending: 'gray', in_progress: 'blue', completed: 'green'};
+                const statusLabel = statusLabels[pivot.status] || pivot.status;
+                const statusColor = statusColors[pivot.status] || 'gray';
+
+                let penaltyHtml = '';
+                if (penaltyAmount > 0 && pivot.status !== 'completed') {
+                    if (pivot.penalty_approved) {
+                        penaltyHtml = `
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Coupure approuvée</span>
+                            <button onclick="cancelPenalty(${task.id}, ${user.id})" class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300">Annuler</button>
+                        `;
+                    } else {
+                        penaltyHtml = `
+                            <button onclick="approvePenalty(${task.id}, ${user.id})" class="px-3 py-1 text-xs bg-red-600 text-white rounded-full hover:bg-red-700">
+                                Approuver coupure (${penaltyAmount.toLocaleString('fr-FR')} FCFA)
+                            </button>
+                        `;
+                    }
+                } else if (pivot.status === 'completed') {
+                    penaltyHtml = '<span class="text-xs text-green-600 font-semibold">Tâche terminée</span>';
+                }
+
+                html += `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <span class="font-medium">${user.first_name} ${user.last_name}</span>
+                            <span class="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-${statusColor}-100 text-${statusColor}-800">${statusLabel}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${penaltyHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            document.getElementById('detailContent').innerHTML = html;
+            document.getElementById('detailTitle').textContent = 'Détails - ' + task.title;
+            document.getElementById('detailModal').classList.remove('hidden');
+        } catch (e) {
+            alert('Erreur lors du chargement.');
+        }
+    }
+
     function closeModal() {
         document.getElementById('taskModal').classList.add('hidden');
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    async function approvePenalty(taskId, userId) {
+        if (!confirm('Approuver la coupure pour cet employé ?')) return;
+
+        try {
+            const response = await fetch(`{{ url('admin/tasks') }}/${taskId}/approve-penalty/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert(data.message);
+                openDetailModal(taskId); // Refresh
+            }
+        } catch (e) {
+            alert('Erreur réseau.');
+        }
+    }
+
+    async function cancelPenalty(taskId, userId) {
+        if (!confirm('Annuler la coupure ?')) return;
+
+        try {
+            const response = await fetch(`{{ url('admin/tasks') }}/${taskId}/cancel-penalty/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+            });
+            const data = await response.json();
+            if (data.success) {
+                openDetailModal(taskId); // Refresh
+            }
+        } catch (e) {
+            alert('Erreur réseau.');
+        }
     }
 
     document.getElementById('taskForm').addEventListener('submit', async function(e) {
@@ -297,6 +453,7 @@
             description: document.getElementById('taskDescription').value,
             priority: document.getElementById('taskPriority').value,
             due_date: document.getElementById('taskDueDate').value || null,
+            penalty_amount: parseInt(document.getElementById('taskPenalty').value) || 0,
             user_ids: selectedUsers,
         };
 
