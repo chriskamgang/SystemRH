@@ -83,7 +83,7 @@ class CampusController extends Controller
                 ], 403);
             }
 
-            $inZone = $campus->isUserInZone($request->latitude, $request->longitude);
+            $inZone = $campus->isUserInZone($request->latitude, $request->longitude, $request->accuracy);
 
             return response()->json([
                 'campus' => [
@@ -104,7 +104,7 @@ class CampusController extends Controller
         $results = [];
 
         foreach ($userCampuses as $campus) {
-            $inZone = $campus->isUserInZone($request->latitude, $request->longitude);
+            $inZone = $campus->isUserInZone($request->latitude, $request->longitude, $request->accuracy);
 
             $results[] = [
                 'campus' => [

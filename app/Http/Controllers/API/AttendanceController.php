@@ -200,12 +200,15 @@ class AttendanceController extends Controller
         }
 
         // Vérifier si l'utilisateur est dans la zone géographique
-        if (!$campus->isUserInZone($request->latitude, $request->longitude)) {
+        // La tolérance s'adapte à la précision GPS du téléphone
+        $accuracy = $request->accuracy;
+        if (!$campus->isUserInZone($request->latitude, $request->longitude, $accuracy)) {
             $distance = round($campus->distanceToUser($request->latitude, $request->longitude));
             return response()->json([
                 'message' => "Vous êtes à {$distance}m du campus. Rapprochez-vous à moins de {$campus->radius}m.",
                 'distance' => $distance,
                 'radius' => $campus->radius,
+                'accuracy' => $accuracy,
             ], 400);
         }
 
@@ -394,7 +397,8 @@ class AttendanceController extends Controller
         $campus = Campus::findOrFail($request->campus_id);
 
         // Vérifier si l'utilisateur est dans la zone du campus indiqué
-        if (!$campus->isUserInZone($request->latitude, $request->longitude)) {
+        $accuracy = $request->accuracy;
+        if (!$campus->isUserInZone($request->latitude, $request->longitude, $accuracy)) {
             return response()->json([
                 'message' => 'Vous n\'êtes pas dans la zone du campus pour faire le check-out.',
             ], 400);

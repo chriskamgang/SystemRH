@@ -95,12 +95,19 @@ class Campus extends Model
 
     /**
      * Vérifier si l'utilisateur est dans la zone du campus
-     * Marge de tolérance GPS de 50m pour compenser l'imprécision des téléphones
+     * Tolérance dynamique basée sur la précision GPS du téléphone
+     * - Minimum 50m de marge (téléphones avec bon GPS)
+     * - Jusqu'à la précision GPS reportée (téléphones bas de gamme)
      */
-    public function isUserInZone($latitude, $longitude): bool
+    public function isUserInZone($latitude, $longitude, $accuracy = null): bool
     {
         $distance = $this->distanceToUser($latitude, $longitude);
-        $tolerance = 50; // mètres de marge GPS
+
+        // Tolérance dynamique : max entre 50m fixe et la précision GPS du téléphone
+        $baseTolerance = 50;
+        $gpsTolerance = ($accuracy && $accuracy > 0) ? min($accuracy, 500) : 0;
+        $tolerance = max($baseTolerance, $gpsTolerance);
+
         return $distance <= ($this->radius + $tolerance);
     }
 }
