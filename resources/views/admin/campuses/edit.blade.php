@@ -97,6 +97,10 @@
                                 <option value="300" {{ old('radius', $campus->radius) == 300 ? 'selected' : '' }}>300m</option>
                                 <option value="500" {{ old('radius', $campus->radius) == 500 ? 'selected' : '' }}>500m</option>
                                 <option value="1000" {{ old('radius', $campus->radius) == 1000 ? 'selected' : '' }}>1000m</option>
+                                <option value="1500" {{ old('radius', $campus->radius) == 1500 ? 'selected' : '' }}>1500m</option>
+                                <option value="2000" {{ old('radius', $campus->radius) == 2000 ? 'selected' : '' }}>2000m</option>
+                                <option value="3000" {{ old('radius', $campus->radius) == 3000 ? 'selected' : '' }}>3000m</option>
+                                <option value="5000" {{ old('radius', $campus->radius) == 5000 ? 'selected' : '' }}>5000m</option>
                             </select>
                             @error('radius')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
