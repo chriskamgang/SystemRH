@@ -740,4 +740,17 @@ class EmployeeController extends Controller
 
         return view('admin.employees.print-by-bank', compact('employeesByBank', 'banques', 'selectedBanque'));
     }
+
+    /**
+     * Libérer tous les verrous d'appareils du jour.
+     * Supprime tous les enregistrements device_usage de la date actuelle.
+     */
+    public function clearDeviceLocks()
+    {
+        $count = \App\Models\DeviceUsage::whereDate('usage_date', now()->toDateString())->count();
+
+        \App\Models\DeviceUsage::whereDate('usage_date', now()->toDateString())->delete();
+
+        return redirect()->back()->with('success', "Tous les verrous d'appareils du jour ont été libérés ({$count} enregistrements supprimés). Les employés peuvent se reconnecter sur n'importe quel téléphone.");
+    }
 }

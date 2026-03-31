@@ -32,6 +32,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Employees
     Route::resource('employees', EmployeeController::class);
     Route::post('employees/{id}/reset-device', [EmployeeController::class, 'resetDevice'])->name('employees.reset-device');
+    Route::post('employees/clear-device-locks', [EmployeeController::class, 'clearDeviceLocks'])->name('employees.clear-device-locks');
 
     // Import/Export Employees (ancien système global)
     Route::get('employees-import', [EmployeeController::class, 'showImportForm'])->name('employees.import-form');

@@ -12,6 +12,13 @@
             <p class="text-gray-600 mt-1">Gérez les employés et leurs accès</p>
         </div>
         <div class="flex gap-3">
+            <form method="POST" action="{{ route('admin.employees.clear-device-locks') }}" class="inline" onsubmit="return confirm('Libérer TOUS les verrous d\'appareils du jour ?\n\nCela permettra à tous les employés de se reconnecter sur n\'importe quel téléphone.\n\nContinuer ?');">
+                @csrf
+                <button type="submit" class="inline-flex items-center px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition">
+                    <i class="fas fa-unlock mr-2"></i>
+                    Libérer tous les appareils
+                </button>
+            </form>
             <a href="{{ route('admin.employees.print-by-bank') }}" class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition">
                 <i class="fas fa-university mr-2"></i>
                 Imprimer par Banque
