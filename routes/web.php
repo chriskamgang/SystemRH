@@ -9,6 +9,11 @@ use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\LandingController;
 
+// Webhooks (pas de CSRF)
+Route::post('/webhooks/elgiopay', [App\Http\Controllers\Webhook\ElgioPayWebhookController::class, 'handle'])
+    ->name('webhooks.elgiopay')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
 // Landing pages (public)
 Route::get('/', [LandingController::class, 'index'])->name('landing.index');
 Route::get('/fonctionnalites', [LandingController::class, 'features'])->name('landing.features');
@@ -241,6 +246,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/{id}/approve', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'approve'])->name('approve');
         Route::post('/{id}/reject', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'reject'])->name('reject');
     });
+
+    // Portefeuilles (Wallets)
+    Route::prefix('wallets')->name('wallets.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\WalletController::class, 'index'])->name('index');
+        Route::post('/credit-multiple', [App\Http\Controllers\Admin\WalletController::class, 'creditMultiple'])->name('credit-multiple');
+        Route::get('/{user}', [App\Http\Controllers\Admin\WalletController::class, 'show'])->name('show');
+        Route::post('/{user}/credit', [App\Http\Controllers\Admin\WalletController::class, 'credit'])->name('credit');
+    });
+    Route::get('wallets-elgiopay-balance', [App\Http\Controllers\Admin\WalletController::class, 'elgiopayBalance'])->name('wallets.elgiopay-balance');
+    Route::post('wallets-elgiopay-topup', [App\Http\Controllers\Admin\WalletController::class, 'elgiopayTopup'])->name('wallets.elgiopay-topup');
+    Route::get('wallets-elgiopay-payment-status/{transactionId}', [App\Http\Controllers\Admin\WalletController::class, 'elgiopayPaymentStatus'])->name('wallets.elgiopay-payment-status');
 
     // Taches (Tasks)
     Route::prefix('tasks')->name('tasks.')->group(function () {

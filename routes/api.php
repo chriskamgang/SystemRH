@@ -188,6 +188,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ues-disponibles-maintenant', [\App\Http\Controllers\API\UeScheduleApiController::class, 'uesDisponiblesMaintenant']);
     });
 
+    // ========== PORTEFEUILLE (Wallet) ==========
+    Route::get('wallet', [\App\Http\Controllers\API\WalletController::class, 'index']);
+    Route::post('wallet/transfer', [\App\Http\Controllers\API\WalletController::class, 'transfer']);
+    Route::get('wallet/transactions', [\App\Http\Controllers\API\WalletController::class, 'transactions']);
+
     // ========== AVANCES SUR SALAIRE ==========
     Route::prefix('salary-advances')->group(function () {
         Route::get('/', [\App\Http\Controllers\API\SalaryAdvanceController::class, 'index']);

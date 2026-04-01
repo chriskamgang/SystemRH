@@ -795,6 +795,126 @@
             </form>
         </div>
 
+        <!-- Temps de trajet entre campus -->
+        <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                <i class="fas fa-route text-teal-600 mr-2"></i>
+                Temps de Trajet entre Campus
+            </h3>
+
+            <div class="mb-4 p-4 bg-teal-50 border border-teal-200 rounded-lg">
+                <p class="text-sm text-teal-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Comment ca marche :</strong> Quand un employe fait check-out d'un campus et check-in sur un autre,
+                    le systeme lui accorde le temps de trajet configure. Au-dela de ce temps, les minutes supplementaires sont comptees comme retard.
+                </p>
+            </div>
+
+            <form method="POST" action="{{ route('admin.settings.update') }}">
+                @csrf
+                @method('PUT')
+
+                <!-- Temps par defaut -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Temps de trajet par defaut (minutes)
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" name="default_travel_minutes"
+                           value="{{ \App\Models\Setting::get('default_travel_minutes', 30) }}"
+                           min="5" max="120"
+                           class="w-48 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                           required>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Utilise quand aucun temps specifique n'est configure entre deux campus
+                    </p>
+                </div>
+
+                <!-- Penalite par minute de depassement -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Penalite par minute de depassement (FCFA)
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" step="1" name="travel_late_penalty_per_minute"
+                           value="{{ \App\Models\Setting::get('travel_late_penalty_per_minute', 30) }}"
+                           min="0" max="10000"
+                           class="w-48 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                           required>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Montant deduit pour chaque minute au-dela du temps de trajet autorise.
+                        Ex: 30 FCFA/min = si 10 min de depassement → 300 FCFA de penalite
+                    </p>
+                </div>
+
+                @if(isset($campuses) && $campuses->count() >= 2)
+                <!-- Tableau des temps entre campus -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border border-gray-200 rounded-lg">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">De / Vers</th>
+                                @foreach($campuses as $c)
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{{ $c->name }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($campuses as $fromCampus)
+                            <tr class="border-t border-gray-200">
+                                <td class="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50 whitespace-nowrap">{{ $fromCampus->name }}</td>
+                                @foreach($campuses as $toCampus)
+                                    <td class="px-2 py-2 text-center">
+                                        @if($fromCampus->id === $toCampus->id)
+                                            <span class="text-gray-300">-</span>
+                                        @else
+                                            @php
+                                                // Toujours utiliser la cle avec le plus petit ID en premier
+                                                $minId = min($fromCampus->id, $toCampus->id);
+                                                $maxId = max($fromCampus->id, $toCampus->id);
+                                                $key = $minId . '_' . $maxId;
+                                                $value = isset($travelTimes[$key]) ? $travelTimes[$key]->travel_minutes : '';
+                                            @endphp
+                                            <input type="number"
+                                                   name="travel_times[{{ $key }}]"
+                                                   value="{{ $value }}"
+                                                   min="5" max="120"
+                                                   placeholder="{{ \App\Models\Setting::get('default_travel_minutes', 30) }}"
+                                                   data-pair="{{ $key }}"
+                                                   oninput="document.querySelectorAll('[data-pair=\'{{ $key }}\']').forEach(el => { if(el !== this) el.value = this.value; })"
+                                                   class="w-20 px-2 py-1 text-center text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        @endif
+                                    </td>
+                                @endforeach
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="mt-3 text-xs text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Modifiez n'importe quelle case — la case opposee se met a jour automatiquement (trajet identique dans les deux sens).
+                    Laissez vide pour utiliser le temps par defaut.
+                </p>
+                @else
+                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p class="text-sm text-yellow-700">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Vous devez avoir au moins 2 campus pour configurer les temps de trajet.
+                    </p>
+                </div>
+                @endif
+
+                <div class="mt-6">
+                    <button type="submit" class="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Enregistrer les temps de trajet
+                    </button>
+                </div>
+            </form>
+        </div>
+
         <!-- Paramètres généraux -->
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Paramètres Généraux</h3>

@@ -62,8 +62,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tâche</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priorité</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pénalité</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Échéance</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Période</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assignés</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -97,21 +96,23 @@
                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Annulée</span>
                         @endif
                     </td>
-                    <td class="px-6 py-4">
-                        @if($task->penalty_amount > 0)
-                            <span class="text-sm font-semibold text-red-600">{{ number_format($task->penalty_amount, 0, ',', '.') }} FCFA</span>
-                        @else
-                            <span class="text-sm text-gray-400">-</span>
-                        @endif
-                    </td>
                     <td class="px-6 py-4 text-sm text-gray-500">
-                        @if($task->due_date)
-                            <span class="{{ $task->due_date->isPast() && $task->status != 'completed' ? 'text-red-600 font-semibold' : '' }}">
-                                {{ $task->due_date->format('d/m/Y') }}
-                            </span>
-                        @else
-                            <span class="text-gray-400">-</span>
-                        @endif
+                        <div>
+                            @if($task->start_date)
+                                <span class="text-gray-600"><i class="fas fa-play text-xs text-green-500 mr-1"></i>{{ $task->start_date->format('d/m/Y') }}</span>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </div>
+                        <div class="mt-1">
+                            @if($task->due_date)
+                                <span class="{{ $task->due_date->isPast() && $task->status != 'completed' ? 'text-red-600 font-semibold' : '' }}">
+                                    <i class="fas fa-flag-checkered text-xs text-red-500 mr-1"></i>{{ $task->due_date->format('d/m/Y') }}
+                                </span>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </div>
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex flex-wrap gap-1">
@@ -139,7 +140,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                         <i class="fas fa-tasks text-4xl mb-4 block text-gray-300"></i>
                         Aucune tâche trouvée
                     </td>
@@ -206,16 +207,14 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Échéance</label>
-                            <input type="date" id="taskDueDate"
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date de début</label>
+                            <input type="date" id="taskStartDate"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
-
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Montant pénalité (FCFA)</label>
-                            <input type="number" id="taskPenalty" min="0" step="500" placeholder="0"
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date de fin (Échéance)</label>
+                            <input type="date" id="taskDueDate"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">Montant à couper si la tâche n'est pas faite</p>
                         </div>
                     </div>
 
@@ -273,8 +272,8 @@
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
         document.getElementById('taskPriority').value = 'medium';
+        document.getElementById('taskStartDate').value = '';
         document.getElementById('taskDueDate').value = '';
-        document.getElementById('taskPenalty').value = '';
         document.getElementById('statusField').classList.add('hidden');
 
         const select = document.getElementById('taskUsers');
@@ -297,8 +296,8 @@
             document.getElementById('taskDescription').value = task.description || '';
             document.getElementById('taskPriority').value = task.priority;
             document.getElementById('taskStatus').value = task.status;
+            document.getElementById('taskStartDate').value = task.start_date ? task.start_date.substring(0, 10) : '';
             document.getElementById('taskDueDate').value = task.due_date ? task.due_date.substring(0, 10) : '';
-            document.getElementById('taskPenalty').value = task.penalty_amount || '';
             document.getElementById('statusField').classList.remove('hidden');
 
             const select = document.getElementById('taskUsers');
@@ -321,16 +320,13 @@
             const data = await response.json();
             const task = data.task;
 
-            const penaltyAmount = task.penalty_amount || 0;
-            const formattedPenalty = penaltyAmount > 0 ? penaltyAmount.toLocaleString('fr-FR') + ' FCFA' : 'Aucune';
-
             let html = `
                 <div class="mb-6">
                     <h4 class="text-lg font-semibold">${task.title}</h4>
                     <p class="text-gray-600 mt-1">${task.description || 'Pas de description'}</p>
-                    <div class="mt-3 flex gap-3">
-                        <span class="text-sm"><strong>Pénalité :</strong> <span class="text-red-600 font-semibold">${formattedPenalty}</span></span>
-                        <span class="text-sm"><strong>Échéance :</strong> ${task.due_date ? new Date(task.due_date).toLocaleDateString('fr-FR') : '-'}</span>
+                    <div class="mt-3 flex gap-4">
+                        <span class="text-sm"><strong>Début :</strong> ${task.start_date ? new Date(task.start_date).toLocaleDateString('fr-FR') : '-'}</span>
+                        <span class="text-sm"><strong>Fin :</strong> ${task.due_date ? new Date(task.due_date).toLocaleDateString('fr-FR') : '-'}</span>
                     </div>
                 </div>
 
@@ -340,25 +336,34 @@
 
             task.users.forEach(user => {
                 const pivot = user.pivot;
+                const userPenalty = pivot.penalty_amount || 0;
                 const statusLabels = {pending: 'En attente', in_progress: 'En cours', completed: 'Terminée'};
                 const statusColors = {pending: 'gray', in_progress: 'blue', completed: 'green'};
                 const statusLabel = statusLabels[pivot.status] || pivot.status;
                 const statusColor = statusColors[pivot.status] || 'gray';
 
                 let penaltyHtml = '';
-                if (penaltyAmount > 0 && pivot.status !== 'completed') {
-                    if (pivot.penalty_approved) {
+                if (userPenalty > 0) {
+                    if (pivot.status === 'completed') {
                         penaltyHtml = `
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Coupure approuvée</span>
+                            <span class="text-xs text-green-600 font-semibold">Tâche terminée</span>
+                            <span class="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">${userPenalty.toLocaleString('fr-FR')} FCFA engagés</span>
+                        `;
+                    } else if (pivot.penalty_approved) {
+                        penaltyHtml = `
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Coupure approuvée (${userPenalty.toLocaleString('fr-FR')} FCFA)</span>
                             <button onclick="cancelPenalty(${task.id}, ${user.id})" class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300">Annuler</button>
                         `;
                     } else {
                         penaltyHtml = `
+                            <span class="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">${userPenalty.toLocaleString('fr-FR')} FCFA engagés</span>
                             <button onclick="approvePenalty(${task.id}, ${user.id})" class="px-3 py-1 text-xs bg-red-600 text-white rounded-full hover:bg-red-700">
-                                Approuver coupure (${penaltyAmount.toLocaleString('fr-FR')} FCFA)
+                                Approuver coupure
                             </button>
                         `;
                     }
+                } else if (pivot.status === 'pending') {
+                    penaltyHtml = '<span class="text-xs text-gray-500">Pas encore acceptée</span>';
                 } else if (pivot.status === 'completed') {
                     penaltyHtml = '<span class="text-xs text-green-600 font-semibold">Tâche terminée</span>';
                 }
@@ -452,8 +457,8 @@
             title: document.getElementById('taskTitle').value,
             description: document.getElementById('taskDescription').value,
             priority: document.getElementById('taskPriority').value,
+            start_date: document.getElementById('taskStartDate').value || null,
             due_date: document.getElementById('taskDueDate').value || null,
-            penalty_amount: parseInt(document.getElementById('taskPenalty').value) || 0,
             user_ids: selectedUsers,
         };
 

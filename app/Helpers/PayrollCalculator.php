@@ -87,6 +87,7 @@ class PayrollCalculator
 
         $totalHoursWorked = 0;
         $totalLateMinutes = 0;
+        $totalTravelLateMinutes = 0;
         $daysWithoutCheckout = 0;
         $completedSessions = 0;
 
@@ -124,9 +125,13 @@ class PayrollCalculator
                     $daysWithoutCheckout++;
                 }
 
-                // Compter les retards
+                // Compter les retards (séparer retards normaux et retards de trajet)
                 if ($checkIn->is_late && $checkIn->late_minutes > 0) {
-                    $totalLateMinutes += $checkIn->late_minutes;
+                    if ($checkIn->is_travel_late) {
+                        $totalTravelLateMinutes += $checkIn->late_minutes;
+                    } else {
+                        $totalLateMinutes += $checkIn->late_minutes;
+                    }
                 }
             }
         }
@@ -150,6 +155,7 @@ class PayrollCalculator
             'total_hours_worked' => round($totalHoursWorked, 2),
             'completed_sessions' => $completedSessions,
             'total_late_minutes' => $totalLateMinutes,
+            'total_travel_late_minutes' => $totalTravelLateMinutes,
             'days_without_checkout' => $daysWithoutCheckout,
         ];
     }
@@ -218,6 +224,7 @@ class PayrollCalculator
         // Sinon, calculer normalement
         // 1. Récupérer les paramètres
         $penaltyPerSecond = (float) Setting::get('penalty_per_second', 0.50);
+        $travelPenaltyPerMinute = (float) Setting::get('travel_late_penalty_per_minute', 30);
         $workingHoursPerDay = (float) Setting::get('working_hours_per_day', 8);
 
         // 2. Calculer les jours ouvrables du mois
@@ -256,6 +263,7 @@ class PayrollCalculator
         $totalHoursWorked = $attendanceStats['total_hours_worked'] ?? 0;
         $daysWorked = $attendanceStats['days_worked']; // Calculé à partir des heures
         $totalLateMinutes = $attendanceStats['total_late_minutes'];
+        $totalTravelLateMinutes = $attendanceStats['total_travel_late_minutes'] ?? 0;
         $daysWithoutCheckout = $attendanceStats['days_without_checkout'];
 
         // 6. Calculer les jours non travaillés
@@ -266,9 +274,15 @@ class PayrollCalculator
         $daysJustified = $justifications['days_justified'];
         $lateMinutesJustified = $justifications['late_minutes_justified'];
 
-        // 8. Calculer les pénalités de retard (en utilisant les secondes)
-        $totalLateSeconds = ($totalLateMinutes - $lateMinutesJustified) * 60;
-        $latePenaltyAmount = max(0, $totalLateSeconds * $penaltyPerSecond);
+        // 8. Calculer les pénalités de retard
+        // 8a. Retards normaux (1er check-in du jour) : penalty_per_second
+        $totalLateSeconds = max(0, ($totalLateMinutes - $lateMinutesJustified)) * 60;
+        $normalLatePenalty = max(0, $totalLateSeconds * $penaltyPerSecond);
+
+        // 8b. Retards de trajet (déplacement entre campus) : travel_late_penalty_per_minute
+        $travelLatePenalty = max(0, $totalTravelLateMinutes * $travelPenaltyPerMinute);
+
+        $latePenaltyAmount = $normalLatePenalty + $travelLatePenalty;
 
         // 9. Calculer le salaire proportionnel aux heures réellement travaillées
         // Salaire = heures travaillées × taux horaire (progressif)
@@ -329,6 +343,9 @@ class PayrollCalculator
             'days_not_worked' => $daysNotWorked,
             'days_justified' => $daysJustified,
             'total_late_minutes' => $totalLateMinutes,
+            'total_travel_late_minutes' => $totalTravelLateMinutes,
+            'normal_late_penalty' => $normalLatePenalty,
+            'travel_late_penalty' => $travelLatePenalty,
             'late_minutes_justified' => $lateMinutesJustified,
             'manual_deductions' => $totalManualDeductions,
             'manual_deductions_details' => $manualDeductions,

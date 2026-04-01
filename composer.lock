@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d7f71a66f7f97a8244a5fbd6cc5fec9e",
+    "content-hash": "a713868c1ed84ca4b102c1bdcc30f346",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -1327,6 +1327,66 @@
                 }
             ],
             "time": "2025-03-06T22:45:56+00:00"
+        },
+        {
+            "name": "elgiosoft/elgiopay-php-sdk",
+            "version": "1.0.6",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:elgiosoft/elgiopay-php-sdk.git",
+                "reference": "e988927b486f312034b548d19d602633dd4355fe"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/elgiosoft/elgiopay-php-sdk/zipball/e988927b486f312034b548d19d602633dd4355fe",
+                "reference": "e988927b486f312034b548d19d602633dd4355fe",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.0",
+                "php": "^8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ElgioPay\\SDK\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "ElgioPay\\SDK\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Elgiosoft Ltd",
+                    "email": "developers@elgiosoft.com"
+                }
+            ],
+            "description": "PHP SDK for ElgioPay Service - Mobile Money payments for Cameroon and West Africa",
+            "keywords": [
+                "api",
+                "cameroon",
+                "fintech",
+                "mobile-money",
+                "mtn",
+                "orange-money",
+                "payment",
+                "sdk",
+                "west-africa",
+                "xaf"
+            ],
+            "support": {
+                "source": "https://github.com/elgiosoft/elgiopay-php-sdk/tree/1.0.6",
+                "issues": "https://github.com/elgiosoft/elgiopay-php-sdk/issues"
+            },
+            "time": "2026-03-11T02:56:46+00:00"
         },
         {
             "name": "ezyang/htmlpurifier",

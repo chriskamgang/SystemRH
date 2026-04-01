@@ -123,7 +123,7 @@ class PushNotificationService
     public function sendScanAvailableNotification(User $user, $campus)
     {
         $title = "Pointage disponible";
-        $body = "Vous êtes à {$campus->name}. Vous pouvez faire votre check-in maintenant !";
+        $body = "Vous êtes au {$campus->name}. Vous pouvez faire votre check-in maintenant !";
 
         $data = [
             'type' => 'scan_available',
@@ -154,6 +154,20 @@ class PushNotificationService
                 return false;
             }
 
+            // Determiner le canal Android selon le type
+            $channelId = match ($type) {
+                'presence_check' => 'presence_check_channel',
+                'check_in_reminder', 'scan_available' => 'checkin_available_channel',
+                'wallet', 'wallet_credited' => 'wallet_channel',
+                'task', 'task_assigned' => 'task_channel',
+                'salary_advance' => 'wallet_channel',
+                default => 'attendance_channel',
+            };
+
+            if ($withAction) {
+                $channelId = 'presence_check_channel';
+            }
+
             // Construire le payload FCM v1
             $payload = [
                 'message' => [
@@ -167,7 +181,11 @@ class PushNotificationService
                         'priority' => 'high',
                         'notification' => [
                             'sound' => 'default',
-                            'channel_id' => $withAction ? 'presence_check_channel' : 'attendance_channel',
+                            'channel_id' => $channelId,
+                            'default_vibrate_timings' => true,
+                            'default_light_settings' => true,
+                            'notification_priority' => 'PRIORITY_MAX',
+                            'visibility' => 'PUBLIC',
                         ],
                     ],
                     'apns' => [

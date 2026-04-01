@@ -190,11 +190,17 @@ class User extends Authenticatable
         return $this->hasMany(SecurityViolation::class);
     }
 
+    // Portefeuille
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
     // Taches assignées
     public function tasks()
     {
         return $this->belongsToMany(Task::class, 'task_user')
-            ->withPivot('status', 'note', 'completed_at', 'penalty_approved', 'penalty_approved_at', 'penalty_approved_by')
+            ->withPivot('status', 'note', 'completed_at', 'penalty_amount', 'penalty_approved', 'penalty_approved_at', 'penalty_approved_by')
             ->withTimestamps();
     }
 

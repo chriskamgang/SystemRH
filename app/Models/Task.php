@@ -10,12 +10,12 @@ class Task extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title', 'description', 'priority', 'status', 'due_date', 'penalty_amount', 'created_by',
+        'title', 'description', 'priority', 'status', 'start_date', 'due_date', 'created_by',
     ];
 
     protected $casts = [
+        'start_date' => 'date',
         'due_date' => 'date',
-        'penalty_amount' => 'integer',
     ];
 
     public function creator()
@@ -26,7 +26,7 @@ class Task extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'task_user')
-            ->withPivot('status', 'note', 'completed_at', 'penalty_approved', 'penalty_approved_at', 'penalty_approved_by')
+            ->withPivot('status', 'note', 'completed_at', 'penalty_amount', 'penalty_approved', 'penalty_approved_at', 'penalty_approved_by')
             ->withTimestamps();
     }
 

@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SalaryAdvanceRequest;
 use App\Models\Loan;
+use App\Models\User;
+use App\Models\Wallet;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 
 class SalaryAdvanceController extends Controller
@@ -44,6 +47,14 @@ class SalaryAdvanceController extends Controller
             return response()->json(['success' => false, 'message' => 'Cette demande a déjà été traitée.'], 400);
         }
 
+        // La mensualité ne peut pas dépasser le montant de l'avance
+        if ($request->monthly_amount > $advance->amount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La mensualité (' . number_format($request->monthly_amount, 0, ',', '.') . ' FCFA) ne peut pas dépasser le montant de l\'avance (' . number_format($advance->amount, 0, ',', '.') . ' FCFA).',
+            ], 422);
+        }
+
         $advance->update([
             'status' => 'approved',
             'admin_note' => $request->admin_note,
@@ -63,9 +74,39 @@ class SalaryAdvanceController extends Controller
             'created_by' => auth()->id(),
         ]);
 
+        // Créditer le portefeuille de l'employé
+        $wallet = Wallet::firstOrCreate(
+            ['user_id' => $advance->user_id],
+            ['balance' => 0]
+        );
+        $wallet->credit(
+            $advance->amount,
+            'Avance sur salaire approuvée - ' . $advance->reason,
+            'advance',
+            'ADV-' . $advance->id
+        );
+
+        // Notification push à l'employé
+        try {
+            $employee = User::find($advance->user_id);
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser(
+                $employee,
+                'Avance sur salaire approuvée',
+                number_format($advance->amount, 0, ',', '.') . ' FCFA ont été crédités dans votre portefeuille.',
+                [
+                    'type' => 'salary_advance_approved',
+                    'amount' => (string) $advance->amount,
+                ],
+                'salary_advance'
+            );
+        } catch (\Exception $e) {
+            \Log::warning('Notification avance approuvée échouée: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
-            'message' => "Avance de {$advance->amount} FCFA approuvée. Un prêt a été créé pour le remboursement.",
+            'message' => "Avance de {$advance->amount} FCFA approuvée. Un prêt a été créé et le portefeuille a été crédité.",
         ]);
     }
 
@@ -87,6 +128,24 @@ class SalaryAdvanceController extends Controller
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
         ]);
+
+        // Notification push à l'employé
+        try {
+            $employee = User::find($advance->user_id);
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser(
+                $employee,
+                'Demande d\'avance refusée',
+                'Votre demande d\'avance de ' . number_format($advance->amount, 0, ',', '.') . ' FCFA a été refusée.',
+                [
+                    'type' => 'salary_advance_rejected',
+                    'reason' => $request->admin_note,
+                ],
+                'salary_advance'
+            );
+        } catch (\Exception $e) {
+            \Log::warning('Notification avance rejetée échouée: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

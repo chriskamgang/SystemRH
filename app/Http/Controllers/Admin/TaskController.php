@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,8 +39,8 @@ class TaskController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'priority' => 'required|in:low,medium,high',
-            'due_date' => 'nullable|date',
-            'penalty_amount' => 'nullable|numeric|min:0',
+            'start_date' => 'nullable|date',
+            'due_date' => 'nullable|date|after_or_equal:start_date',
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'exists:users,id',
         ]);
@@ -48,12 +49,32 @@ class TaskController extends Controller
             'title' => $request->title,
             'description' => $request->description,
             'priority' => $request->priority,
+            'start_date' => $request->start_date,
             'due_date' => $request->due_date,
-            'penalty_amount' => $request->penalty_amount ?? 0,
             'created_by' => auth()->id(),
         ]);
 
         $task->users()->attach($request->user_ids);
+
+        // Envoyer une notification push aux employés assignés
+        try {
+            $pushService = new PushNotificationService();
+            $assignedUsers = User::whereIn('id', $request->user_ids)->get();
+            $pushService->sendToMultipleUsers(
+                $assignedUsers,
+                'Nouvelle tâche assignée',
+                "Tâche : {$task->title}" . ($task->due_date ? " - Échéance : {$task->due_date->format('d/m/Y')}" : ''),
+                [
+                    'type' => 'task_assigned',
+                    'task_id' => (string) $task->id,
+                    'task_title' => $task->title,
+                ],
+                'task'
+            );
+        } catch (\Exception $e) {
+            // Ne pas bloquer la création si la notification échoue
+            \Log::warning('Notification tâche échouée: ' . $e->getMessage());
+        }
 
         return response()->json(['success' => true, 'message' => 'Tâche créée avec succès.']);
     }
@@ -71,8 +92,8 @@ class TaskController extends Controller
             'description' => 'nullable|string',
             'priority' => 'required|in:low,medium,high',
             'status' => 'required|in:pending,in_progress,completed,cancelled',
-            'due_date' => 'nullable|date',
-            'penalty_amount' => 'nullable|numeric|min:0',
+            'start_date' => 'nullable|date',
+            'due_date' => 'nullable|date|after_or_equal:start_date',
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'exists:users,id',
         ]);
@@ -83,8 +104,8 @@ class TaskController extends Controller
             'description' => $request->description,
             'priority' => $request->priority,
             'status' => $request->status,
+            'start_date' => $request->start_date,
             'due_date' => $request->due_date,
-            'penalty_amount' => $request->penalty_amount ?? 0,
         ]);
 
         $task->users()->sync($request->user_ids);
@@ -104,7 +125,12 @@ class TaskController extends Controller
      */
     public function approvePenalty(Request $request, $taskId, $userId)
     {
-        $task = Task::findOrFail($taskId);
+        $pivot = DB::table('task_user')
+            ->where('task_id', $taskId)
+            ->where('user_id', $userId)
+            ->first();
+
+        $penaltyAmount = $pivot->penalty_amount ?? 0;
 
         DB::table('task_user')
             ->where('task_id', $taskId)
@@ -119,7 +145,7 @@ class TaskController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Coupure de {$task->penalty_amount} FCFA approuvée pour {$user->full_name}.",
+            'message' => "Coupure de " . number_format($penaltyAmount, 0, ',', '.') . " FCFA approuvée pour {$user->full_name}.",
         ]);
     }
 

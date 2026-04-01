@@ -216,63 +216,42 @@ class AttendanceController extends Controller
         $now = now();
         $shift = $this->detectShift($now);
 
-        // Vérifier s'il y a déjà un check-in sans check-out pour CETTE plage aujourd'hui
-        // Les vacataires peuvent faire plusieurs check-ins dans différents campus
-        $isVacataire = $user->employee_type === 'enseignant_vacataire';
+        // Vérifier s'il y a déjà un check-in actif sur CE campus pour cette plage
+        // Tous les types d'employés peuvent se déplacer entre campus
+        $todayCheckInsThisCampus = Attendance::where('user_id', $user->id)
+            ->where('campus_id', $campus->id)
+            ->where('type', 'check-in')
+            ->where('shift', $shift)
+            ->whereDate('timestamp', today())
+            ->get();
 
-        if (!$isVacataire) {
-            // Personnel permanent : vérifier check-in actif pour cette plage
-            $todayCheckInsThisShift = Attendance::where('user_id', $user->id)
-                ->where('type', 'check-in')
-                ->where('shift', $shift)
-                ->whereDate('timestamp', today())
-                ->get();
-
-            foreach ($todayCheckInsThisShift as $checkIn) {
-                $hasCheckOut = Attendance::where('user_id', $user->id)
-                    ->where('campus_id', $checkIn->campus_id)
-                    ->where('shift', $shift)
-                    ->where('type', 'check-out')
-                    ->where('timestamp', '>', $checkIn->timestamp)
-                    ->whereDate('timestamp', today())
-                    ->exists();
-
-                if (!$hasCheckOut) {
-                    $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
-                    return response()->json([
-                        'message' => "Vous avez déjà un check-in actif pour la plage du {$shiftLabel}. Veuillez d'abord faire un check-out.",
-                        'existing_checkin' => $checkIn,
-                        'shift' => $shift,
-                    ], 400);
-                }
-            }
-        } else {
-            // Vacataire : vérifier uniquement qu'il n'y a pas de check-in actif sur CE campus pour CETTE plage
-            $todayCheckInsThisCampusShift = Attendance::where('user_id', $user->id)
+        foreach ($todayCheckInsThisCampus as $checkIn) {
+            $hasCheckOut = Attendance::where('user_id', $user->id)
                 ->where('campus_id', $campus->id)
-                ->where('type', 'check-in')
                 ->where('shift', $shift)
+                ->where('type', 'check-out')
+                ->where('timestamp', '>', $checkIn->timestamp)
                 ->whereDate('timestamp', today())
-                ->get();
+                ->exists();
 
-            foreach ($todayCheckInsThisCampusShift as $checkIn) {
-                $hasCheckOut = Attendance::where('user_id', $user->id)
-                    ->where('campus_id', $campus->id)
-                    ->where('shift', $shift)
-                    ->where('type', 'check-out')
-                    ->where('timestamp', '>', $checkIn->timestamp)
-                    ->whereDate('timestamp', today())
-                    ->exists();
-
-                if (!$hasCheckOut) {
-                    $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
-                    return response()->json([
-                        'message' => "Vous avez déjà un check-in actif pour la plage du {$shiftLabel} sur ce campus. Veuillez d'abord faire un check-out.",
-                        'shift' => $shift,
-                    ], 400);
-                }
+            if (!$hasCheckOut) {
+                $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+                return response()->json([
+                    'message' => "Vous avez déjà un check-in actif pour la plage du {$shiftLabel} sur ce campus. Veuillez d'abord faire un check-out.",
+                    'existing_checkin' => $checkIn,
+                    'shift' => $shift,
+                ], 400);
             }
         }
+
+        // Vérifier si c'est le premier check-in de la journée (pour cette plage)
+        $isFirstCheckInOfDay = !Attendance::where('user_id', $user->id)
+            ->where('type', 'check-in')
+            ->where('shift', $shift)
+            ->whereDate('timestamp', today())
+            ->exists();
+
+        $isVacataire = $user->employee_type === 'enseignant_vacataire';
 
         // Obtenir les horaires de travail
         $currentTime = Carbon::parse($now->format('H:i:s'));
@@ -286,34 +265,61 @@ class AttendanceController extends Controller
                 'end' => $user->custom_end_time,
             ];
         } else {
-            // Horaire standard : 8h00 - 18h00 (ou 21h30 si cours le soir)
+            $shiftTimes = $this->getShiftTimes($shift);
             $effectiveEnd = $this->getEffectiveEndTime($user);
-            $shiftTimes = [
-                'start' => '08:00',
-                'end' => $effectiveEnd,
-            ];
-            $shiftStartTime = Carbon::parse('08:00');
-            // Retard après 8h15 (15 min de tolérance)
-            $lateTolerance = $campus->late_tolerance ?? (int) Setting::get('late_tolerance', 15);
+            $shiftTimes['end'] = $effectiveEnd;
+
+            $shiftStartTime = Carbon::parse($shiftTimes['start']);
+            $lateTolerance = 0;
         }
 
         $toleranceTime = $shiftStartTime->copy()->addMinutes($lateTolerance);
 
         // Déterminer si en retard
-        // Vacataires : pas de retard (payés à l'heure)
         $isHalfDay = false;
-        if ($user->employee_type === 'enseignant_vacataire') {
+        $isLate = false;
+        $lateMinutes = 0;
+        $travelLateReason = null;
+
+        if ($isVacataire) {
+            // Vacataires : pas de retard (payés à l'heure)
             $isLate = false;
             $lateMinutes = 0;
-        } else {
-            // Personnel enseignant et administratif : retard après 8h15
+        } elseif ($isFirstCheckInOfDay) {
+            // Premier check-in du jour : contrôle de retard normal
             $isLate = $currentTime->gt($toleranceTime);
             $lateMinutes = $isLate ? $shiftStartTime->diffInMinutes($currentTime) : 0;
 
-            // Si retard > 2h (120 min) → demi-journée (arrivée très tardive)
             $halfDayThreshold = (int) Setting::get('half_day_threshold_minutes', 120);
             if ($isLate && $lateMinutes >= $halfDayThreshold) {
                 $isHalfDay = true;
+            }
+        } else {
+            // Check-in suivant (déplacement entre campus) : vérifier le temps de trajet
+            $lastCheckOut = Attendance::where('user_id', $user->id)
+                ->where('type', 'check-out')
+                ->where('shift', $shift)
+                ->whereDate('timestamp', today())
+                ->latest('timestamp')
+                ->first();
+
+            if ($lastCheckOut) {
+                $lastCheckOutTime = Carbon::parse($lastCheckOut->timestamp);
+                $elapsedMinutes = $lastCheckOutTime->diffInMinutes($now);
+
+                // Récupérer le temps de trajet configuré entre les deux campus
+                $travelMinutes = \App\Models\CampusTravelTime::getTravelMinutes(
+                    $lastCheckOut->campus_id,
+                    $campus->id,
+                    (int) Setting::get('default_travel_minutes', 30)
+                );
+
+                // Si le temps écoulé dépasse le temps de trajet configuré → retard
+                if ($elapsedMinutes > $travelMinutes) {
+                    $isLate = true;
+                    $lateMinutes = $elapsedMinutes - $travelMinutes;
+                    $travelLateReason = "Déplacement depuis {$lastCheckOut->campus->name}: {$elapsedMinutes} min (trajet autorisé: {$travelMinutes} min)";
+                }
             }
         }
 
@@ -328,6 +334,7 @@ class AttendanceController extends Controller
             'longitude' => $request->longitude,
             'accuracy' => $request->accuracy,
             'is_late' => $isLate,
+            'is_travel_late' => $travelLateReason ? true : false,
             'late_minutes' => $lateMinutes,
             'is_half_day' => $isHalfDay,
             'device_info' => $request->device_info,
@@ -352,6 +359,7 @@ class AttendanceController extends Controller
                 'actual_time' => $now->format('H:i:s'),
                 'late_minutes' => $lateMinutes,
                 'status' => 'pending',
+                'justification' => $travelLateReason,
             ]);
         }
 
@@ -360,6 +368,8 @@ class AttendanceController extends Controller
         $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
         if ($isHalfDay) {
             $message = "Check-in enregistré pour la plage du {$shiftLabel}. Demi-journée comptabilisée (arrivée tardive).";
+        } elseif ($isLate && $travelLateReason) {
+            $message = "Check-in enregistré pour la plage du {$shiftLabel}. Retard de {$lateMinutes} min (déplacement entre campus).";
         } elseif ($isLate) {
             $message = "Check-in enregistré pour la plage du {$shiftLabel} avec retard de {$lateMinutes} minutes.";
         } else {

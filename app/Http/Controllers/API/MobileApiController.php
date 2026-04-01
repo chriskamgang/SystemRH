@@ -105,6 +105,25 @@ class MobileApiController extends Controller
             // Calcul standard pour permanents et semi-permanents
             $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
 
+            // Récupérer tous les prêts actifs (même ceux dont la déduction n'a pas encore commencé)
+            $activeLoans = \App\Models\Loan::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->get()
+                ->map(function ($loan) use ($year, $month) {
+                    return [
+                        'loan_id' => $loan->id,
+                        'total_amount' => $loan->total_amount,
+                        'monthly_amount' => $loan->monthly_amount,
+                        'amount_paid' => $loan->amount_paid,
+                        'remaining_amount' => $loan->remaining_amount,
+                        'deduction_this_month' => $loan->getDeductionAmountForMonth($year, $month),
+                        'reason' => $loan->reason,
+                        'start_date' => $loan->start_date->format('d/m/Y'),
+                        'progress_percentage' => $loan->progress_percentage,
+                        'remaining_months' => $loan->remaining_months,
+                    ];
+                });
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -147,6 +166,7 @@ class MobileApiController extends Controller
                         'loan_deductions' => $payroll['loan_deductions'] ?? 0,
                         'manual_deductions_details' => $manualDeductionsDetails,
                         'loan_deductions_details' => $payroll['loan_deductions_details'] ?? [],
+                        'active_loans' => $activeLoans,
                     ],
                 ],
             ]);

@@ -23,7 +23,7 @@ class TaskController extends Controller
                     'description' => $task->description,
                     'priority' => $task->priority,
                     'status' => $task->status,
-                    'penalty_amount' => $task->penalty_amount ?? 0,
+                    'penalty_amount' => (int) ($task->pivot->penalty_amount ?? 0),
                     'my_status' => $task->pivot->status,
                     'my_note' => $task->pivot->note,
                     'completed_at' => $task->pivot->completed_at,
@@ -53,7 +53,7 @@ class TaskController extends Controller
                 'description' => $task->description,
                 'priority' => $task->priority,
                 'status' => $task->status,
-                'penalty_amount' => $task->penalty_amount ?? 0,
+                'penalty_amount' => (int) ($task->pivot->penalty_amount ?? 0),
                 'my_status' => $task->pivot->status,
                 'my_note' => $task->pivot->note,
                 'completed_at' => $task->pivot->completed_at,
@@ -67,10 +67,17 @@ class TaskController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        $request->validate([
+        $rules = [
             'status' => 'required|in:pending,in_progress,completed',
             'note' => 'nullable|string|max:500',
-        ]);
+        ];
+
+        // Le montant de pénalité est obligatoire quand on passe en "en cours"
+        if ($request->status === 'in_progress') {
+            $rules['penalty_amount'] = 'required|numeric|min:0';
+        }
+
+        $request->validate($rules);
 
         $user = $request->user();
         $task = $user->tasks()->findOrFail($id);
@@ -79,6 +86,10 @@ class TaskController extends Controller
             'status' => $request->status,
             'note' => $request->note,
         ];
+
+        if ($request->status === 'in_progress') {
+            $pivotData['penalty_amount'] = $request->penalty_amount;
+        }
 
         if ($request->status === 'completed') {
             $pivotData['completed_at'] = now();

@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'elgiopay' => [
+        'api_key' => env('ELGIOPAY_API_KEY', ''),
+        'environment' => env('ELGIOPAY_ENV', 'prod'),
+    ],
+
 ];

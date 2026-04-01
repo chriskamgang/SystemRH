@@ -363,6 +363,12 @@
                     @endif
                 </a>
 
+                <!-- Portefeuilles -->
+                <a href="{{ route('admin.wallets.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.wallets.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-wallet w-5 text-green-400"></i>
+                    <span class="ml-3">Portefeuilles</span>
+                </a>
+
                 <!-- Taches -->
                 <a href="{{ route('admin.tasks.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.tasks.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-tasks w-5"></i>

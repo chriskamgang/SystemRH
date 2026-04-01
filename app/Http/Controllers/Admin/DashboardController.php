@@ -173,7 +173,11 @@ class DashboardController extends Controller
     public function settings()
     {
         $roles = \App\Models\Role::all();
-        return view('admin.settings', compact('roles'));
+        $campuses = \App\Models\Campus::orderBy('name')->get();
+        $travelTimes = \App\Models\CampusTravelTime::all()->keyBy(function ($item) {
+            return $item->campus_from_id . '_' . $item->campus_to_id;
+        });
+        return view('admin.settings', compact('roles', 'campuses', 'travelTimes'));
     }
 
     /**
@@ -212,6 +216,11 @@ class DashboardController extends Controller
             // Taux horaires par niveau (vacataires)
             'taux_horaire_licence' => 'sometimes|numeric|min:0',
             'taux_horaire_master' => 'sometimes|numeric|min:0',
+            // Temps de trajet entre campus
+            'default_travel_minutes' => 'sometimes|integer|min:5|max:120',
+            'travel_late_penalty_per_minute' => 'sometimes|numeric|min:0',
+            'travel_times' => 'sometimes|array',
+            'travel_times.*' => 'nullable|integer|min:5|max:120',
         ]);
 
         // Save map provider
@@ -243,8 +252,20 @@ class DashboardController extends Controller
             }
         }
 
+        // Save campus travel times
+        if ($request->has('travel_times')) {
+            foreach ($request->travel_times as $key => $minutes) {
+                if ($minutes === null || $minutes === '') continue;
+                [$fromId, $toId] = explode('_', $key);
+                \App\Models\CampusTravelTime::updateOrCreate(
+                    ['campus_from_id' => $fromId, 'campus_to_id' => $toId],
+                    ['travel_minutes' => (int) $minutes]
+                );
+            }
+        }
+
         // Save other settings
-        foreach ($request->except(['_token', '_method', 'map_provider', 'google_maps_api_key', 'presence_check_hours']) as $key => $value) {
+        foreach ($request->except(['_token', '_method', 'map_provider', 'google_maps_api_key', 'presence_check_hours', 'travel_times']) as $key => $value) {
             if ($value !== null) {
                 \App\Models\Setting::set($key, $value);
             }
