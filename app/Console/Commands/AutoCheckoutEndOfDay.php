@@ -38,7 +38,7 @@ class AutoCheckoutEndOfDay extends Command
         $count = 0;
         foreach ($openCheckIns as $checkIn) {
             // Déterminer l'heure de fin de la plage
-            $endTime = $checkIn->shift === 'evening' ? '21:00:00' : '18:00:00';
+            $endTime = $checkIn->shift === 'evening' ? '21:00:00' : '17:00:00';
             $checkoutTimestamp = Carbon::parse($checkIn->timestamp->toDateString() . ' ' . $endTime);
 
             // Créer un auto-checkout

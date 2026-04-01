@@ -68,7 +68,7 @@ class PresenceAlertController extends Controller
 
         $workSchedule = [
             'morning_start_time' => Setting::get('morning_start_time', '08:15'),
-            'morning_end_time' => Setting::get('morning_end_time', '18:00'),
+            'morning_end_time' => Setting::get('morning_end_time', '17:00'),
             'late_tolerance' => Setting::get('late_tolerance', '15'),
         ];
 

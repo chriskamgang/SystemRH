@@ -39,7 +39,7 @@ class AttendanceController extends Controller
         if ($shift === 'morning') {
             return [
                 'start' => Setting::get('morning_start_time', '08:00'),
-                'end' => Setting::get('morning_end_time', '18:00'),
+                'end' => Setting::get('morning_end_time', '17:00'),
             ];
         } else {
             return [
@@ -95,7 +95,7 @@ class AttendanceController extends Controller
 
     /**
      * Obtenir l'heure de fin effective pour un utilisateur
-     * 18h00 par défaut, 21h30 si cours le soir
+     * 17h00 par défaut (8h travail + 1h pause), 21h30 si cours le soir
      */
     private function getEffectiveEndTime($user): string
     {
@@ -104,7 +104,7 @@ class AttendanceController extends Controller
                 return '21:30';
             }
         }
-        return '18:00';
+        return Setting::get('morning_end_time', '17:00');
     }
 
     /**

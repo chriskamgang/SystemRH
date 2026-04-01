@@ -98,13 +98,24 @@ class PayrollCalculator
             $checkOut = $shiftAttendances->where('type', 'check-out')->first();
 
             if ($checkIn) {
+                // Plafonner les heures : check-in min 08:00, check-out max 17:00 (ou 21:30 si cours soir)
+                $workStart = $checkIn->timestamp->copy()->setTime(8, 0, 0);
+                $endHour = 17; $endMin = 0;
+                if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire']) && $shift === 'evening') {
+                    $endHour = 21; $endMin = 30;
+                }
+                $workEnd = $checkIn->timestamp->copy()->setTime($endHour, $endMin, 0);
+
+                $effectiveCheckIn = $checkIn->timestamp->lt($workStart) ? $workStart : $checkIn->timestamp;
+
                 if ($checkOut) {
-                    // Session complète : calculer les heures réelles
-                    $sessionMinutes = $checkIn->timestamp->diffInMinutes($checkOut->timestamp);
+                    // Session complète : plafonner le check-out
+                    $effectiveCheckOut = $checkOut->timestamp->gt($workEnd) ? $workEnd : $checkOut->timestamp;
+                    $sessionMinutes = $effectiveCheckIn->diffInMinutes($effectiveCheckOut);
 
                     // Soustraire la pause déjeuner
                     $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
-                        $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
+                        $effectiveCheckIn, $effectiveCheckOut, $user->employee_type
                     );
                     $sessionMinutes -= $breakMinutes;
 
@@ -115,9 +126,10 @@ class PayrollCalculator
                     $now = now();
                     // Ne compter que si c'est aujourd'hui (session active)
                     if (Carbon::parse($date)->isToday()) {
-                        $sessionMinutes = $checkIn->timestamp->diffInMinutes($now);
+                        $effectiveNow = $now->gt($workEnd) ? $workEnd : $now;
+                        $sessionMinutes = $effectiveCheckIn->diffInMinutes($effectiveNow);
                         $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
-                            $checkIn->timestamp, $now, $user->employee_type
+                            $effectiveCheckIn, $effectiveNow, $user->employee_type
                         );
                         $sessionMinutes -= $breakMinutes;
                         $totalHoursWorked += max(0, $sessionMinutes / 60);
