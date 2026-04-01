@@ -13,9 +13,32 @@
         .feature-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
         .feature-card { transition: all 0.3s ease; }
         .step-number { width: 32px; height: 32px; min-width: 32px; }
+        .screenshot-container { max-width: 280px; margin: 0 auto; }
+        .screenshot-container img { border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 3px solid #e5e7eb; }
+        .screenshots-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+
+        /* Print / PDF styles */
+        @media print {
+            body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .gradient-header { background: #1e3a8a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .feature-card:hover { transform: none; box-shadow: none; }
+            section { page-break-inside: avoid; }
+            .screenshot-container { max-width: 200px; }
+            .screenshot-container img { box-shadow: none; }
+            a { text-decoration: none; color: inherit; }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
+
+    <!-- Floating PDF Button -->
+    <div class="no-print fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105">
+            <i class="fas fa-file-pdf text-lg"></i>
+            <span class="font-semibold">Telecharger PDF</span>
+        </button>
+    </div>
 
     <!-- Header -->
     <div class="gradient-header text-white py-16">
@@ -37,689 +60,623 @@
     <div class="max-w-5xl mx-auto px-6 py-12">
 
         <!-- Sommaire -->
-        <div class="bg-white rounded-2xl shadow-lg p-8 mb-12">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">
-                <i class="fas fa-list-ol text-blue-600 mr-3"></i>Sommaire
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <a href="#portefeuille" class="flex items-center gap-3 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition">
-                    <div class="bg-blue-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold">1</div>
-                    <span class="font-medium text-gray-800">Portefeuille Electronique (Wallet)</span>
+        <div class="bg-white rounded-2xl shadow-sm p-8 mb-12">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6"><i class="fas fa-list-ol text-blue-600 mr-3"></i>Sommaire</h3>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <a href="#wallet" class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 transition">
+                    <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">1</span>
+                    <span class="text-gray-700 font-medium">Portefeuille Electronique (Wallet)</span>
                 </a>
-                <a href="#avance-salaire" class="flex items-center gap-3 p-4 rounded-xl bg-green-50 hover:bg-green-100 transition">
-                    <div class="bg-green-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold">2</div>
-                    <span class="font-medium text-gray-800">Avance sur Salaire</span>
+                <a href="#avance" class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 transition">
+                    <span class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">2</span>
+                    <span class="text-gray-700 font-medium">Avance sur Salaire</span>
                 </a>
-                <a href="#taches" class="flex items-center gap-3 p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition">
-                    <div class="bg-orange-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold">3</div>
-                    <span class="font-medium text-gray-800">Gestion des Taches</span>
+                <a href="#taches" class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 transition">
+                    <span class="bg-orange-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">3</span>
+                    <span class="text-gray-700 font-medium">Gestion des Taches</span>
                 </a>
-                <a href="#multi-campus" class="flex items-center gap-3 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 transition">
-                    <div class="bg-purple-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold">4</div>
-                    <span class="font-medium text-gray-800">Check-in Multi-Campus</span>
+                <a href="#multicampus" class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 transition">
+                    <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">4</span>
+                    <span class="text-gray-700 font-medium">Check-in Multi-Campus</span>
                 </a>
-                <a href="#notifications" class="flex items-center gap-3 p-4 rounded-xl bg-red-50 hover:bg-red-100 transition">
-                    <div class="bg-red-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold">5</div>
-                    <span class="font-medium text-gray-800">Notifications Push</span>
+                <a href="#notifications" class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 transition">
+                    <span class="bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">5</span>
+                    <span class="text-gray-700 font-medium">Notifications Push</span>
                 </a>
-                <a href="#salaire" class="flex items-center gap-3 p-4 rounded-xl bg-teal-50 hover:bg-teal-100 transition">
-                    <div class="bg-teal-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold">6</div>
-                    <span class="font-medium text-gray-800">Suivi du Salaire en Temps Reel</span>
+                <a href="#salaire" class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 transition">
+                    <span class="bg-teal-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">6</span>
+                    <span class="text-gray-700 font-medium">Suivi du Salaire en Temps Reel</span>
                 </a>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- 1. PORTEFEUILLE -->
-        <!-- ========================================== -->
-        <div id="portefeuille" class="mb-16">
-            <div class="feature-card bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-blue-700 to-blue-500 text-white p-8">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white/20 backdrop-blur rounded-xl p-4">
-                            <i class="fas fa-wallet text-3xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-3xl font-bold">1. Portefeuille Electronique</h2>
-                            <p class="text-blue-200 mt-1">Recevez et retirez votre argent directement depuis l'application</p>
-                        </div>
-                    </div>
+        <!-- ==================== 1. PORTEFEUILLE ==================== -->
+        <section id="wallet" class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <span class="bg-blue-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold">1</span>
+                <h2 class="text-3xl font-bold text-gray-800">Portefeuille Electronique</h2>
+            </div>
+            <p class="text-gray-500 text-lg mb-8">Recevez et retirez votre argent directement depuis l'application</p>
+
+            <!-- Screenshots -->
+            <div class="screenshots-grid mb-10">
+                <div class="screenshot-container">
+                    <img src="/images/docs/portefeuille.png" alt="Portefeuille - Solde et retrait">
+                    <p class="text-center text-sm text-gray-500 mt-3">Solde disponible et bouton Retirer</p>
                 </div>
-
-                <div class="p-8">
-                    <!-- Avantages -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-star text-yellow-500 mr-2"></i>Avantages
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Solde en temps reel</p>
-                                    <p class="text-sm text-gray-600">Consultez votre solde disponible a tout moment</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Retrait par Mobile Money</p>
-                                    <p class="text-sm text-gray-600">Retirez vers MTN Mobile Money ou Orange Money</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Historique complet</p>
-                                    <p class="text-sm text-gray-600">Toutes vos transactions sont tracees (credits, retraits, remboursements)</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Remboursement automatique</p>
-                                    <p class="text-sm text-gray-600">Si un transfert echoue, votre portefeuille est automatiquement recredite</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Comment utiliser -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-book-open text-blue-600 mr-2"></i>Comment utiliser
-                        </h3>
-
-                        <div class="space-y-4">
-                            <div class="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                                <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Acceder au portefeuille</p>
-                                    <p class="text-sm text-gray-600">Allez dans <strong>Profil</strong> puis appuyez sur <strong>"Mon Portefeuille"</strong></p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                                <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Consulter le solde</p>
-                                    <p class="text-sm text-gray-600">Votre solde disponible s'affiche en haut de l'ecran en FCFA</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                                <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Retirer de l'argent</p>
-                                    <p class="text-sm text-gray-600">Appuyez sur <strong>"Retirer"</strong>, entrez le <strong>numero de telephone</strong> du destinataire, le <strong>montant</strong> (minimum 100 FCFA), choisissez <strong>MTN ou Orange Money</strong>, puis confirmez</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                                <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Suivre le statut</p>
-                                    <p class="text-sm text-gray-600">Le systeme verifie automatiquement le statut du transfert. En cas d'echec, votre portefeuille est recredite</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pour l'Admin -->
-                    <div class="p-6 bg-indigo-50 border border-indigo-200 rounded-xl">
-                        <h4 class="font-bold text-indigo-800 mb-3">
-                            <i class="fas fa-user-shield mr-2"></i>Cote Administrateur
-                        </h4>
-                        <ul class="text-sm text-indigo-700 space-y-2">
-                            <li><i class="fas fa-arrow-right mr-2"></i><strong>Crediter un employe :</strong> Portefeuilles > Selectionner un employe > Crediter</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i><strong>Crediter plusieurs employes :</strong> Cocher les employes > "Crediter la selection"</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i><strong>Recharger ElgioPay :</strong> Cliquer sur le solde ElgioPay > Entrer numero et montant</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i><strong>Voir l'historique :</strong> Cliquer sur le nom d'un employe pour voir toutes ses transactions</li>
-                        </ul>
-                    </div>
+                <div class="screenshot-container">
+                    <img src="/images/docs/portefeuille-historique.png" alt="Portefeuille - Historique des transactions">
+                    <p class="text-center text-sm text-gray-500 mt-3">Historique complet des transactions</p>
                 </div>
             </div>
-        </div>
 
-        <!-- ========================================== -->
-        <!-- 2. AVANCE SUR SALAIRE -->
-        <!-- ========================================== -->
-        <div id="avance-salaire" class="mb-16">
-            <div class="feature-card bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-green-700 to-emerald-500 text-white p-8">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white/20 backdrop-blur rounded-xl p-4">
-                            <i class="fas fa-hand-holding-usd text-3xl"></i>
-                        </div>
+            <!-- Avantages -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-star text-yellow-500 mr-2"></i>Avantages</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="flex gap-4">
+                        <div class="bg-blue-100 rounded-lg p-3 h-fit"><i class="fas fa-wallet text-blue-600"></i></div>
                         <div>
-                            <h2 class="text-3xl font-bold">2. Avance sur Salaire</h2>
-                            <p class="text-green-200 mt-1">Demandez une avance et recevez-la directement dans votre portefeuille</p>
+                            <h4 class="font-semibold text-gray-800">Solde en temps reel</h4>
+                            <p class="text-gray-500 text-sm">Consultez votre solde disponible a tout moment</p>
                         </div>
                     </div>
-                </div>
-
-                <div class="p-8">
-                    <!-- Avantages -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-star text-yellow-500 mr-2"></i>Avantages
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Processus 100% numerique</p>
-                                    <p class="text-sm text-gray-600">Plus besoin de papier, tout se fait depuis l'application</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Credit instantane</p>
-                                    <p class="text-sm text-gray-600">Des que l'admin approuve, l'argent arrive dans votre portefeuille</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Remboursement automatique</p>
-                                    <p class="text-sm text-gray-600">Les mensualites sont deduites automatiquement du salaire chaque mois</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Suivi transparent</p>
-                                    <p class="text-sm text-gray-600">Suivez la progression du remboursement (montant paye, reste, pourcentage)</p>
-                                </div>
-                            </div>
+                    <div class="flex gap-4">
+                        <div class="bg-green-100 rounded-lg p-3 h-fit"><i class="fas fa-mobile-alt text-green-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Retrait par Mobile Money</h4>
+                            <p class="text-gray-500 text-sm">Retirez vers MTN Mobile Money ou Orange Money</p>
                         </div>
                     </div>
-
-                    <!-- Comment utiliser -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-book-open text-green-600 mr-2"></i>Comment utiliser
-                        </h3>
-
-                        <h4 class="font-semibold text-gray-700 mb-3">Pour l'employe :</h4>
-                        <div class="space-y-4 mb-6">
-                            <div class="flex items-start gap-4 p-4 bg-green-50 rounded-xl">
-                                <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Faire une demande</p>
-                                    <p class="text-sm text-gray-600">Profil > <strong>"Demande d'avance sur salaire"</strong> > Entrez le montant souhaite et la raison</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-green-50 rounded-xl">
-                                <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Attendre l'approbation</p>
-                                    <p class="text-sm text-gray-600">Le statut de votre demande passe de <strong>"En attente"</strong> a <strong>"Approuvee"</strong> ou <strong>"Refusee"</strong>. Vous recevez une notification push</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-green-50 rounded-xl">
-                                <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Recevoir l'argent</p>
-                                    <p class="text-sm text-gray-600">Si approuvee, le montant est credite automatiquement dans votre portefeuille. Vous pouvez le retirer par Mobile Money</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-green-50 rounded-xl">
-                                <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Suivi du remboursement</p>
-                                    <p class="text-sm text-gray-600">Dans Profil > Etat du Salaire, la section <strong>"Avances / Prets Actifs"</strong> montre la progression : montant total, mensualite, montant paye, reste a payer</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h4 class="font-semibold text-gray-700 mb-3">Pour l'administrateur :</h4>
-                        <div class="space-y-4">
-                            <div class="flex items-start gap-4 p-4 bg-indigo-50 rounded-xl">
-                                <div class="step-number bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Consulter les demandes</p>
-                                    <p class="text-sm text-gray-600">Dashboard > <strong>Avances sur Salaire</strong> > Voir les demandes en attente</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-indigo-50 rounded-xl">
-                                <div class="step-number bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Approuver avec mensualite</p>
-                                    <p class="text-sm text-gray-600">Definir la <strong>mensualite de remboursement</strong> (ex: 10 000 FCFA/mois pour une avance de 50 000 FCFA). Le systeme cree automatiquement un pret et credite le portefeuille</p>
-                                </div>
-                            </div>
+                    <div class="flex gap-4">
+                        <div class="bg-purple-100 rounded-lg p-3 h-fit"><i class="fas fa-history text-purple-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Historique complet</h4>
+                            <p class="text-gray-500 text-sm">Toutes vos transactions sont tracees (credits, retraits, remboursements)</p>
                         </div>
                     </div>
-
-                    <!-- Flux -->
-                    <div class="p-6 bg-yellow-50 border border-yellow-200 rounded-xl">
-                        <h4 class="font-bold text-yellow-800 mb-3">
-                            <i class="fas fa-project-diagram mr-2"></i>Flux complet
-                        </h4>
-                        <div class="flex flex-wrap items-center gap-2 text-sm text-yellow-800">
-                            <span class="bg-yellow-200 px-3 py-1 rounded-full font-medium">Demande</span>
-                            <i class="fas fa-arrow-right text-yellow-600"></i>
-                            <span class="bg-yellow-200 px-3 py-1 rounded-full font-medium">Approbation admin</span>
-                            <i class="fas fa-arrow-right text-yellow-600"></i>
-                            <span class="bg-green-200 px-3 py-1 rounded-full font-medium">Credit portefeuille</span>
-                            <i class="fas fa-arrow-right text-yellow-600"></i>
-                            <span class="bg-green-200 px-3 py-1 rounded-full font-medium">Retrait Mobile Money</span>
-                            <i class="fas fa-arrow-right text-yellow-600"></i>
-                            <span class="bg-blue-200 px-3 py-1 rounded-full font-medium">Deduction mensuelle sur salaire</span>
+                    <div class="flex gap-4">
+                        <div class="bg-orange-100 rounded-lg p-3 h-fit"><i class="fas fa-undo text-orange-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Remboursement automatique</h4>
+                            <p class="text-gray-500 text-sm">Si un transfert echoue, votre portefeuille est automatiquement recredite</p>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ========================================== -->
-        <!-- 3. GESTION DES TACHES -->
-        <!-- ========================================== -->
-        <div id="taches" class="mb-16">
-            <div class="feature-card bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-8">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white/20 backdrop-blur rounded-xl p-4">
-                            <i class="fas fa-tasks text-3xl"></i>
-                        </div>
+            <!-- Comment utiliser -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-book-open text-blue-600 mr-2"></i>Comment utiliser</h3>
+                <div class="space-y-6">
+                    <div class="flex gap-4">
+                        <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
                         <div>
-                            <h2 class="text-3xl font-bold">3. Gestion des Taches</h2>
-                            <p class="text-orange-200 mt-1">Assignation, suivi et penalites des taches</p>
+                            <h4 class="font-semibold text-gray-800">Acceder au portefeuille</h4>
+                            <p class="text-gray-500 text-sm">Allez dans <strong>Profil</strong> puis appuyez sur <strong>"Mon Portefeuille"</strong></p>
                         </div>
                     </div>
-                </div>
-
-                <div class="p-8">
-                    <!-- Avantages -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-star text-yellow-500 mr-2"></i>Avantages
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Notification instantanee</p>
-                                    <p class="text-sm text-gray-600">L'employe recoit une notification push des qu'une tache lui est assignee</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Suivi de progression</p>
-                                    <p class="text-sm text-gray-600">Statuts clairs : En attente, En cours, Terminee</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Systeme de penalites</p>
-                                    <p class="text-sm text-gray-600">L'admin peut definir un montant de penalite pour les taches non completees</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Periode configurable</p>
-                                    <p class="text-sm text-gray-600">Date de debut et date de fin pour chaque tache</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Comment utiliser - Employe -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-book-open text-orange-600 mr-2"></i>Comment utiliser
-                        </h3>
-
-                        <h4 class="font-semibold text-gray-700 mb-3">Pour l'employe :</h4>
-                        <div class="space-y-4 mb-6">
-                            <div class="flex items-start gap-4 p-4 bg-orange-50 rounded-xl">
-                                <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Voir ses taches</p>
-                                    <p class="text-sm text-gray-600">Appuyez sur l'onglet <strong>"Taches"</strong> en bas de l'ecran. Filtrez par statut : Toutes, En attente, En cours, Terminees</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-orange-50 rounded-xl">
-                                <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Consulter les details</p>
-                                    <p class="text-sm text-gray-600">Appuyez sur une tache pour voir : description, priorite (Basse/Moyenne/Haute/Urgente), montant de penalite, echeance, et qui l'a assignee</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-orange-50 rounded-xl">
-                                <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Mettre a jour le statut</p>
-                                    <p class="text-sm text-gray-600">L'employe peut changer le statut de la tache (En attente > En cours > Terminee)</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h4 class="font-semibold text-gray-700 mb-3">Pour l'administrateur :</h4>
-                        <div class="space-y-4">
-                            <div class="flex items-start gap-4 p-4 bg-indigo-50 rounded-xl">
-                                <div class="step-number bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Creer une tache</p>
-                                    <p class="text-sm text-gray-600">Dashboard > Taches > <strong>"Nouvelle tache"</strong>. Remplir : titre, description, priorite, date debut, date fin, employes assignes</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-indigo-50 rounded-xl">
-                                <div class="step-number bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Definir une penalite</p>
-                                    <p class="text-sm text-gray-600">Optionnel : definir un montant en FCFA qui sera deduit si la tache n'est pas completee a temps</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-indigo-50 rounded-xl">
-                                <div class="step-number bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Suivre l'avancement</p>
-                                    <p class="text-sm text-gray-600">Voir le statut de chaque employe sur la tache et approuver les penalites si necessaire</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Info penalites -->
-                    <div class="p-6 bg-red-50 border border-red-200 rounded-xl">
-                        <h4 class="font-bold text-red-800 mb-3">
-                            <i class="fas fa-exclamation-triangle mr-2"></i>A propos des penalites
-                        </h4>
-                        <ul class="text-sm text-red-700 space-y-1">
-                            <li><i class="fas fa-info-circle mr-2"></i>Les penalites de taches sont deduites du <strong>salaire</strong>, pas du portefeuille</li>
-                            <li><i class="fas fa-info-circle mr-2"></i>L'admin doit approuver la penalite avant qu'elle ne soit appliquee</li>
-                            <li><i class="fas fa-info-circle mr-2"></i>Le montant de la penalite apparait dans la section "Deductions" de l'etat du salaire</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================== -->
-        <!-- 4. CHECK-IN MULTI-CAMPUS -->
-        <!-- ========================================== -->
-        <div id="multi-campus" class="mb-16">
-            <div class="feature-card bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-purple-700 to-violet-500 text-white p-8">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white/20 backdrop-blur rounded-xl p-4">
-                            <i class="fas fa-map-marked-alt text-3xl"></i>
-                        </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
                         <div>
-                            <h2 class="text-3xl font-bold">4. Check-in Multi-Campus</h2>
-                            <p class="text-purple-200 mt-1">Deplacez-vous librement entre les campus avec un controle intelligent du temps</p>
+                            <h4 class="font-semibold text-gray-800">Consulter le solde</h4>
+                            <p class="text-gray-500 text-sm">Votre solde disponible s'affiche en haut de l'ecran en FCFA</p>
                         </div>
                     </div>
-                </div>
-
-                <div class="p-8">
-                    <!-- Avantages -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-star text-yellow-500 mr-2"></i>Avantages
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Deplacement libre</p>
-                                    <p class="text-sm text-gray-600">Plus besoin d'etre bloque sur un seul campus toute la journee</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Temps de trajet reconnu</p>
-                                    <p class="text-sm text-gray-600">Le systeme accorde un temps de deplacement configure par l'admin</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Retard uniquement au 1er check-in</p>
-                                    <p class="text-sm text-gray-600">Le controle de retard (08:15) s'applique uniquement au premier check-in de la journee</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Penalite juste</p>
-                                    <p class="text-sm text-gray-600">Seules les minutes au-dela du temps de trajet autorise sont penalisees</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Comment ca marche -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-book-open text-purple-600 mr-2"></i>Comment ca marche
-                        </h3>
-                        <div class="space-y-4">
-                            <div class="flex items-start gap-4 p-4 bg-purple-50 rounded-xl">
-                                <div class="step-number bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Premier check-in du jour</p>
-                                    <p class="text-sm text-gray-600">Arrivez au Campus D a 08:10 > Check-in > Pas de retard (avant 08:15)</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-purple-50 rounded-xl">
-                                <div class="step-number bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Check-out du campus actuel</p>
-                                    <p class="text-sm text-gray-600">A 10:00, vous quittez le Campus D > Check-out</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4 p-4 bg-purple-50 rounded-xl">
-                                <div class="step-number bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Check-in sur un autre campus</p>
-                                    <p class="text-sm text-gray-600">Arrivez au Campus C a 10:18 > Check-in > Le systeme verifie : trajet D→C = 20 min, temps ecoule = 18 min. Aucune penalite !</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Exemple penalite -->
-                    <div class="p-6 bg-orange-50 border border-orange-200 rounded-xl mb-6">
-                        <h4 class="font-bold text-orange-800 mb-3">
-                            <i class="fas fa-calculator mr-2"></i>Exemple avec penalite
-                        </h4>
-                        <div class="text-sm text-orange-800 space-y-2">
-                            <p><strong>Scenario :</strong> Check-out Campus D a 10:00, check-in Campus C a 10:35</p>
-                            <p><strong>Temps de trajet configure :</strong> 20 minutes</p>
-                            <p><strong>Temps ecoule :</strong> 35 minutes</p>
-                            <p><strong>Depassement :</strong> 35 - 20 = <strong>15 minutes</strong></p>
-                            <p><strong>Penalite :</strong> 15 min x 30 FCFA/min = <strong>450 FCFA</strong></p>
-                        </div>
-                    </div>
-
-                    <!-- Config admin -->
-                    <div class="p-6 bg-indigo-50 border border-indigo-200 rounded-xl">
-                        <h4 class="font-bold text-indigo-800 mb-3">
-                            <i class="fas fa-user-shield mr-2"></i>Configuration Administrateur
-                        </h4>
-                        <ul class="text-sm text-indigo-700 space-y-2">
-                            <li><i class="fas fa-arrow-right mr-2"></i><strong>Parametres > Temps de Trajet entre Campus</strong></li>
-                            <li><i class="fas fa-arrow-right mr-2"></i>Configurer le temps par defaut (ex: 30 min)</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i>Configurer le temps specifique entre chaque paire de campus</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i>Configurer la penalite par minute de depassement (ex: 30 FCFA/min)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================== -->
-        <!-- 5. NOTIFICATIONS PUSH -->
-        <!-- ========================================== -->
-        <div id="notifications" class="mb-16">
-            <div class="feature-card bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-red-600 to-rose-500 text-white p-8">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white/20 backdrop-blur rounded-xl p-4">
-                            <i class="fas fa-bell text-3xl"></i>
-                        </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
                         <div>
-                            <h2 class="text-3xl font-bold">5. Notifications Push</h2>
-                            <p class="text-red-200 mt-1">Recevez les notifications meme quand l'application est fermee</p>
+                            <h4 class="font-semibold text-gray-800">Retirer de l'argent</h4>
+                            <p class="text-gray-500 text-sm">Appuyez sur <strong>"Retirer"</strong>, entrez le numero de telephone du destinataire, le montant (minimum 100 FCFA), choisissez MTN ou Orange Money, puis confirmez</p>
                         </div>
                     </div>
-                </div>
-
-                <div class="p-8">
-                    <!-- Avantages -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-star text-yellow-500 mr-2"></i>Avantages
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Fonctionne en arriere-plan</p>
-                                    <p class="text-sm text-gray-600">Comme WhatsApp, les notifications arrivent meme si l'app est fermee</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                                <i class="fas fa-check-circle text-green-600 mt-1"></i>
-                                <div>
-                                    <p class="font-medium text-gray-800">Ne manquez rien</p>
-                                    <p class="text-sm text-gray-600">Soyez informe en temps reel de tout ce qui vous concerne</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Types de notifications -->
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-list text-red-600 mr-2"></i>Types de notifications
-                        </h3>
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
-                                <div class="bg-blue-600 text-white rounded-lg w-10 h-10 flex items-center justify-center">
-                                    <i class="fas fa-wallet"></i>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Portefeuille credite</p>
-                                    <p class="text-sm text-gray-600">"50 000 FCFA ont ete ajoutes a votre portefeuille"</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 p-4 bg-green-50 rounded-xl">
-                                <div class="bg-green-600 text-white rounded-lg w-10 h-10 flex items-center justify-center">
-                                    <i class="fas fa-hand-holding-usd"></i>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Avance approuvee / refusee</p>
-                                    <p class="text-sm text-gray-600">"Votre avance de 50 000 FCFA a ete approuvee" ou "Votre demande a ete refusee"</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 p-4 bg-orange-50 rounded-xl">
-                                <div class="bg-orange-600 text-white rounded-lg w-10 h-10 flex items-center justify-center">
-                                    <i class="fas fa-tasks"></i>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Nouvelle tache assignee</p>
-                                    <p class="text-sm text-gray-600">"Tache : Nom de la tache - Echeance : 15/04/2026"</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 p-4 bg-purple-50 rounded-xl">
-                                <div class="bg-purple-600 text-white rounded-lg w-10 h-10 flex items-center justify-center">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Entree dans la zone d'un campus</p>
-                                    <p class="text-sm text-gray-600">"Vous etes au Campus C. Vous pouvez faire votre check-in maintenant !"</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 p-4 bg-red-50 rounded-xl">
-                                <div class="bg-red-600 text-white rounded-lg w-10 h-10 flex items-center justify-center">
-                                    <i class="fas fa-user-check"></i>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-800">Verification de presence</p>
-                                    <p class="text-sm text-gray-600">"Etes-vous toujours en place au Campus D ?"</p>
-                                </div>
-                            </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Suivre le statut</h4>
+                            <p class="text-gray-500 text-sm">Le systeme verifie automatiquement le statut du transfert. En cas d'echec, votre portefeuille est recredite</p>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ========================================== -->
-        <!-- 6. SUIVI DU SALAIRE -->
-        <!-- ========================================== -->
-        <div id="salaire" class="mb-16">
-            <div class="feature-card bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-teal-700 to-cyan-500 text-white p-8">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white/20 backdrop-blur rounded-xl p-4">
-                            <i class="fas fa-chart-line text-3xl"></i>
-                        </div>
+            <!-- Admin -->
+            <div class="bg-blue-50 rounded-2xl p-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-user-shield text-blue-600 mr-2"></i>Cote Administrateur</h3>
+                <ul class="space-y-3 text-gray-600">
+                    <li class="flex items-start gap-2"><i class="fas fa-check-circle text-blue-600 mt-1"></i><span><strong>Crediter un employe :</strong> Portefeuilles > Selectionner un employe > Crediter</span></li>
+                    <li class="flex items-start gap-2"><i class="fas fa-check-circle text-blue-600 mt-1"></i><span><strong>Crediter plusieurs employes :</strong> Cocher les employes > "Crediter la selection"</span></li>
+                    <li class="flex items-start gap-2"><i class="fas fa-check-circle text-blue-600 mt-1"></i><span><strong>Recharger ElgioPay :</strong> Cliquer sur le solde ElgioPay > Entrer numero et montant</span></li>
+                    <li class="flex items-start gap-2"><i class="fas fa-check-circle text-blue-600 mt-1"></i><span><strong>Voir l'historique :</strong> Cliquer sur le nom d'un employe pour voir toutes ses transactions</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ==================== 2. AVANCE SUR SALAIRE ==================== -->
+        <section id="avance" class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <span class="bg-green-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold">2</span>
+                <h2 class="text-3xl font-bold text-gray-800">Avance sur Salaire</h2>
+            </div>
+            <p class="text-gray-500 text-lg mb-8">Demandez une avance et recevez-la directement dans votre portefeuille</p>
+
+            <!-- Screenshot -->
+            <div class="screenshots-grid mb-10">
+                <div class="screenshot-container">
+                    <img src="/images/docs/avance-salaire.png" alt="Demande d'avance sur salaire">
+                    <p class="text-center text-sm text-gray-500 mt-3">Demande d'avance en attente</p>
+                </div>
+                <div class="screenshot-container">
+                    <img src="/images/docs/profil-salaire.png" alt="Page profil avec acces portefeuille et avance">
+                    <p class="text-center text-sm text-gray-500 mt-3">Acces depuis le Profil</p>
+                </div>
+            </div>
+
+            <!-- Avantages -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-star text-yellow-500 mr-2"></i>Avantages</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="flex gap-4">
+                        <div class="bg-green-100 rounded-lg p-3 h-fit"><i class="fas fa-file-alt text-green-600"></i></div>
                         <div>
-                            <h2 class="text-3xl font-bold">6. Suivi du Salaire en Temps Reel</h2>
-                            <p class="text-teal-200 mt-1">Consultez votre etat de salaire avec le detail de toutes les deductions</p>
+                            <h4 class="font-semibold text-gray-800">Processus 100% numerique</h4>
+                            <p class="text-gray-500 text-sm">Plus besoin de papier, tout se fait depuis l'application</p>
                         </div>
                     </div>
-                </div>
-
-                <div class="p-8">
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            <i class="fas fa-book-open text-teal-600 mr-2"></i>Ce que vous voyez
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-money-bill-wave text-green-600 mr-2"></i>Salaire</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>Salaire Brut mensuel</li>
-                                    <li>Salaire Net Estime (mis a jour en temps reel)</li>
-                                    <li>Fiche de paie PDF telechargeble</li>
-                                </ul>
-                            </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-clock text-blue-600 mr-2"></i>Presence</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>Jours ouvrables du mois</li>
-                                    <li>Heures travaillees</li>
-                                    <li>Jours travailles</li>
-                                    <li>Jours justifies</li>
-                                </ul>
-                            </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-minus-circle text-red-600 mr-2"></i>Deductions</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>Retards (minutes + montant)</li>
-                                    <li>Absences</li>
-                                    <li>Deductions manuelles</li>
-                                    <li>Remboursement prets/avances</li>
-                                </ul>
-                            </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-university text-purple-600 mr-2"></i>Avances / Prets</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>Montant total du pret</li>
-                                    <li>Mensualite</li>
-                                    <li>Montant deja paye</li>
-                                    <li>Reste a payer + pourcentage</li>
-                                    <li>Date de debut des deductions</li>
-                                </ul>
-                            </div>
+                    <div class="flex gap-4">
+                        <div class="bg-blue-100 rounded-lg p-3 h-fit"><i class="fas fa-bolt text-blue-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Credit instantane</h4>
+                            <p class="text-gray-500 text-sm">Des que l'admin approuve, l'argent arrive dans votre portefeuille</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-purple-100 rounded-lg p-3 h-fit"><i class="fas fa-sync text-purple-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Remboursement automatique</h4>
+                            <p class="text-gray-500 text-sm">Les mensualites sont deduites automatiquement du salaire chaque mois</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-orange-100 rounded-lg p-3 h-fit"><i class="fas fa-chart-line text-orange-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Suivi transparent</h4>
+                            <p class="text-gray-500 text-sm">Suivez la progression du remboursement (montant paye, reste, pourcentage)</p>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Footer -->
-        <div class="text-center py-8 text-gray-500">
-            <p class="text-sm">IUEs/INSAM PRE - Systeme de Gestion des Ressources Humaines</p>
-            <p class="text-xs mt-1">Documentation generee le 01/04/2026</p>
+            <!-- Comment utiliser - Employe -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-user text-green-600 mr-2"></i>Pour l'employe</h3>
+                <div class="space-y-6">
+                    <div class="flex gap-4">
+                        <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Faire une demande</h4>
+                            <p class="text-gray-500 text-sm"><strong>Profil</strong> > <strong>"Demande d'avance sur salaire"</strong> > Entrez le montant souhaite et la raison</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Attendre l'approbation</h4>
+                            <p class="text-gray-500 text-sm">Le statut de votre demande passe de "En attente" a "Approuvee" ou "Refusee". Vous recevez une notification push</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Recevoir l'argent</h4>
+                            <p class="text-gray-500 text-sm">Si approuvee, le montant est credite automatiquement dans votre portefeuille. Vous pouvez le retirer par Mobile Money</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Suivi du remboursement</h4>
+                            <p class="text-gray-500 text-sm">Dans <strong>Profil > Etat du Salaire</strong>, la section "Avances / Prets Actifs" montre la progression : montant total, mensualite, montant paye, reste a payer</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment utiliser - Admin -->
+            <div class="bg-green-50 rounded-2xl p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-user-shield text-green-600 mr-2"></i>Pour l'administrateur</h3>
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Consulter les demandes</h4>
+                            <p class="text-gray-500 text-sm">Dashboard > Avances sur Salaire > Voir les demandes en attente</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Approuver avec mensualite</h4>
+                            <p class="text-gray-500 text-sm">Definir la mensualite de remboursement (ex: 10 000 FCFA/mois pour une avance de 50 000 FCFA). Le systeme cree automatiquement un pret et credite le portefeuille</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flux -->
+            <div class="bg-white rounded-2xl shadow-sm p-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-project-diagram text-green-600 mr-2"></i>Flux complet</h3>
+                <div class="flex flex-wrap items-center justify-center gap-3 text-center">
+                    <div class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-medium text-sm">Demande</div>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                    <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg font-medium text-sm">Approbation admin</div>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                    <div class="bg-green-100 text-green-800 px-4 py-2 rounded-lg font-medium text-sm">Credit portefeuille</div>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                    <div class="bg-purple-100 text-purple-800 px-4 py-2 rounded-lg font-medium text-sm">Retrait Mobile Money</div>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                    <div class="bg-red-100 text-red-800 px-4 py-2 rounded-lg font-medium text-sm">Deduction mensuelle sur salaire</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 3. GESTION DES TACHES ==================== -->
+        <section id="taches" class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <span class="bg-orange-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold">3</span>
+                <h2 class="text-3xl font-bold text-gray-800">Gestion des Taches</h2>
+            </div>
+            <p class="text-gray-500 text-lg mb-8">Assignation, suivi et penalites des taches</p>
+
+            <!-- Screenshots -->
+            <div class="screenshots-grid mb-10">
+                <div class="screenshot-container">
+                    <img src="/images/docs/taches-liste.png" alt="Liste des taches">
+                    <p class="text-center text-sm text-gray-500 mt-3">Liste des taches avec filtres</p>
+                </div>
+                <div class="screenshot-container">
+                    <img src="/images/docs/tache-detail.png" alt="Detail d'une tache">
+                    <p class="text-center text-sm text-gray-500 mt-3">Detail d'une tache avec penalite</p>
+                </div>
+            </div>
+
+            <!-- Avantages -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-star text-yellow-500 mr-2"></i>Avantages</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="flex gap-4">
+                        <div class="bg-orange-100 rounded-lg p-3 h-fit"><i class="fas fa-bell text-orange-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Notification instantanee</h4>
+                            <p class="text-gray-500 text-sm">L'employe recoit une notification push des qu'une tache lui est assignee</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-blue-100 rounded-lg p-3 h-fit"><i class="fas fa-tasks text-blue-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Suivi de progression</h4>
+                            <p class="text-gray-500 text-sm">Statuts clairs : En attente, En cours, Terminee</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-red-100 rounded-lg p-3 h-fit"><i class="fas fa-exclamation-triangle text-red-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Systeme de penalites</h4>
+                            <p class="text-gray-500 text-sm">L'admin peut definir un montant de penalite pour les taches non completees</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-green-100 rounded-lg p-3 h-fit"><i class="fas fa-calendar-alt text-green-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Periode configurable</h4>
+                            <p class="text-gray-500 text-sm">Date de debut et date de fin pour chaque tache</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pour l'employe -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-user text-orange-600 mr-2"></i>Pour l'employe</h3>
+                <div class="space-y-6">
+                    <div class="flex gap-4">
+                        <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Voir ses taches</h4>
+                            <p class="text-gray-500 text-sm">Appuyez sur l'onglet <strong>"Taches"</strong> en bas de l'ecran. Filtrez par statut : Toutes, En attente, En cours, Terminees</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Consulter les details</h4>
+                            <p class="text-gray-500 text-sm">Appuyez sur une tache pour voir : description, priorite (Basse/Moyenne/Haute/Urgente), montant de penalite, echeance, et qui l'a assignee</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Mettre a jour le statut</h4>
+                            <p class="text-gray-500 text-sm">L'employe peut changer le statut de la tache (En attente > En cours > Terminee)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pour l'admin -->
+            <div class="bg-orange-50 rounded-2xl p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-user-shield text-orange-600 mr-2"></i>Pour l'administrateur</h3>
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Creer une tache</h4>
+                            <p class="text-gray-500 text-sm">Dashboard > Taches > "Nouvelle tache". Remplir : titre, description, priorite, date debut, date fin, employes assignes</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Definir une penalite</h4>
+                            <p class="text-gray-500 text-sm">Optionnel : definir un montant en FCFA qui sera deduit si la tache n'est pas completee a temps</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Suivre l'avancement</h4>
+                            <p class="text-gray-500 text-sm">Voir le statut de chaque employe sur la tache et approuver les penalites si necessaire</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Note penalites -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-r-2xl p-6">
+                <h4 class="font-bold text-yellow-800 mb-3"><i class="fas fa-info-circle mr-2"></i>A propos des penalites</h4>
+                <ul class="space-y-2 text-yellow-700 text-sm">
+                    <li class="flex items-start gap-2"><i class="fas fa-chevron-right text-yellow-500 mt-1 text-xs"></i>Les penalites de taches sont deduites du salaire, pas du portefeuille</li>
+                    <li class="flex items-start gap-2"><i class="fas fa-chevron-right text-yellow-500 mt-1 text-xs"></i>L'admin doit approuver la penalite avant qu'elle ne soit appliquee</li>
+                    <li class="flex items-start gap-2"><i class="fas fa-chevron-right text-yellow-500 mt-1 text-xs"></i>Le montant de la penalite apparait dans la section "Deductions" de l'etat du salaire</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ==================== 4. CHECK-IN MULTI-CAMPUS ==================== -->
+        <section id="multicampus" class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <span class="bg-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold">4</span>
+                <h2 class="text-3xl font-bold text-gray-800">Check-in Multi-Campus</h2>
+            </div>
+            <p class="text-gray-500 text-lg mb-8">Deplacez-vous librement entre les campus avec un controle intelligent du temps</p>
+
+            <!-- Avantages -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-star text-yellow-500 mr-2"></i>Avantages</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="flex gap-4">
+                        <div class="bg-purple-100 rounded-lg p-3 h-fit"><i class="fas fa-map-marker-alt text-purple-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Deplacement libre</h4>
+                            <p class="text-gray-500 text-sm">Plus besoin d'etre bloque sur un seul campus toute la journee</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-blue-100 rounded-lg p-3 h-fit"><i class="fas fa-car text-blue-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Temps de trajet reconnu</h4>
+                            <p class="text-gray-500 text-sm">Le systeme accorde un temps de deplacement configure par l'admin</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-green-100 rounded-lg p-3 h-fit"><i class="fas fa-clock text-green-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Retard uniquement au 1er check-in</h4>
+                            <p class="text-gray-500 text-sm">Le controle de retard (08:15) s'applique uniquement au premier check-in de la journee</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-orange-100 rounded-lg p-3 h-fit"><i class="fas fa-balance-scale text-orange-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Penalite juste</h4>
+                            <p class="text-gray-500 text-sm">Seules les minutes au-dela du temps de trajet autorise sont penalisees</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment ca marche -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-route text-purple-600 mr-2"></i>Comment ca marche</h3>
+                <div class="space-y-6">
+                    <div class="flex gap-4">
+                        <div class="step-number bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Premier check-in du jour</h4>
+                            <p class="text-gray-500 text-sm">Arrivez au Campus D a 08:10 > Check-in > Pas de retard (avant 08:15)</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Check-out du campus actuel</h4>
+                            <p class="text-gray-500 text-sm">A 10:00, vous quittez le Campus D > Check-out</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="step-number bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Check-in sur un autre campus</h4>
+                            <p class="text-gray-500 text-sm">Arrivez au Campus C a 10:18 > Check-in > Le systeme verifie : trajet D&#8594;C = 20 min, temps ecoule = 18 min. <strong>Aucune penalite !</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exemple avec penalite -->
+            <div class="bg-red-50 border-l-4 border-red-500 rounded-r-2xl p-6 mb-8">
+                <h4 class="font-bold text-red-800 mb-3"><i class="fas fa-calculator mr-2"></i>Exemple avec penalite</h4>
+                <div class="space-y-2 text-red-700 text-sm">
+                    <p><strong>Scenario :</strong> Check-out Campus D a 10:00, check-in Campus C a 10:35</p>
+                    <p><strong>Temps de trajet configure :</strong> 20 minutes</p>
+                    <p><strong>Temps ecoule :</strong> 35 minutes</p>
+                    <p><strong>Depassement :</strong> 35 - 20 = <strong>15 minutes</strong></p>
+                    <p><strong>Penalite :</strong> 15 min x 30 FCFA/min = <strong>450 FCFA</strong></p>
+                </div>
+            </div>
+
+            <!-- Config admin -->
+            <div class="bg-purple-50 rounded-2xl p-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-cog text-purple-600 mr-2"></i>Configuration Administrateur</h3>
+                <p class="text-gray-600 mb-3"><strong>Parametres > Temps de Trajet entre Campus</strong></p>
+                <ul class="space-y-2 text-gray-600 text-sm">
+                    <li class="flex items-start gap-2"><i class="fas fa-check-circle text-purple-600 mt-1"></i>Configurer le temps par defaut (ex: 30 min)</li>
+                    <li class="flex items-start gap-2"><i class="fas fa-check-circle text-purple-600 mt-1"></i>Configurer le temps specifique entre chaque paire de campus</li>
+                    <li class="flex items-start gap-2"><i class="fas fa-check-circle text-purple-600 mt-1"></i>Configurer la penalite par minute de depassement (ex: 30 FCFA/min)</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ==================== 5. NOTIFICATIONS PUSH ==================== -->
+        <section id="notifications" class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <span class="bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold">5</span>
+                <h2 class="text-3xl font-bold text-gray-800">Notifications Push</h2>
+            </div>
+            <p class="text-gray-500 text-lg mb-8">Recevez les notifications meme quand l'application est fermee</p>
+
+            <!-- Avantages -->
+            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-star text-yellow-500 mr-2"></i>Avantages</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="flex gap-4">
+                        <div class="bg-red-100 rounded-lg p-3 h-fit"><i class="fas fa-moon text-red-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Fonctionne en arriere-plan</h4>
+                            <p class="text-gray-500 text-sm">Comme WhatsApp, les notifications arrivent meme si l'app est fermee</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="bg-blue-100 rounded-lg p-3 h-fit"><i class="fas fa-eye text-blue-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Ne manquez rien</h4>
+                            <p class="text-gray-500 text-sm">Soyez informe en temps reel de tout ce qui vous concerne</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Types -->
+            <div class="bg-white rounded-2xl shadow-sm p-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-list text-red-600 mr-2"></i>Types de notifications</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-green-50 rounded-xl p-4 flex gap-3">
+                        <div class="bg-green-100 rounded-lg p-2 h-fit"><i class="fas fa-wallet text-green-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">Portefeuille credite</h4>
+                            <p class="text-gray-500 text-xs">"50 000 FCFA ont ete ajoutes a votre portefeuille"</p>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 rounded-xl p-4 flex gap-3">
+                        <div class="bg-blue-100 rounded-lg p-2 h-fit"><i class="fas fa-hand-holding-usd text-blue-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">Avance approuvee / refusee</h4>
+                            <p class="text-gray-500 text-xs">"Votre avance de 50 000 FCFA a ete approuvee"</p>
+                        </div>
+                    </div>
+                    <div class="bg-orange-50 rounded-xl p-4 flex gap-3">
+                        <div class="bg-orange-100 rounded-lg p-2 h-fit"><i class="fas fa-clipboard-check text-orange-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">Nouvelle tache assignee</h4>
+                            <p class="text-gray-500 text-xs">"Tache : Nom de la tache - Echeance : 15/04/2026"</p>
+                        </div>
+                    </div>
+                    <div class="bg-purple-50 rounded-xl p-4 flex gap-3">
+                        <div class="bg-purple-100 rounded-lg p-2 h-fit"><i class="fas fa-map-marker-alt text-purple-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">Entree dans la zone d'un campus</h4>
+                            <p class="text-gray-500 text-xs">"Vous etes au Campus C. Vous pouvez faire votre check-in !"</p>
+                        </div>
+                    </div>
+                    <div class="bg-red-50 rounded-xl p-4 flex gap-3">
+                        <div class="bg-red-100 rounded-lg p-2 h-fit"><i class="fas fa-user-check text-red-600"></i></div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">Verification de presence</h4>
+                            <p class="text-gray-500 text-xs">"Etes-vous toujours en place au Campus D ?"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 6. SUIVI DU SALAIRE ==================== -->
+        <section id="salaire" class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <span class="bg-teal-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold">6</span>
+                <h2 class="text-3xl font-bold text-gray-800">Suivi du Salaire en Temps Reel</h2>
+            </div>
+            <p class="text-gray-500 text-lg mb-8">Consultez votre etat de salaire avec le detail de toutes les deductions</p>
+
+            <!-- Screenshots -->
+            <div class="screenshots-grid mb-10">
+                <div class="screenshot-container">
+                    <img src="/images/docs/profil-salaire.png" alt="Etat du salaire - Vue generale">
+                    <p class="text-center text-sm text-gray-500 mt-3">Salaire brut, net et acces rapide</p>
+                </div>
+                <div class="screenshot-container">
+                    <img src="/images/docs/deductions-prets.png" alt="Detail des deductions et prets">
+                    <p class="text-center text-sm text-gray-500 mt-3">Detail des deductions et prets actifs</p>
+                </div>
+            </div>
+
+            <!-- Ce que vous voyez -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-sm p-6">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-money-bill-wave text-teal-600"></i>Salaire</h3>
+                    <ul class="space-y-2 text-gray-600 text-sm">
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-teal-400 text-xs"></i>Salaire Brut mensuel</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-teal-400 text-xs"></i>Salaire Net Estime (mis a jour en temps reel)</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-teal-400 text-xs"></i>Fiche de paie PDF telechargeble</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-6">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-calendar-check text-blue-600"></i>Presence</h3>
+                    <ul class="space-y-2 text-gray-600 text-sm">
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-blue-400 text-xs"></i>Jours ouvrables du mois</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-blue-400 text-xs"></i>Heures travaillees</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-blue-400 text-xs"></i>Jours travailles</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-blue-400 text-xs"></i>Jours justifies</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-6">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-minus-circle text-red-600"></i>Deductions</h3>
+                    <ul class="space-y-2 text-gray-600 text-sm">
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-red-400 text-xs"></i>Retards (minutes + montant)</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-red-400 text-xs"></i>Absences</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-red-400 text-xs"></i>Deductions manuelles</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-red-400 text-xs"></i>Remboursement prets/avances</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-6">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-hand-holding-usd text-orange-600"></i>Avances / Prets</h3>
+                    <ul class="space-y-2 text-gray-600 text-sm">
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-orange-400 text-xs"></i>Montant total du pret</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-orange-400 text-xs"></i>Mensualite</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-orange-400 text-xs"></i>Montant deja paye</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-orange-400 text-xs"></i>Reste a payer + pourcentage</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-circle text-orange-400 text-xs"></i>Date de debut des deductions</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="bg-gray-800 text-white py-8">
+        <div class="max-w-5xl mx-auto px-6 text-center">
+            <p class="text-gray-400">IUEs/INSAM PRE - Systeme de Gestion des Ressources Humaines</p>
+            <p class="text-gray-500 text-sm mt-2">Documentation generee le 01/04/2026</p>
         </div>
     </div>
 
