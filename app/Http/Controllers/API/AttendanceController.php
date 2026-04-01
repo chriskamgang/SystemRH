@@ -52,6 +52,34 @@ class AttendanceController extends Controller
     /**
      * Vérifier si un enseignant a cours le soir aujourd'hui (via emploi du temps)
      */
+    /**
+     * Trouver un check-in actif (sans check-out correspondant) pour un shift donné
+     */
+    private function findActiveCheckIn($user, $shift)
+    {
+        $todayCheckIns = Attendance::where('user_id', $user->id)
+            ->where('type', 'check-in')
+            ->where('shift', $shift)
+            ->whereDate('timestamp', today())
+            ->orderBy('timestamp', 'desc')
+            ->get();
+
+        foreach ($todayCheckIns as $ci) {
+            $hasCheckOut = Attendance::where('user_id', $user->id)
+                ->where('shift', $shift)
+                ->where('type', 'check-out')
+                ->where('timestamp', '>', $ci->timestamp)
+                ->whereDate('timestamp', today())
+                ->exists();
+
+            if (!$hasCheckOut) {
+                return $ci;
+            }
+        }
+
+        return null;
+    }
+
     private function hasEveningClass($user): bool
     {
         $jourSemaine = strtolower(Carbon::now()->locale('fr')->isoFormat('dddd'));
@@ -418,34 +446,21 @@ class AttendanceController extends Controller
         $now = now();
         $shift = $this->detectShift($now);
 
-        // Chercher un check-in actif sur N'IMPORTE QUEL campus (pas forcément le même)
-        $todayCheckInsThisShift = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
-            ->where('shift', $shift)
-            ->whereDate('timestamp', today())
-            ->orderBy('timestamp', 'desc')
-            ->get();
+        // Chercher un check-in actif : d'abord sur le shift actuel, sinon sur TOUS les shifts
+        $checkIn = $this->findActiveCheckIn($user, $shift);
 
-        $checkIn = null;
-        foreach ($todayCheckInsThisShift as $ci) {
-            $hasCheckOut = Attendance::where('user_id', $user->id)
-                ->where('shift', $shift)
-                ->where('type', 'check-out')
-                ->where('timestamp', '>', $ci->timestamp)
-                ->whereDate('timestamp', today())
-                ->exists();
-
-            if (!$hasCheckOut) {
-                $checkIn = $ci;
-                break;
+        // Si pas trouvé sur le shift actuel, chercher sur l'autre shift
+        if (!$checkIn) {
+            $otherShift = $shift === 'morning' ? 'evening' : 'morning';
+            $checkIn = $this->findActiveCheckIn($user, $otherShift);
+            if ($checkIn) {
+                $shift = $otherShift; // Utiliser le shift du check-in trouvé
             }
         }
 
         if (!$checkIn) {
-            $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
             return response()->json([
-                'message' => "Aucun check-in actif trouvé pour la plage du {$shiftLabel} aujourd'hui.",
-                'shift' => $shift,
+                'message' => "Aucun check-in actif trouvé pour aujourd'hui.",
             ], 400);
         }
 
