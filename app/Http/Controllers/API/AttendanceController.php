@@ -95,16 +95,36 @@ class AttendanceController extends Controller
 
     /**
      * Obtenir l'heure de fin effective pour un utilisateur
-     * 17h00 par défaut (8h travail + 1h pause), 21h30 si cours le soir
+     * 17h00 par défaut (8h travail + 1h pause), 21h30 si travaille le soir
      */
     private function getEffectiveEndTime($user): string
     {
-        if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])) {
-            if ($this->hasEveningClass($user)) {
-                return '21:30';
-            }
+        // Vérifier si l'utilisateur travaille le soir (assignation campus OU cours le soir)
+        if ($this->userWorksEvening($user)) {
+            return '21:30';
         }
         return Setting::get('morning_end_time', '17:00');
+    }
+
+    /**
+     * Vérifier si un utilisateur travaille le soir
+     * - Via assignation campus (works_evening = true) ex: responsable campus
+     * - Via emploi du temps UE (cours >= 17:00) ex: enseignant titulaire
+     */
+    private function userWorksEvening($user): bool
+    {
+        // 1. Vérifier l'assignation campus (works_evening)
+        $hasEveningShift = $user->campusShifts()->where('works_evening', true)->exists();
+        if ($hasEveningShift) {
+            return true;
+        }
+
+        // 2. Vérifier l'emploi du temps UE (cours le soir)
+        if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])) {
+            return $this->hasEveningClass($user);
+        }
+
+        return false;
     }
 
     /**

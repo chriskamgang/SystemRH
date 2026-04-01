@@ -98,10 +98,21 @@ class PayrollCalculator
             $checkOut = $shiftAttendances->where('type', 'check-out')->first();
 
             if ($checkIn) {
-                // Plafonner les heures : check-in min 08:00, check-out max 17:00 (ou 21:30 si cours soir)
+                // Plafonner les heures : check-in min 08:00, check-out max 17:00 (ou 21:30 si travaille le soir)
                 $workStart = $checkIn->timestamp->copy()->setTime(8, 0, 0);
                 $endHour = 17; $endMin = 0;
-                if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire']) && $shift === 'evening') {
+
+                // Vérifier si l'utilisateur travaille le soir (assignation campus OU cours le soir)
+                $hasEveningShift = $user->campusShifts()->where('works_evening', true)->exists();
+                $hasEveningClass = false;
+                if (in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire'])) {
+                    $jourSemaine = strtolower($checkIn->timestamp->locale('fr')->isoFormat('dddd'));
+                    $hasEveningClass = \App\Models\UeSchedule::whereHas('uniteEnseignement', function ($q) use ($user) {
+                        $q->where('enseignant_id', $user->id);
+                    })->where('jour_semaine', $jourSemaine)->where('heure_debut', '>=', '17:00')->where('is_active', true)->exists();
+                }
+
+                if (($hasEveningShift || $hasEveningClass) && ($shift === 'evening' || $checkIn->timestamp->format('H:i') >= '17:00')) {
                     $endHour = 21; $endMin = 30;
                 }
                 $workEnd = $checkIn->timestamp->copy()->setTime($endHour, $endMin, 0);
