@@ -114,9 +114,13 @@ class AttendanceController extends Controller
     private function userWorksEvening($user): bool
     {
         // 1. Vérifier l'assignation campus (works_evening)
-        $hasEveningShift = $user->campusShifts()->where('works_evening', true)->exists();
-        if ($hasEveningShift) {
-            return true;
+        try {
+            $hasEveningShift = $user->campusShifts()->where('works_evening', true)->exists();
+            if ($hasEveningShift) {
+                return true;
+            }
+        } catch (\Exception $e) {
+            // Colonne works_evening peut ne pas exister en production
         }
 
         // 2. Vérifier l'emploi du temps UE (cours le soir)
