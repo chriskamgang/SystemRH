@@ -715,7 +715,18 @@ class AttendanceController extends Controller
                 ->first();
 
             if ($checkOut) {
-                $totalMinutes += $checkIn->timestamp->diffInMinutes($checkOut->timestamp);
+                // Plafonner et soustraire la pause
+                $effIn = $checkIn->timestamp->copy();
+                $effOut = $checkOut->timestamp->copy();
+                $wStart = $effIn->copy()->setTime(8, 0, 0);
+                $wEnd = $effIn->copy()->setTime(17, 0, 0);
+                if ($effIn->lt($wStart)) $effIn = $wStart;
+                if ($checkIn->timestamp->hour < 17 && $effOut->gt($wEnd)) $effOut = $wEnd;
+                $mins = $effIn->diffInMinutes($effOut);
+                $breakMins = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                    $effIn, $effOut, $user->employee_type
+                );
+                $totalMinutes += max(0, $mins - $breakMins);
             }
         }
 
