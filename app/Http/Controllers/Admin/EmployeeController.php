@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class EmployeeController extends Controller
 {
@@ -69,6 +70,58 @@ class EmployeeController extends Controller
             ->values();
 
         return view('admin.employees.index', compact('employees', 'roles', 'campuses', 'banques'));
+    }
+
+    /**
+     * Export employees list as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = User::with(['role', 'campuses'])
+            ->where('role_id', '!=', 1);
+
+        $filterParts = [];
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+            $filterParts[] = 'Recherche: ' . $search;
+        }
+
+        if ($request->filled('employee_type')) {
+            $query->where('employee_type', $request->employee_type);
+            $typeLabels = ['enseignant_titulaire' => 'Permanent', 'semi_permanent' => 'Semi-permanent', 'enseignant_vacataire' => 'Vacataire'];
+            $filterParts[] = 'Type: ' . ($typeLabels[$request->employee_type] ?? $request->employee_type);
+        }
+
+        if ($request->filled('campus')) {
+            $query->whereHas('campuses', fn($q) => $q->where('campuses.id', $request->campus));
+            $campus = Campus::find($request->campus);
+            if ($campus) $filterParts[] = 'Campus: ' . $campus->name;
+        }
+
+        if ($request->filled('status') && $request->status !== '') {
+            $query->where('is_active', $request->status);
+            $filterParts[] = $request->status ? 'Actifs' : 'Inactifs';
+        }
+
+        if ($request->filled('banque')) {
+            $query->where('banque', $request->banque);
+            $filterParts[] = 'Banque: ' . $request->banque;
+        }
+
+        $employees = $query->orderBy('last_name')->get();
+        $totalEmployees = $employees->count();
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.employees.pdf.report', compact('employees', 'totalEmployees', 'filters'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('liste-employes.pdf');
     }
 
     /**

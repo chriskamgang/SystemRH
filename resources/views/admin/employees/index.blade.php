@@ -19,6 +19,10 @@
                     Libérer tous les appareils
                 </button>
             </form>
+            <a href="{{ route('admin.employees.export-pdf', request()->query()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">
+                <i class="fas fa-file-pdf mr-2"></i>
+                Télécharger PDF
+            </a>
             <a href="{{ route('admin.employees.print-by-bank') }}" class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition">
                 <i class="fas fa-university mr-2"></i>
                 Imprimer par Banque

@@ -11,9 +11,14 @@
             <h2 class="text-2xl font-bold text-gray-800">Prêts</h2>
             <p class="text-gray-600 mt-1">Gérer les prêts accordés aux employés</p>
         </div>
-        <button onclick="openCreateModal()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold">
-            <i class="fas fa-plus-circle mr-2"></i> Nouveau Prêt
-        </button>
+        <div class="flex gap-3">
+            <a href="{{ route('admin.loans.export-pdf', request()->query()) }}" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-file-pdf mr-2"></i> Télécharger PDF
+            </a>
+            <button onclick="openCreateModal()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-plus-circle mr-2"></i> Nouveau Prêt
+            </button>
+        </div>
     </div>
 
     <!-- Filtres -->

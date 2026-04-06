@@ -13,11 +13,18 @@
             </h1>
             <p class="text-gray-600">Historique complet des tentatives de fraude détectées</p>
         </div>
-        <a href="{{ route('admin.security.dashboard') }}"
-           class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition">
-            <i class="fas fa-chart-line mr-2"></i>
-            Dashboard
-        </a>
+        <div class="flex space-x-3">
+            <a href="{{ route('admin.security.violations.export-pdf', request()->query()) }}"
+               class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                <i class="fas fa-file-pdf mr-2"></i>
+                Télécharger PDF
+            </a>
+            <a href="{{ route('admin.security.dashboard') }}"
+               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                <i class="fas fa-chart-line mr-2"></i>
+                Dashboard
+            </a>
+        </div>
     </div>
 
     <!-- Statistiques rapides -->

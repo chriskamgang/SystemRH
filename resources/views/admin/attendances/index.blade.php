@@ -11,6 +11,9 @@
             <h2 class="text-2xl font-bold text-gray-800">Historique des Présences</h2>
             <p class="text-gray-600 mt-1">Historique groupé par employé - Cliquez pour voir les détails</p>
         </div>
+        <a href="{{ route('admin.attendances.export-pdf', request()->query()) }}" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
+            <i class="fas fa-file-pdf mr-2"></i> Télécharger PDF
+        </a>
     </div>
 
     <!-- Filtres -->

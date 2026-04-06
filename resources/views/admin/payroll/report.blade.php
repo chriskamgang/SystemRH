@@ -11,8 +11,8 @@
             <h2 class="text-2xl font-bold text-gray-800">Tableau de bord</h2>
             <h3 class="text-xl text-gray-600">Paie</h3>
         </div>
-        <a href="{{ route('admin.payroll.report.export', request()->query()) }}" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition">
-            <i class="fas fa-file-export mr-2"></i> Exporter
+        <a href="{{ route('admin.payroll.report.export', request()->query()) }}" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
+            <i class="fas fa-file-pdf mr-2"></i> Télécharger PDF
         </a>
     </div>
 

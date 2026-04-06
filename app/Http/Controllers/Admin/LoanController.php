@@ -7,6 +7,7 @@ use App\Models\Loan;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class LoanController extends Controller
 {
@@ -31,6 +32,35 @@ class LoanController extends Controller
         $employees = User::where('role_id', '!=', 1)->orderBy('first_name')->get();
 
         return view('admin.loans.index', compact('loans', 'employees'));
+    }
+
+    /**
+     * Export loans as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = Loan::with(['user', 'createdBy'])
+            ->orderBy('created_at', 'desc');
+
+        $filterParts = [];
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+            $user = User::find($request->user_id);
+            if ($user) $filterParts[] = 'Employé: ' . $user->full_name;
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+            $filterParts[] = 'Statut: ' . ucfirst($request->status);
+        }
+
+        $loans = $query->get();
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.loans.pdf.report', compact('loans', 'filters'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('rapport-prets.pdf');
     }
 
     /**

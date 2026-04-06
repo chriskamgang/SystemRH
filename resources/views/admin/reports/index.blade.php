@@ -58,7 +58,11 @@
                 </a>
                 <a href="{{ route('admin.reports.export', ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d'), 'shift' => request('shift')]) }}"
                    class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
-                    <i class="fas fa-download mr-2"></i> Exporter CSV
+                    <i class="fas fa-download mr-2"></i> CSV
+                </a>
+                <a href="{{ route('admin.reports.export-pdf', ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d'), 'shift' => request('shift')]) }}"
+                   class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">
+                    <i class="fas fa-file-pdf mr-2"></i> PDF
                 </a>
             </div>
         </form>

@@ -59,12 +59,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
     // Print by Bank
     Route::get('employees-print-by-bank', [EmployeeController::class, 'printByBank'])->name('employees.print-by-bank');
+    Route::get('employees-export-pdf', [EmployeeController::class, 'exportPdf'])->name('employees.export-pdf');
 
     // Campus
     Route::resource('campuses', CampusController::class);
 
     // Attendances
     Route::get('/attendances', [AttendanceController::class, 'index'])->name('attendances.index');
+    Route::get('/attendances/export-pdf', [AttendanceController::class, 'exportPdf'])->name('attendances.export-pdf');
     Route::get('/attendances/{id}', [AttendanceController::class, 'show'])->name('attendances.show');
 
     // Real-time map
@@ -73,6 +75,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Reports (ancien système - à garder pour compatibilité)
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+    Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])->name('reports.export-pdf');
 
     // Nouveau module Rapports
     Route::prefix('rapports')->name('rapports.')->group(function () {
@@ -224,6 +227,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
         Route::prefix('violations')->name('violations.')->group(function () {
             Route::get('/', [App\Http\Controllers\Admin\SecurityViolationController::class, 'index'])->name('index');
+            Route::get('/export-pdf', [App\Http\Controllers\Admin\SecurityViolationController::class, 'exportPdf'])->name('export-pdf');
             Route::get('/{id}', [App\Http\Controllers\Admin\SecurityViolationController::class, 'show'])->name('show');
             Route::post('/{id}/review', [App\Http\Controllers\Admin\SecurityViolationController::class, 'review'])->name('review');
         });
@@ -234,6 +238,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Déductions manuelles
     Route::prefix('manual-deductions')->name('manual-deductions.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\ManualDeductionController::class, 'index'])->name('index');
+        Route::get('/export-pdf', [App\Http\Controllers\Admin\ManualDeductionController::class, 'exportPdf'])->name('export-pdf');
         Route::post('/', [App\Http\Controllers\Admin\ManualDeductionController::class, 'store'])->name('store');
         Route::put('/{id}', [App\Http\Controllers\Admin\ManualDeductionController::class, 'update'])->name('update');
         Route::post('/{id}/cancel', [App\Http\Controllers\Admin\ManualDeductionController::class, 'cancel'])->name('cancel');
@@ -243,6 +248,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Demandes d'avance sur salaire
     Route::prefix('salary-advances')->name('salary-advances.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'index'])->name('index');
+        Route::get('/export-pdf', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'exportPdf'])->name('export-pdf');
         Route::post('/{id}/approve', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'approve'])->name('approve');
         Route::post('/{id}/reject', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'reject'])->name('reject');
     });
@@ -250,6 +256,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Portefeuilles (Wallets)
     Route::prefix('wallets')->name('wallets.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\WalletController::class, 'index'])->name('index');
+        Route::get('/export-pdf', [App\Http\Controllers\Admin\WalletController::class, 'exportPdf'])->name('export-pdf');
         Route::post('/credit-multiple', [App\Http\Controllers\Admin\WalletController::class, 'creditMultiple'])->name('credit-multiple');
         Route::get('/{user}', [App\Http\Controllers\Admin\WalletController::class, 'show'])->name('show');
         Route::post('/{user}/credit', [App\Http\Controllers\Admin\WalletController::class, 'credit'])->name('credit');
@@ -261,6 +268,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Taches (Tasks)
     Route::prefix('tasks')->name('tasks.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\TaskController::class, 'index'])->name('index');
+        Route::get('/export-pdf', [App\Http\Controllers\Admin\TaskController::class, 'exportPdf'])->name('export-pdf');
         Route::post('/', [App\Http\Controllers\Admin\TaskController::class, 'store'])->name('store');
         Route::get('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'show'])->name('show');
         Route::put('/{id}', [App\Http\Controllers\Admin\TaskController::class, 'update'])->name('update');
@@ -272,6 +280,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Prêts (Loans)
     Route::prefix('loans')->name('loans.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\LoanController::class, 'index'])->name('index');
+        Route::get('/export-pdf', [App\Http\Controllers\Admin\LoanController::class, 'exportPdf'])->name('export-pdf');
         Route::post('/', [App\Http\Controllers\Admin\LoanController::class, 'store'])->name('store');
         Route::put('/{id}', [App\Http\Controllers\Admin\LoanController::class, 'update'])->name('update');
         Route::post('/{id}/mark-completed', [App\Http\Controllers\Admin\LoanController::class, 'markAsCompleted'])->name('mark-completed');
@@ -298,6 +307,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // ========== PRESENCE ALERTS / NOTIFICATIONS ==========
     Route::prefix('presence-alerts')->name('presence-alerts.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\PresenceAlertController::class, 'index'])->name('index');
+        Route::get('/export-pdf', [App\Http\Controllers\Admin\PresenceAlertController::class, 'exportPdf'])->name('export-pdf');
         Route::get('/settings', [App\Http\Controllers\Admin\PresenceAlertController::class, 'settings'])->name('settings');
         Route::post('/settings', [App\Http\Controllers\Admin\PresenceAlertController::class, 'updateSettings'])->name('settings.update');
         Route::get('/statistics', [App\Http\Controllers\Admin\PresenceAlertController::class, 'statistics'])->name('statistics');

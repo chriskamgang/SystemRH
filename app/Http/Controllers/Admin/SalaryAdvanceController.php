@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SalaryAdvanceController extends Controller
 {
@@ -32,6 +33,33 @@ class SalaryAdvanceController extends Controller
         $pendingCount = SalaryAdvanceRequest::pending()->count();
 
         return view('admin.salary-advances.index', compact('requests', 'pendingCount'));
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $query = SalaryAdvanceRequest::with(['user', 'reviewer'])->latest();
+
+        $filterParts = [];
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+            $statusLabels = ['pending' => 'En attente', 'approved' => 'Approuvées', 'rejected' => 'Rejetées'];
+            $filterParts[] = 'Statut: ' . ($statusLabels[$request->status] ?? $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', fn($q) => $q->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"));
+            $filterParts[] = 'Recherche: ' . $search;
+        }
+
+        $requests = $query->get();
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.salary-advances.pdf.report', compact('requests', 'filters'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('rapport-avances-salaire.pdf');
     }
 
     public function approve(Request $request, $id)

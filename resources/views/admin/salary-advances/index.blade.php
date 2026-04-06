@@ -10,11 +10,16 @@
             <h2 class="text-2xl font-bold text-gray-800">Demandes d'Avance sur Salaire</h2>
             <p class="text-gray-600 mt-1">Gérez les demandes d'avance des employés</p>
         </div>
-        @if($pendingCount > 0)
-        <span class="px-4 py-2 bg-orange-100 text-orange-800 rounded-lg font-semibold">
-            {{ $pendingCount }} en attente
-        </span>
-        @endif
+        <div class="flex gap-3 items-center">
+            <a href="{{ route('admin.salary-advances.export-pdf', request()->query()) }}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-file-pdf mr-2"></i> Télécharger PDF
+            </a>
+            @if($pendingCount > 0)
+            <span class="px-4 py-2 bg-orange-100 text-orange-800 rounded-lg font-semibold">
+                {{ $pendingCount }} en attente
+            </span>
+            @endif
+        </div>
     </div>
 
     <!-- Filtres -->

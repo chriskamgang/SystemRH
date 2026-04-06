@@ -11,9 +11,14 @@
             <h2 class="text-2xl font-bold text-gray-800">Déductions Manuelles</h2>
             <p class="text-gray-600 mt-1">Appliquer des déductions exceptionnelles sur les salaires</p>
         </div>
-        <button onclick="openCreateModal()" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-semibold">
-            <i class="fas fa-minus-circle mr-2"></i> Nouvelle Déduction
-        </button>
+        <div class="flex gap-3">
+            <a href="{{ route('admin.manual-deductions.export-pdf', request()->query()) }}" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-file-pdf mr-2"></i> Télécharger PDF
+            </a>
+            <button onclick="openCreateModal()" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-minus-circle mr-2"></i> Nouvelle Déduction
+            </button>
+        </div>
     </div>
 
     <!-- Filtres -->

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SecurityViolation;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SecurityViolationController extends Controller
 {
@@ -56,6 +57,48 @@ class SecurityViolationController extends Controller
             ->get();
 
         return view('admin.security.violations.index', compact('violations', 'stats', 'users'));
+    }
+
+    /**
+     * Export security violations as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = SecurityViolation::with(['user', 'reviewer'])
+            ->orderBy('created_at', 'desc');
+
+        $filterParts = [];
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+            $filterParts[] = 'Statut: ' . ucfirst($request->status);
+        }
+        if ($request->filled('severity')) {
+            $query->where('severity', $request->severity);
+            $filterParts[] = 'Sévérité: ' . ucfirst($request->severity);
+        }
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+            $user = User::find($request->user_id);
+            if ($user) $filterParts[] = 'Employé: ' . $user->full_name;
+        }
+
+        $violations = $query->get();
+
+        $stats = [
+            'total' => SecurityViolation::count(),
+            'pending' => SecurityViolation::where('status', 'pending')->count(),
+            'high_severity' => SecurityViolation::whereIn('severity', ['high', 'critical'])->count(),
+            'today' => SecurityViolation::whereDate('created_at', today())->count(),
+            'suspended_users' => User::where('account_status', 'suspended')->count(),
+        ];
+
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.security.violations.pdf.report', compact('violations', 'stats', 'filters'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('rapport-violations-securite.pdf');
     }
 
     /**

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\PresenceIncident;
 use App\Models\NotificationSetting;
 use App\Models\Setting;
+use App\Models\Campus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PresenceAlertController extends Controller
 {
@@ -56,6 +58,49 @@ class PresenceAlertController extends Controller
         $pendingCount = PresenceIncident::where('status', 'pending')->count();
 
         return view('admin.presence-alerts.index', compact('incidents', 'pendingCount', 'status'));
+    }
+
+    /**
+     * Export presence alerts as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = PresenceIncident::with(['user', 'campus', 'validator'])
+            ->orderBy('incident_date', 'desc');
+
+        $filterParts = [];
+
+        $status = $request->get('status', 'all');
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+            $statusLabels = ['pending' => 'En attente', 'validated' => 'Validés', 'ignored' => 'Ignorés'];
+            $filterParts[] = 'Statut: ' . ($statusLabels[$status] ?? $status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', fn($q) => $q->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"));
+            $filterParts[] = 'Recherche: ' . $search;
+        }
+
+        if ($request->filled('campus_id')) {
+            $query->where('campus_id', $request->campus_id);
+            $campus = Campus::find($request->campus_id);
+            if ($campus) $filterParts[] = 'Campus: ' . $campus->name;
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('incident_date', '>=', $request->date_from);
+            $filterParts[] = 'Depuis: ' . $request->date_from;
+        }
+
+        $incidents = $query->get();
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.presence-alerts.pdf.report', compact('incidents', 'filters'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('rapport-alertes-presence.pdf');
     }
 
     /**

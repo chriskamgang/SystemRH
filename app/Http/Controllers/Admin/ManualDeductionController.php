@@ -7,6 +7,7 @@ use App\Models\ManualDeduction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ManualDeductionController extends Controller
 {
@@ -35,6 +36,39 @@ class ManualDeductionController extends Controller
         $employees = User::where('role_id', '!=', 1)->orderBy('first_name')->get();
 
         return view('admin.manual-deductions.index', compact('deductions', 'employees'));
+    }
+
+    /**
+     * Export manual deductions as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = ManualDeduction::with(['user', 'appliedBy', 'cancelledBy'])
+            ->orderBy('created_at', 'desc');
+
+        $filterParts = [];
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+            $user = User::find($request->user_id);
+            if ($user) $filterParts[] = 'Employé: ' . $user->full_name;
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+            $filterParts[] = 'Statut: ' . ucfirst($request->status);
+        }
+        if ($request->filled('month') && $request->filled('year')) {
+            $query->where('month', $request->month)->where('year', $request->year);
+            $filterParts[] = 'Période: ' . $request->month . '/' . $request->year;
+        }
+
+        $deductions = $query->get();
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.manual-deductions.pdf.report', compact('deductions', 'filters'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('rapport-deductions-manuelles.pdf');
     }
 
     /**

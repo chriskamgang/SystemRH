@@ -9,6 +9,7 @@ use App\Models\Campus;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -156,6 +157,116 @@ class ReportController extends Controller
             'startDate',
             'endDate'
         ));
+    }
+
+    /**
+     * Export report as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $startDate = $request->filled('start_date')
+            ? Carbon::parse($request->start_date)
+            : now()->startOfMonth();
+
+        $endDate = $request->filled('end_date')
+            ? Carbon::parse($request->end_date)
+            : now()->endOfMonth();
+
+        $shift = $request->get('shift');
+
+        // Reuse same logic as index
+        $employeeStats = User::where('role_id', '!=', 1)
+            ->with(['role'])
+            ->get()
+            ->map(function ($user) use ($startDate, $endDate, $shift) {
+                $checkinsQuery = Attendance::where('user_id', $user->id)
+                    ->where('type', 'check-in')
+                    ->whereBetween('timestamp', [$startDate, $endDate]);
+
+                if ($shift === 'morning') {
+                    $checkinsQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+                } elseif ($shift === 'evening') {
+                    $checkinsQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+                }
+
+                $checkins = $checkinsQuery->get();
+                $totalDays = $checkins->count();
+                $lateDays = $checkins->where('is_late', true)->count();
+                $onTimeDays = $totalDays - $lateDays;
+                $avgLateMinutes = $checkins->where('is_late', true)->avg('late_minutes') ?? 0;
+
+                $checkoutsQuery = Attendance::where('user_id', $user->id)
+                    ->where('type', 'check-out')
+                    ->whereBetween('timestamp', [$startDate, $endDate]);
+
+                if ($shift === 'morning') {
+                    $checkoutsQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+                } elseif ($shift === 'evening') {
+                    $checkoutsQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+                }
+
+                $checkouts = $checkoutsQuery->get();
+                $totalWorkHours = 0;
+                foreach ($checkins as $checkin) {
+                    $checkout = $checkouts->where('timestamp', '>', $checkin->timestamp)
+                        ->where('campus_id', $checkin->campus_id)
+                        ->first();
+                    if ($checkout) {
+                        $totalWorkHours += $checkin->timestamp->diffInMinutes($checkout->timestamp) / 60;
+                    }
+                }
+
+                return [
+                    'user' => $user,
+                    'total_days' => $totalDays,
+                    'on_time_days' => $onTimeDays,
+                    'late_days' => $lateDays,
+                    'avg_late_minutes' => round($avgLateMinutes, 1),
+                    'total_work_hours' => round($totalWorkHours, 1),
+                    'punctuality_rate' => $totalDays > 0 ? round(($onTimeDays / $totalDays) * 100, 1) : 0,
+                ];
+            });
+
+        $campusStats = Campus::all()->map(function ($campus) use ($startDate, $endDate, $shift) {
+            $checkinsQuery = Attendance::where('campus_id', $campus->id)
+                ->where('type', 'check-in')
+                ->whereBetween('timestamp', [$startDate, $endDate]);
+
+            if ($shift === 'morning') {
+                $checkinsQuery->whereRaw('TIME(timestamp) < ?', ['17:00:00']);
+            } elseif ($shift === 'evening') {
+                $checkinsQuery->whereRaw('TIME(timestamp) >= ?', ['17:00:00']);
+            }
+
+            $checkins = $checkinsQuery->get();
+            $totalCheckins = $checkins->count();
+            $lateCheckins = $checkins->where('is_late', true)->count();
+
+            return [
+                'campus' => $campus,
+                'total_checkins' => $totalCheckins,
+                'late_checkins' => $lateCheckins,
+                'punctuality_rate' => $totalCheckins > 0 ? round((($totalCheckins - $lateCheckins) / $totalCheckins) * 100, 1) : 0,
+            ];
+        });
+
+        $totalCheckinsCount = Attendance::where('type', 'check-in')->whereBetween('timestamp', [$startDate, $endDate])->count();
+        $totalLateCount = Attendance::where('type', 'check-in')->where('is_late', true)->whereBetween('timestamp', [$startDate, $endDate])->count();
+        $uniqueEmployees = Attendance::where('type', 'check-in')->whereBetween('timestamp', [$startDate, $endDate])->distinct('user_id')->count();
+
+        $overallStats = [
+            'total_checkins' => $totalCheckinsCount,
+            'total_late' => $totalLateCount,
+            'unique_employees' => $uniqueEmployees,
+            'punctuality_rate' => $totalCheckinsCount > 0
+                ? round((($totalCheckinsCount - $totalLateCount) / $totalCheckinsCount) * 100, 1)
+                : 0,
+        ];
+
+        $pdf = Pdf::loadView('admin.reports.pdf.report', compact('employeeStats', 'campusStats', 'overallStats', 'startDate', 'endDate'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('rapport-statistiques-' . $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d') . '.pdf');
     }
 
     /**

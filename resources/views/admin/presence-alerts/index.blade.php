@@ -11,6 +11,10 @@
             <p class="text-gray-600 mt-2">Gérez les incidents de présence et validez les pénalités</p>
         </div>
         <div class="flex space-x-3">
+            <a href="{{ route('admin.presence-alerts.export-pdf', request()->query()) }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-file-pdf mr-2"></i>
+                Télécharger PDF
+            </a>
             <a href="{{ route('admin.presence-alerts.statistics') }}" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
                 <i class="fas fa-chart-line mr-2"></i>
                 Statistiques

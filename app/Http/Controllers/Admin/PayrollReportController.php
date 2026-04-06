@@ -11,6 +11,7 @@ use App\Models\PayrollRecord;
 use App\Helpers\PayrollCalculator;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PayrollReportController extends Controller
 {
@@ -173,12 +174,72 @@ class PayrollReportController extends Controller
     }
 
     /**
-     * Export the payroll report.
+     * Export the payroll report as PDF.
      */
     public function export(Request $request)
     {
-        // TODO: Implémenter l'export en PDF ou Excel
-        return redirect()->route('admin.payroll.report')
-            ->with('info', 'Fonctionnalité d\'export en cours de développement.');
+        $month = $request->filled('month') ? (int) $request->month : Carbon::now()->month;
+        $year = $request->filled('year') ? (int) $request->year : Carbon::now()->year;
+
+        $workingDays = PayrollCalculator::calculateWorkingDays($year, $month);
+
+        $query = User::where('role_id', '!=', 1)
+            ->where('employee_type', '!=', 'enseignant_vacataire')
+            ->whereNotNull('monthly_salary')
+            ->where('monthly_salary', '>', 0)
+            ->with(['role', 'department', 'campuses']);
+
+        // Construire le texte des filtres pour le PDF
+        $filterParts = [];
+
+        if ($request->filled('campus_id')) {
+            $query->whereHas('campuses', function ($q) use ($request) {
+                $q->where('campus_id', $request->campus_id);
+            });
+            $campusName = Campus::find($request->campus_id)?->name;
+            if ($campusName) $filterParts[] = "Campus: $campusName";
+        }
+
+        if ($request->filled('employee_type')) {
+            $query->where('employee_type', $request->employee_type);
+            $typeLabels = [
+                'enseignant_titulaire' => 'Permanent',
+                'semi_permanent' => 'Semi-permanent',
+            ];
+            $filterParts[] = "Type: " . ($typeLabels[$request->employee_type] ?? $request->employee_type);
+        }
+
+        $employees = $query->get()->map(function ($employee) use ($year, $month, $workingDays) {
+            $payroll = PayrollCalculator::calculatePayroll($employee, $year, $month);
+            foreach ($payroll as $key => $value) {
+                $employee->$key = $value;
+            }
+            return $employee;
+        })->sortByDesc('net_salary')->values();
+
+        $totalGrossSalary = $employees->sum('gross_salary');
+        $totalDeductions = $employees->sum('total_deductions');
+        $totalNetSalary = $employees->sum('net_salary');
+        $totalEmployees = $employees->count();
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.payroll.pdf.report', compact(
+            'employees',
+            'year',
+            'month',
+            'workingDays',
+            'totalGrossSalary',
+            'totalDeductions',
+            'totalNetSalary',
+            'totalEmployees',
+            'filters'
+        ));
+
+        $pdf->setPaper('A4', 'landscape');
+
+        $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM');
+        $filename = "rapport-paie-{$monthName}-{$year}.pdf";
+
+        return $pdf->download($filename);
     }
 }

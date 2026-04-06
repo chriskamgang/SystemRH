@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class TaskController extends Controller
 {
@@ -31,6 +32,30 @@ class TaskController extends Controller
         $employees = User::where('role_id', '!=', 1)->orderBy('last_name')->get();
 
         return view('admin.tasks.index', compact('tasks', 'employees'));
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $query = Task::with(['creator', 'users'])->latest();
+
+        $filterParts = [];
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+            $filterParts[] = 'Statut: ' . ucfirst($request->status);
+        }
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
+            $filterParts[] = 'Priorité: ' . ucfirst($request->priority);
+        }
+
+        $tasks = $query->get();
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.tasks.pdf.report', compact('tasks', 'filters'));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('rapport-taches.pdf');
     }
 
     public function store(Request $request)

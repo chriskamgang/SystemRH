@@ -9,6 +9,7 @@ use App\Services\ElgioPayService;
 use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class WalletController extends Controller
 {
@@ -43,6 +44,42 @@ class WalletController extends Controller
         $walletCount = Wallet::count();
 
         return view('admin.wallets.index', compact('employees', 'totalBalance', 'walletCount'));
+    }
+
+    /**
+     * Export wallets as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = User::with(['wallet', 'department'])
+            ->where('is_active', true)
+            ->whereHas('role', fn($q) => $q->where('name', '!=', 'admin'));
+
+        $filterParts = [];
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+            $filterParts[] = 'Recherche: ' . $search;
+        }
+
+        if ($request->filled('employee_type')) {
+            $query->where('employee_type', $request->employee_type);
+            $filterParts[] = 'Type: ' . $request->employee_type;
+        }
+
+        $employees = $query->orderBy('last_name')->get();
+        $totalBalance = $employees->sum(fn($e) => $e->wallet->balance ?? 0);
+        $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
+
+        $pdf = Pdf::loadView('admin.wallets.pdf.report', compact('employees', 'totalBalance', 'filters'));
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download('rapport-portefeuilles.pdf');
     }
 
     /**

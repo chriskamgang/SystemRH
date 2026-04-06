@@ -10,10 +10,16 @@
             <h2 class="text-2xl font-bold text-gray-800">Gestion des Tâches</h2>
             <p class="text-gray-600 mt-1">Attribuez et suivez les tâches des employés</p>
         </div>
-        <button onclick="openCreateModal()" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-            <i class="fas fa-plus mr-2"></i>
-            Nouvelle Tâche
-        </button>
+        <div class="flex gap-3">
+            <a href="{{ route('admin.tasks.export-pdf', request()->query()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">
+                <i class="fas fa-file-pdf mr-2"></i>
+                Télécharger PDF
+            </a>
+            <button onclick="openCreateModal()" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
+                <i class="fas fa-plus mr-2"></i>
+                Nouvelle Tâche
+            </button>
+        </div>
     </div>
 
     <!-- Filtres -->

@@ -39,13 +39,13 @@ Route::get('/check-update', function (Request $request) {
     // Versions configurables — mettre à jour ici à chaque release
     $config = [
         'android' => [
-            'latest_version' => '2.0.2',
-            'min_version' => '2.0.2',       // En dessous → mise à jour obligatoire
+            'latest_version' => '2.1.0',
+            'min_version' => '2.1.0',       // En dessous → mise à jour obligatoire
             'download_url' => url('/downloads/insam-presence.apk'),
         ],
         'ios' => [
-            'latest_version' => '2.0.2',
-            'min_version' => '2.0.2',
+            'latest_version' => '2.1.0',
+            'min_version' => '2.1.0',
             'download_url' => '', // App Store URL quand disponible
         ],
     ];
@@ -57,7 +57,7 @@ Route::get('/check-update', function (Request $request) {
         'latest_version' => $platformConfig['latest_version'],
         'min_version' => $platformConfig['min_version'],
         'download_url' => $platformConfig['download_url'],
-        'release_notes' => 'Amélioration GPS pour téléphones bas de gamme, chargement plus rapide, tolérance de zone dynamique.',
+        'release_notes' => 'Correction du problème de zone GPS, chargement plus rapide de l\'accueil, amélioration de la précision de localisation.',
     ]);
 });
 

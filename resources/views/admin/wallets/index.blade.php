@@ -11,6 +11,9 @@
             <h2 class="text-2xl font-bold text-gray-800">Gestion des Portefeuilles</h2>
             <p class="text-gray-600 mt-1">Consultez et gérez les portefeuilles des employés</p>
         </div>
+        <a href="{{ route('admin.wallets.export-pdf', request()->query()) }}" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-semibold">
+            <i class="fas fa-file-pdf mr-2"></i> Télécharger PDF
+        </a>
     </div>
 
     <!-- Stats Cards -->
