@@ -173,11 +173,12 @@ class DashboardController extends Controller
     public function settings()
     {
         $roles = \App\Models\Role::all();
+        $jobPositions = \App\Models\JobPosition::orderBy('name')->get();
         $campuses = \App\Models\Campus::orderBy('name')->get();
         $travelTimes = \App\Models\CampusTravelTime::all()->keyBy(function ($item) {
             return $item->campus_from_id . '_' . $item->campus_to_id;
         });
-        return view('admin.settings', compact('roles', 'campuses', 'travelTimes'));
+        return view('admin.settings', compact('roles', 'jobPositions', 'campuses', 'travelTimes'));
     }
 
     /**
@@ -332,5 +333,54 @@ class DashboardController extends Controller
         $role->delete();
 
         return redirect()->back()->with('success', 'Rôle supprimé avec succès.');
+    }
+
+    /**
+     * Store a new job position.
+     */
+    public function storeJobPosition(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:job_positions,name',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        \App\Models\JobPosition::create($validated);
+
+        return redirect()->back()->with('success', 'Poste créé avec succès.');
+    }
+
+    /**
+     * Update an existing job position.
+     */
+    public function updateJobPosition(Request $request, $id)
+    {
+        $position = \App\Models\JobPosition::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('job_positions')->ignore($position->id)],
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $position->update($validated);
+
+        return redirect()->back()->with('success', 'Poste mis à jour avec succès.');
+    }
+
+    /**
+     * Delete a job position.
+     */
+    public function deleteJobPosition($id)
+    {
+        $position = \App\Models\JobPosition::findOrFail($id);
+
+        // Vérifier si des utilisateurs occupent ce poste
+        if ($position->users()->count() > 0) {
+            return redirect()->back()->with('error', 'Ce poste ne peut pas être supprimé car des employés l\'occupent.');
+        }
+
+        $position->delete();
+
+        return redirect()->back()->with('success', 'Poste supprimé avec succès.');
     }
 }

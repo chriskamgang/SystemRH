@@ -12,12 +12,73 @@ use Carbon\Carbon;
 class PayrollCalculator
 {
     /**
-     * Calculer les jours ouvrables d'un mois selon la configuration
+     * Calculer les jours ouvrables d'un mois selon la configuration et le type d'employé
      */
-    public static function calculateWorkingDays(int $year, int $month): float
+    public static function calculateWorkingDays(int $year, int $month, ?User $user = null): float
     {
-        // Récupérer le mode de calcul depuis les paramètres
+        // Récupérer le mode de calcul global
         $workingDaysMode = Setting::get('working_days_mode', 'fixed_30');
+
+        // 1. LOGIQUE SPÉCIFIQUE PAR TYPE D'EMPLOYÉ 
+        // (S'applique si le mode est 'contract_based' OU si on a un utilisateur spécifique)
+        if ($user && ($workingDaysMode === 'contract_based' || $user->employee_type)) {
+            // Cas des Permanents (Titulaires)
+            // Logic: Lundi-Vendredi = 1 jour, Samedi = 0.5 jour => ~24 jours/mois
+            if ($user->employee_type === 'enseignant_titulaire' || $user->employee_type === 'administratif_permanent') {
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+                $workingDays = 0;
+                $currentDate = $startDate->copy();
+
+                while ($currentDate->lte($endDate)) {
+                    $dayOfWeek = $currentDate->dayOfWeek;
+                    if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                        $workingDays += 1;
+                    } elseif ($dayOfWeek == 6) {
+                        $workingDays += 0.5;
+                    }
+                    $currentDate->addDay();
+                }
+                return $workingDays;
+            }
+
+            // Cas des Semi-Permanents
+            // Logic: Basé sur le volume horaire hebdo (ex: 24h/semaine = 3 jours/semaine)
+            if ($user->employee_type === 'semi_permanent') {
+                $volumeHebdo = (float) $user->volume_horaire_hebdomadaire;
+                if ($volumeHebdo > 0) {
+                    $workingHoursPerDay = (float) Setting::get('working_hours_per_day', 8);
+                    $daysPerWeek = $volumeHebdo / $workingHoursPerDay;
+                    // Environ 4.33 semaines par mois
+                    return round($daysPerWeek * 4.33, 2);
+                }
+                
+                // Sinon basé sur la liste des jours de travail
+                $joursTravail = $user->getJoursTravail();
+                if (!empty($joursTravail)) {
+                    $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                    $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+                    $workingDays = 0;
+                    $currentDate = $startDate->copy();
+                    $joursLower = array_map('strtolower', $joursTravail);
+                    
+                    $map = [
+                        0 => 'dimanche', 1 => 'lundi', 2 => 'mardi', 3 => 'mercredi',
+                        4 => 'jeudi', 5 => 'vendredi', 6 => 'samedi'
+                    ];
+
+                    while ($currentDate->lte($endDate)) {
+                        if (in_array($map[$currentDate->dayOfWeek], $joursLower)) {
+                            $workingDays += 1;
+                        }
+                        $currentDate->addDay();
+                    }
+                    return $workingDays;
+                }
+            }
+        }
+
+        // 2. LOGIQUE GLOBALE (Si pas de spécificité utilisateur ou mode standard)
 
         if ($workingDaysMode === 'all_days') {
             // Mode: Tous les jours du mois (30 ou 31 jours)
@@ -31,7 +92,7 @@ class PayrollCalculator
             return 30.0;
         }
 
-        // Mode par défaut: Jours ouvrables (Lun-Ven + Samedi)
+        // Mode: Jours ouvrables (Lun-Ven + Samedi) OU par défaut
         $startDate = Carbon::create($year, $month, 1)->startOfMonth();
         $endDate = Carbon::create($year, $month, 1)->endOfMonth();
 
@@ -98,8 +159,11 @@ class PayrollCalculator
             $checkOut = $shiftAttendances->where('type', 'check-out')->first();
 
             if ($checkIn) {
-                // Plafonner les heures : check-in min 08:00, check-out max 17:00 (ou 21:30 si travaille le soir)
+                // Récupérer l'heure de début normale et la limite de retard (ex: 08:15)
+                $morningStart = Setting::get('morning_start_time', '08:15');
                 $workStart = $checkIn->timestamp->copy()->setTime(8, 0, 0);
+                $lateThreshold = $checkIn->timestamp->copy()->setTimeFrom(Carbon::parse($morningStart));
+
                 $endHour = 17; $endMin = 0;
 
                 // Si le check-in est en soirée (après 17h) ou shift evening, étendre à 21:30
@@ -108,7 +172,13 @@ class PayrollCalculator
                 }
                 $workEnd = $checkIn->timestamp->copy()->setTime($endHour, $endMin, 0);
 
-                $effectiveCheckIn = $checkIn->timestamp->lt($workStart) ? $workStart : $checkIn->timestamp;
+                // NOUVELLE LOGIQUE : Si l'employé arrive avant la limite de retard (08:15),
+                // on lui fait cadeau des minutes et on considère qu'il a commencé à 08:00.
+                if ($checkIn->timestamp->lte($lateThreshold)) {
+                    $effectiveCheckIn = $workStart;
+                } else {
+                    $effectiveCheckIn = $checkIn->timestamp;
+                }
 
                 if ($checkOut) {
                     // Session complète : plafonner le check-out
@@ -242,7 +312,7 @@ class PayrollCalculator
         $workingHoursPerDay = (float) Setting::get('working_hours_per_day', 8);
 
         // 2. Calculer les jours ouvrables du mois
-        $workingDaysInMonth = self::calculateWorkingDays($year, $month);
+        $workingDaysInMonth = self::calculateWorkingDays($year, $month, $user);
 
         // 3. Récupérer le salaire de base
         $monthlySalary = (float) $user->monthly_salary;

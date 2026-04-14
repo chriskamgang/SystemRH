@@ -27,7 +27,7 @@
         <form method="GET" action="{{ route('admin.tasks.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Rechercher</label>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Titre de la tâche..."
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Titre ou nom d'employé..."
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div>
@@ -225,7 +225,19 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Assigner à *</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assigner à un poste (Groupe)</label>
+                        <select id="taskJobPosition"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Aucun poste (individuel uniquement) --</option>
+                            @foreach($jobPositions as $position)
+                                <option value="{{ $position->id }}">{{ $position->name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Tous les employés occupant ce poste seront assignés.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assigner à des personnes spécifiques</label>
                         <select id="taskUsers" multiple
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             style="min-height: 150px;">
@@ -280,6 +292,7 @@
         document.getElementById('taskPriority').value = 'medium';
         document.getElementById('taskStartDate').value = '';
         document.getElementById('taskDueDate').value = '';
+        document.getElementById('taskJobPosition').value = '';
         document.getElementById('statusField').classList.add('hidden');
 
         const select = document.getElementById('taskUsers');
@@ -304,6 +317,7 @@
             document.getElementById('taskStatus').value = task.status;
             document.getElementById('taskStartDate').value = task.start_date ? task.start_date.substring(0, 10) : '';
             document.getElementById('taskDueDate').value = task.due_date ? task.due_date.substring(0, 10) : '';
+            document.getElementById('taskJobPosition').value = ''; // On ne pré-remplit pas le poste lors de l'édit
             document.getElementById('statusField').classList.remove('hidden');
 
             const select = document.getElementById('taskUsers');
@@ -453,9 +467,10 @@
         const isEdit = taskId !== '';
 
         const selectedUsers = Array.from(document.getElementById('taskUsers').selectedOptions).map(opt => parseInt(opt.value));
+        const jobPositionId = document.getElementById('taskJobPosition').value;
 
-        if (selectedUsers.length === 0) {
-            alert('Veuillez sélectionner au moins un employé.');
+        if (selectedUsers.length === 0 && jobPositionId === '') {
+            alert('Veuillez sélectionner au moins un employé ou un poste.');
             return;
         }
 
@@ -466,6 +481,7 @@
             start_date: document.getElementById('taskStartDate').value || null,
             due_date: document.getElementById('taskDueDate').value || null,
             user_ids: selectedUsers,
+            job_position_id: jobPositionId || null,
         };
 
         if (isEdit) {

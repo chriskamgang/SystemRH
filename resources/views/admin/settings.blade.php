@@ -556,6 +556,27 @@
                                     </p>
                                 </div>
                             </label>
+
+                            <!-- Option 4: Par contrat (NOUVEAU) -->
+                            <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition
+                                {{ \App\Models\Setting::get('working_days_mode') == 'contract_based' ? 'border-purple-500 bg-purple-50' : 'border-gray-200' }}">
+                                <input type="radio" name="working_days_mode" value="contract_based"
+                                       class="mt-1 mr-3"
+                                       {{ \App\Models\Setting::get('working_days_mode') == 'contract_based' ? 'checked' : '' }}>
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900">
+                                        📜 Par contrat (Type d'employé)
+                                    </div>
+                                    <p class="text-sm text-gray-600 mt-1">
+                                        Le calcul s'adapte automatiquement au type de contrat de l'employé.
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        ✅ <strong>Permanents :</strong> Lun-Ven (1j) + Samedi (0.5j) = ~24j/mois<br>
+                                        ✅ <strong>Semi-Permanents :</strong> Selon quota hebdo (ex: 24h = 3j/semaine)<br>
+                                        ✅ <strong>Autres :</strong> Basé sur les jours de travail configurés
+                                    </p>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
@@ -610,7 +631,8 @@
                         <ul class="text-sm text-purple-700 space-y-1">
                             <li><strong>30 jours fixes :</strong> Salaire mensuel ÷ 30 = taux journalier constant</li>
                             <li><strong>Tous les jours :</strong> Salaire mensuel ÷ jours du mois (28-31) = taux varie légèrement</li>
-                            <li><strong>Jours ouvrables :</strong> Salaire mensuel ÷ ~22.5 jours = taux plus élevé (weekends non payés)</li>
+                            <li><strong>Jours ouvrables :</strong> Salaire mensuel ÷ ~22.5 jours = taux plus élevé</li>
+                            <li><strong>Par contrat :</strong> Taux calculé individuellement (ex: permanent ÷ 24j, semi-permanent ÷ 12j)</li>
                         </ul>
                     </div>
                 </div>
@@ -1106,6 +1128,106 @@
                 </table>
             </div>
         </div>
+
+        <!-- Gestion des Postes (Job Positions) -->
+        <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">
+                    <i class="fas fa-briefcase text-blue-600 mr-2"></i>
+                    Gestion des Postes
+                </h3>
+                <button type="button" onclick="openPositionModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition">
+                    <i class="fas fa-plus mr-1"></i>
+                    Ajouter un poste
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Intitulé du Poste</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employés</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @forelse($jobPositions as $position)
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ $position->name }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                {{ $position->description ?? '-' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="px-2 py-1 bg-gray-100 rounded-full">{{ $position->users()->count() }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button type="button" onclick="editPosition({{ $position->id }}, '{{ $position->name }}', '{{ $position->description }}')" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <form method="POST" action="{{ route('admin.settings.job-positions.delete', $position->id) }}" class="inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce poste ?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500 italic">Aucun poste configuré</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajouter/Modifier Poste -->
+<div id="positionModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900" id="positionModalTitle">Ajouter un poste</h3>
+            <button type="button" onclick="closePositionModal()" class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form id="positionForm" method="POST" action="{{ route('admin.settings.job-positions.store') }}">
+            @csrf
+            <input type="hidden" id="positionMethod" name="_method" value="POST">
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Intitulé du poste *</label>
+                    <input type="text" name="name" id="positionName" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="ex: Comptable, Développeur, Secrétaire">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea name="description" id="positionDescription" rows="3"
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Description des responsabilités"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" onclick="closePositionModal()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition">
+                    Annuler
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                    Enregistrer
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -1160,6 +1282,30 @@
 </div>
 
 <script>
+// Fonctions pour les Postes
+function openPositionModal() {
+    document.getElementById('positionModal').classList.remove('hidden');
+    document.getElementById('positionModalTitle').textContent = 'Ajouter un poste';
+    document.getElementById('positionForm').action = '{{ route('admin.settings.job-positions.store') }}';
+    document.getElementById('positionMethod').value = 'POST';
+    document.getElementById('positionName').value = '';
+    document.getElementById('positionDescription').value = '';
+}
+
+function editPosition(id, name, description) {
+    document.getElementById('positionModal').classList.remove('hidden');
+    document.getElementById('positionModalTitle').textContent = 'Modifier le poste';
+    document.getElementById('positionForm').action = '/admin/settings/job-positions/' + id;
+    document.getElementById('positionMethod').value = 'PUT';
+    document.getElementById('positionName').value = name;
+    document.getElementById('positionDescription').value = description || '';
+}
+
+function closePositionModal() {
+    document.getElementById('positionModal').classList.add('hidden');
+}
+
+// Fonctions pour les Rôles
 function openRoleModal() {
     document.getElementById('roleModal').classList.remove('hidden');
     document.getElementById('modalTitle').textContent = 'Ajouter un rôle';
@@ -1185,11 +1331,16 @@ function closeRoleModal() {
     document.getElementById('roleModal').classList.add('hidden');
 }
 
-// Fermer le modal en cliquant en dehors
-document.getElementById('roleModal').addEventListener('click', function(e) {
-    if (e.target === this) {
+// Fermer les modals en cliquant en dehors
+window.onclick = function(event) {
+    const roleModal = document.getElementById('roleModal');
+    const positionModal = document.getElementById('positionModal');
+    if (event.target == roleModal) {
         closeRoleModal();
     }
-});
+    if (event.target == positionModal) {
+        closePositionModal();
+    }
+}
 </script>
 @endsection

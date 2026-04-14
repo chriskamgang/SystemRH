@@ -65,6 +65,11 @@
                     @endif
 
                     <div>
+                        <p class="text-sm text-gray-600">Poste</p>
+                        <p class="font-medium">{{ $employee->jobPosition->name ?? 'Non défini' }}</p>
+                    </div>
+
+                    <div>
                         <p class="text-sm text-gray-600">Rôle</p>
                         <p class="font-medium">{{ $employee->role->display_name }}</p>
                     </div>
@@ -218,6 +223,82 @@
                         <div class="text-center py-12 text-gray-400">
                             <i class="fas fa-clock text-6xl mb-4"></i>
                             <p class="text-lg">Aucune présence enregistrée</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Documents & Pièces Jointes -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b flex justify-between items-center">
+                    <h3 class="text-lg font-semibold">Documents & Pièces Jointes</h3>
+                    <span class="text-sm font-medium {{ $employee->documents->count() >= 10 ? 'text-red-600' : 'text-gray-500' }}">
+                        {{ $employee->documents->count() }} / 10 documents
+                    </span>
+                </div>
+                <div class="p-6">
+                    <!-- Formulaire d'upload -->
+                    @if($employee->documents->count() < 10)
+                    <form action="{{ route('admin.employees.documents.store', $employee->id) }}" method="POST" enctype="multipart/form-data" class="mb-8 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                        @csrf
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Titre du document</label>
+                                <input type="text" name="title" required placeholder="ex: CNI, Diplôme Master..." 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Fichier (PDF, Image, Word, Excel - Max 5Mo)</label>
+                                <input type="file" name="document" required 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition">
+                                <i class="fas fa-upload mr-2"></i> Ajouter le document
+                            </button>
+                        </div>
+                    </form>
+                    @else
+                    <div class="mb-8 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 text-center">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        La limite de 10 documents a été atteinte pour cet employé.
+                    </div>
+                    @endif
+
+                    <!-- Liste des documents -->
+                    @if($employee->documents->count() > 0)
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @foreach($employee->documents as $doc)
+                                <div class="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 group">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded group-hover:bg-white transition">
+                                            <i class="fas {{ $doc->icon }} text-xl"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">{{ $doc->title }}</p>
+                                            <p class="text-xs text-gray-500 uppercase">{{ $doc->formatted_size }} • {{ $doc->created_at->format('d/m/Y') }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <a href="{{ route('admin.employees.documents.download', $doc->id) }}" class="p-2 text-blue-600 hover:bg-blue-50 rounded transition" title="Télécharger">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <form action="{{ route('admin.employees.documents.destroy', $doc->id) }}" method="POST" onsubmit="return confirm('Supprimer ce document ?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded transition" title="Supprimer">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-8 text-gray-400">
+                            <i class="fas fa-folder-open text-5xl mb-3"></i>
+                            <p>Aucun document attaché pour le moment</p>
                         </div>
                     @endif
                 </div>

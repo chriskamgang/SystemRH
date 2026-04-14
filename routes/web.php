@@ -39,6 +39,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('employees/{id}/reset-device', [EmployeeController::class, 'resetDevice'])->name('employees.reset-device');
     Route::post('employees/clear-device-locks', [EmployeeController::class, 'clearDeviceLocks'])->name('employees.clear-device-locks');
 
+    // Employee Documents
+    Route::post('employees/{user}/documents', [App\Http\Controllers\Admin\EmployeeDocumentController::class, 'store'])->name('employees.documents.store');
+    Route::get('documents/{document}/download', [App\Http\Controllers\Admin\EmployeeDocumentController::class, 'download'])->name('employees.documents.download');
+    Route::delete('documents/{document}', [App\Http\Controllers\Admin\EmployeeDocumentController::class, 'destroy'])->name('employees.documents.destroy');
+
     // Import/Export Employees (ancien système global)
     Route::get('employees-import', [EmployeeController::class, 'showImportForm'])->name('employees.import-form');
     Route::post('employees-import', [EmployeeController::class, 'import'])->name('employees.import');
@@ -297,6 +302,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/settings/roles', [DashboardController::class, 'storeRole'])->name('settings.roles.store');
     Route::put('/settings/roles/{id}', [DashboardController::class, 'updateRole'])->name('settings.roles.update');
     Route::delete('/settings/roles/{id}', [DashboardController::class, 'deleteRole'])->name('settings.roles.delete');
+
+    // Job positions management in settings
+    Route::post('/settings/job-positions', [DashboardController::class, 'storeJobPosition'])->name('settings.job-positions.store');
+    Route::put('/settings/job-positions/{id}', [DashboardController::class, 'updateJobPosition'])->name('settings.job-positions.update');
+    Route::delete('/settings/job-positions/{id}', [DashboardController::class, 'deleteJobPosition'])->name('settings.job-positions.delete');
 
     // API endpoint for real-time map
     Route::get('/api/active-checkins', [DashboardController::class, 'activeCheckIns'])->name('api.active-checkins');

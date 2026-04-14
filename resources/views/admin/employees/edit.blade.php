@@ -243,6 +243,29 @@
                         </p>
                     </div>
 
+                    <!-- Poste occupé -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Poste occupé</label>
+                        <select
+                            name="job_position_id"
+                            id="job_position_id"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('job_position_id') border-red-500 @enderror"
+                        >
+                            <option value="">Sélectionner un poste</option>
+                            @foreach($jobPositions as $position)
+                                <option value="{{ $position->id }}" {{ old('job_position_id', $employee->job_position_id) == $position->id ? 'selected' : '' }}>
+                                    {{ $position->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('job_position_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                        <p class="text-xs text-gray-500 mt-1">
+                            La liste des postes est gérée dans les <a href="{{ route('admin.settings') }}" class="text-blue-600 hover:underline">Paramètres</a>
+                        </p>
+                    </div>
+
                     <!-- Salaire Mensuel (Personnel Permanent/Semi-Permanent) -->
                     <div id="monthly_salary_field" style="display: none;">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Salaire Mensuel (FCFA)</label>

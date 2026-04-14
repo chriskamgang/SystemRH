@@ -131,7 +131,8 @@ class EmployeeController extends Controller
     {
         $roles = Role::where('id', '!=', 1)->get();
         $campuses = Campus::all();
-        return view('admin.employees.create', compact('roles', 'campuses'));
+        $jobPositions = \App\Models\JobPosition::orderBy('name')->get();
+        return view('admin.employees.create', compact('roles', 'campuses', 'jobPositions'));
     }
 
     /**
@@ -149,6 +150,7 @@ class EmployeeController extends Controller
             'numero_compte' => 'nullable|string|max:255',
             'employee_type' => 'required|string',
             'role_id' => 'nullable|exists:roles,id',
+            'job_position_id' => 'nullable|exists:job_positions,id',
             'campuses' => 'nullable|array',
             'campuses.*' => 'exists:campuses,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -265,8 +267,9 @@ class EmployeeController extends Controller
         $employee = User::with('campuses')->findOrFail($id);
         $roles = Role::where('id', '!=', 1)->get();
         $campuses = Campus::all();
+        $jobPositions = \App\Models\JobPosition::orderBy('name')->get();
 
-        return view('admin.employees.edit', compact('employee', 'roles', 'campuses'));
+        return view('admin.employees.edit', compact('employee', 'roles', 'campuses', 'jobPositions'));
     }
 
     /**
@@ -291,6 +294,7 @@ class EmployeeController extends Controller
             'numero_compte' => 'nullable|string|max:255',
             'employee_type' => 'required|string',
             'role_id' => 'nullable|exists:roles,id',
+            'job_position_id' => 'nullable|exists:job_positions,id',
             'campuses' => 'nullable|array',
             'campuses.*' => 'exists:campuses,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',

@@ -36,6 +36,7 @@ class User extends Authenticatable
         'custom_end_time',
         'custom_late_tolerance',
         'department_id',
+        'job_position_id',
         'role_id',
         'is_active',
         'fcm_token',
@@ -85,6 +86,12 @@ class User extends Authenticatable
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    // Relation avec le Poste (Job Position)
+    public function jobPosition()
+    {
+        return $this->belongsTo(JobPosition::class, 'job_position_id');
     }
 
     // Relation many-to-many avec Campus
@@ -202,6 +209,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Task::class, 'task_user')
             ->withPivot('status', 'note', 'completed_at', 'penalty_amount', 'penalty_approved', 'penalty_approved_at', 'penalty_approved_by')
             ->withTimestamps();
+    }
+
+    // Documents & Pièces jointes
+    public function documents()
+    {
+        return $this->hasMany(EmployeeDocument::class);
     }
 
     /**

@@ -25,13 +25,21 @@ class TaskController extends Controller
         }
 
         if ($request->search) {
-            $query->where('title', 'like', "%{$request->search}%");
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('title', 'like', "%{$searchTerm}%")
+                  ->orWhereHas('users', function($uq) use ($searchTerm) {
+                      $uq->where('first_name', 'like', "%{$searchTerm}%")
+                         ->orWhere('last_name', 'like', "%{$searchTerm}%");
+                  });
+            });
         }
 
         $tasks = $query->paginate(20);
         $employees = User::where('role_id', '!=', 1)->orderBy('last_name')->get();
+        $jobPositions = \App\Models\JobPosition::orderBy('name')->get();
 
-        return view('admin.tasks.index', compact('tasks', 'employees'));
+        return view('admin.tasks.index', compact('tasks', 'employees', 'jobPositions'));
     }
 
     public function exportPdf(Request $request)
@@ -66,9 +74,24 @@ class TaskController extends Controller
             'priority' => 'required|in:low,medium,high',
             'start_date' => 'nullable|date',
             'due_date' => 'nullable|date|after_or_equal:start_date',
-            'user_ids' => 'required|array|min:1',
+            'user_ids' => 'nullable|array',
             'user_ids.*' => 'exists:users,id',
+            'job_position_id' => 'nullable|exists:job_positions,id',
         ]);
+
+        // Déterminer les utilisateurs finaux (individuels + ceux du poste)
+        $finalUserIds = $request->user_ids ?? [];
+        
+        if ($request->job_position_id) {
+            $positionUserIds = User::where('job_position_id', $request->job_position_id)
+                ->pluck('id')
+                ->toArray();
+            $finalUserIds = array_unique(array_merge($finalUserIds, $positionUserIds));
+        }
+
+        if (empty($finalUserIds)) {
+            return response()->json(['success' => false, 'message' => 'Veuillez sélectionner au moins un employé ou un poste.'], 422);
+        }
 
         $task = Task::create([
             'title' => $request->title,
@@ -79,12 +102,12 @@ class TaskController extends Controller
             'created_by' => auth()->id(),
         ]);
 
-        $task->users()->attach($request->user_ids);
+        $task->users()->attach($finalUserIds);
 
         // Envoyer une notification push aux employés assignés
         try {
             $pushService = new PushNotificationService();
-            $assignedUsers = User::whereIn('id', $request->user_ids)->get();
+            $assignedUsers = User::whereIn('id', $finalUserIds)->get();
             $pushService->sendToMultipleUsers(
                 $assignedUsers,
                 'Nouvelle tâche assignée',
@@ -97,7 +120,6 @@ class TaskController extends Controller
                 'task'
             );
         } catch (\Exception $e) {
-            // Ne pas bloquer la création si la notification échoue
             \Log::warning('Notification tâche échouée: ' . $e->getMessage());
         }
 
@@ -119,9 +141,24 @@ class TaskController extends Controller
             'status' => 'required|in:pending,in_progress,completed,cancelled',
             'start_date' => 'nullable|date',
             'due_date' => 'nullable|date|after_or_equal:start_date',
-            'user_ids' => 'required|array|min:1',
+            'user_ids' => 'nullable|array',
             'user_ids.*' => 'exists:users,id',
+            'job_position_id' => 'nullable|exists:job_positions,id',
         ]);
+
+        // Déterminer les utilisateurs finaux
+        $finalUserIds = $request->user_ids ?? [];
+        
+        if ($request->job_position_id) {
+            $positionUserIds = User::where('job_position_id', $request->job_position_id)
+                ->pluck('id')
+                ->toArray();
+            $finalUserIds = array_unique(array_merge($finalUserIds, $positionUserIds));
+        }
+
+        if (empty($finalUserIds)) {
+            return response()->json(['success' => false, 'message' => 'Veuillez sélectionner au moins un employé ou un poste.'], 422);
+        }
 
         $task = Task::findOrFail($id);
         $task->update([
@@ -133,7 +170,7 @@ class TaskController extends Controller
             'due_date' => $request->due_date,
         ]);
 
-        $task->users()->sync($request->user_ids);
+        $task->users()->sync($finalUserIds);
 
         return response()->json(['success' => true, 'message' => 'Tâche mise à jour avec succès.']);
     }
