@@ -284,6 +284,32 @@
 
 @push('scripts')
 <script>
+    let userChoices;
+    let positionChoices;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialiser Choices.js pour les employés
+        const userSelect = document.getElementById('taskUsers');
+        userChoices = new Choices(userSelect, {
+            removeItemButton: true,
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Rechercher des employés...',
+            noResultsText: 'Aucun employé trouvé',
+            itemSelectText: 'Cliquer pour sélectionner',
+        });
+
+        // Initialiser Choices.js pour les postes
+        const positionSelect = document.getElementById('taskJobPosition');
+        positionChoices = new Choices(positionSelect, {
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Sélectionner un poste...',
+            noResultsText: 'Aucun poste trouvé',
+            itemSelectText: 'Cliquer pour sélectionner',
+        });
+    });
+
     function openCreateModal() {
         document.getElementById('modalTitle').textContent = 'Nouvelle Tâche';
         document.getElementById('taskId').value = '';
@@ -292,11 +318,11 @@
         document.getElementById('taskPriority').value = 'medium';
         document.getElementById('taskStartDate').value = '';
         document.getElementById('taskDueDate').value = '';
-        document.getElementById('taskJobPosition').value = '';
         document.getElementById('statusField').classList.add('hidden');
 
-        const select = document.getElementById('taskUsers');
-        Array.from(select.options).forEach(opt => opt.selected = false);
+        // Reset Choices.js
+        if (userChoices) userChoices.removeActiveItems();
+        if (positionChoices) positionChoices.setChoiceByValue('');
 
         document.getElementById('taskModal').classList.remove('hidden');
     }
@@ -317,14 +343,15 @@
             document.getElementById('taskStatus').value = task.status;
             document.getElementById('taskStartDate').value = task.start_date ? task.start_date.substring(0, 10) : '';
             document.getElementById('taskDueDate').value = task.due_date ? task.due_date.substring(0, 10) : '';
-            document.getElementById('taskJobPosition').value = ''; // On ne pré-remplit pas le poste lors de l'édit
             document.getElementById('statusField').classList.remove('hidden');
 
-            const select = document.getElementById('taskUsers');
-            const assignedIds = task.users.map(u => u.id.toString());
-            Array.from(select.options).forEach(opt => {
-                opt.selected = assignedIds.includes(opt.value);
-            });
+            // Reset et pre-selectionner dans Choices.js
+            if (positionChoices) positionChoices.setChoiceByValue('');
+            if (userChoices) {
+                userChoices.removeActiveItems();
+                const assignedIds = task.users.map(u => u.id.toString());
+                userChoices.setChoiceByValue(assignedIds);
+            }
 
             document.getElementById('taskModal').classList.remove('hidden');
         } catch (e) {
@@ -466,8 +493,9 @@
         const taskId = document.getElementById('taskId').value;
         const isEdit = taskId !== '';
 
-        const selectedUsers = Array.from(document.getElementById('taskUsers').selectedOptions).map(opt => parseInt(opt.value));
-        const jobPositionId = document.getElementById('taskJobPosition').value;
+        // Récupérer les valeurs depuis Choices.js
+        const selectedUsers = userChoices ? userChoices.getValue(true).map(v => parseInt(v)) : [];
+        const jobPositionId = positionChoices ? positionChoices.getValue(true) : '';
 
         if (selectedUsers.length === 0 && jobPositionId === '') {
             alert('Veuillez sélectionner au moins un employé ou un poste.');

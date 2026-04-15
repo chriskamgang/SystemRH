@@ -32,7 +32,45 @@ class SalaryAdvanceController extends Controller
         $requests = $query->paginate(20);
         $pendingCount = SalaryAdvanceRequest::pending()->count();
 
-        return view('admin.salary-advances.index', compact('requests', 'pendingCount'));
+        // Récupérer la liste des employés actifs pour le modal de création
+        $employees = User::where('is_active', true)
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'employee_id']);
+
+        return view('admin.salary-advances.index', compact('requests', 'pendingCount', 'employees'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'amount' => 'required|numeric|min:1000',
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        // Vérifier s'il y a déjà une demande en attente pour cet utilisateur
+        $pending = SalaryAdvanceRequest::where('user_id', $request->user_id)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($pending) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cet employé a déjà une demande en attente.'
+            ], 422);
+        }
+
+        $advance = SalaryAdvanceRequest::create([
+            'user_id' => $request->user_id,
+            'amount' => $request->amount,
+            'reason' => $request->reason,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Demande d\'avance créée avec succès.',
+        ]);
     }
 
     public function exportPdf(Request $request)

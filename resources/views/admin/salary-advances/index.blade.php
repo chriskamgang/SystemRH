@@ -11,6 +11,9 @@
             <p class="text-gray-600 mt-1">Gérez les demandes d'avance des employés</p>
         </div>
         <div class="flex gap-3 items-center">
+            <button onclick="openCreateModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-plus mr-2"></i> Nouvelle Demande
+            </button>
             <a href="{{ route('admin.salary-advances.export-pdf', request()->query()) }}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-semibold">
                 <i class="fas fa-file-pdf mr-2"></i> Télécharger PDF
             </a>
@@ -176,11 +179,96 @@
         </div>
     </div>
 </div>
+<!-- Modal Nouvelle Demande -->
+<div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Nouvelle demande d'avance</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Employé *</label>
+                    <select id="createUserId" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 select2">
+                        <option value="">Sélectionner un employé</option>
+                        @foreach($employees as $emp)
+                            <option value="{{ $emp->id }}">{{ $emp->last_name }} {{ $emp->first_name }} ({{ $emp->employee_id }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Montant (FCFA) *</label>
+                    <input type="number" id="createAmount" min="1000" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: 50000">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Motif de la demande *</label>
+                    <textarea id="createReason" rows="3" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Expliquez la raison..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button onclick="closeCreateModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Annuler</button>
+                <button onclick="submitCreate()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Créer la demande</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
     let currentRequestId = null;
+
+    function openCreateModal() {
+        document.getElementById('createUserId').value = '';
+        document.getElementById('createAmount').value = '';
+        document.getElementById('createReason').value = '';
+        document.getElementById('createModal').classList.remove('hidden');
+    }
+
+    function closeCreateModal() {
+        document.getElementById('createModal').classList.add('hidden');
+    }
+
+    async function submitCreate() {
+        const userId = document.getElementById('createUserId').value;
+        const amount = document.getElementById('createAmount').value;
+        const reason = document.getElementById('createReason').value;
+
+        if (!userId || !amount || !reason) {
+            alert('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`{{ url('admin/salary-advances') }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    amount: parseInt(amount),
+                    reason: reason,
+                }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert(data.message || 'Erreur lors de la création');
+            }
+        } catch (e) {
+            alert('Erreur réseau.');
+        }
+    }
 
     function openApproveModal(id, name, amount) {
         currentRequestId = id;

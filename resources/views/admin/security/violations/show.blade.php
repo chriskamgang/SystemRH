@@ -1,4 +1,4 @@
-@extends('admin.layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Détails Violation #' . $violation->id)
 
@@ -55,7 +55,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-500">Statut du compte</p>
-                    @if($violation->user->account_status === 'suspended')
+                    @if(!$violation->user->is_active)
                         <span class="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
                             <i class="fas fa-ban mr-1"></i>SUSPENDU
                         </span>
@@ -70,7 +70,7 @@
                 <div class="pt-4 border-t">
                     <form method="POST" action="{{ route('admin.security.users.toggle-status', $violation->user->id) }}">
                         @csrf
-                        @if($violation->user->account_status === 'suspended')
+                        @if(!$violation->user->is_active)
                             <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
                                 <i class="fas fa-check-circle mr-2"></i>Réactiver le Compte
                             </button>

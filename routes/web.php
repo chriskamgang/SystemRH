@@ -254,6 +254,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::prefix('salary-advances')->name('salary-advances.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'index'])->name('index');
         Route::get('/export-pdf', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'exportPdf'])->name('export-pdf');
+        Route::post('/', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'store'])->name('store');
         Route::post('/{id}/approve', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'approve'])->name('approve');
         Route::post('/{id}/reject', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'reject'])->name('reject');
     });

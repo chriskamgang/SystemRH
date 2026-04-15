@@ -69,9 +69,9 @@ class SecurityController extends Controller
 
         $user = User::find($userId);
 
-        if ($violationsCount >= 3 && $user->account_status !== 'suspended') {
+        if ($violationsCount >= 3 && $user->is_active) {
             // Suspendre le compte après 3 violations
-            $user->update(['account_status' => 'suspended']);
+            $user->update(['is_active' => false]);
 
             Log::alert('User account suspended due to repeated security violations', [
                 'user_id' => $userId,
@@ -106,7 +106,7 @@ class SecurityController extends Controller
         $user = User::find($validated['user_id']);
 
         // Vérifier si compte suspendu
-        if ($user->account_status === 'suspended') {
+        if (!$user->is_active) {
             return response()->json([
                 'allowed' => false,
                 'reason' => 'account_suspended',

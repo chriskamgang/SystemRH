@@ -47,7 +47,7 @@ class SecurityViolationController extends Controller
             'pending' => SecurityViolation::where('status', 'pending')->count(),
             'high_severity' => SecurityViolation::whereIn('severity', ['high', 'critical'])->count(),
             'today' => SecurityViolation::whereDate('created_at', today())->count(),
-            'suspended_users' => User::where('account_status', 'suspended')->count(),
+            'suspended_users' => User::where('is_active', false)->count(),
         ];
 
         // Liste des utilisateurs pour le filtre
@@ -90,7 +90,7 @@ class SecurityViolationController extends Controller
             'pending' => SecurityViolation::where('status', 'pending')->count(),
             'high_severity' => SecurityViolation::whereIn('severity', ['high', 'critical'])->count(),
             'today' => SecurityViolation::whereDate('created_at', today())->count(),
-            'suspended_users' => User::where('account_status', 'suspended')->count(),
+            'suspended_users' => User::where('is_active', false)->count(),
         ];
 
         $filters = !empty($filterParts) ? implode(' | ', $filterParts) : null;
@@ -144,7 +144,7 @@ class SecurityViolationController extends Controller
 
         // Actions supplémentaires selon le choix
         if ($request->action === 'suspend') {
-            $violation->user->update(['account_status' => 'suspended']);
+            $violation->user->update(['is_active' => false]);
             $violation->update(['status' => 'action_taken']);
             $message = 'Violation révisée et utilisateur suspendu';
         } elseif ($request->action === 'dismiss') {
@@ -165,11 +165,11 @@ class SecurityViolationController extends Controller
     {
         $user = User::findOrFail($userId);
 
-        if ($user->account_status === 'suspended') {
-            $user->update(['account_status' => 'active']);
+        if (!$user->is_active) {
+            $user->update(['is_active' => true]);
             $message = 'Compte réactivé avec succès';
         } else {
-            $user->update(['account_status' => 'suspended']);
+            $user->update(['is_active' => false]);
             $message = 'Compte suspendu avec succès';
         }
 
@@ -189,7 +189,7 @@ class SecurityViolationController extends Controller
             'this_month' => SecurityViolation::where('created_at', '>=', now()->startOfMonth())->count(),
             'pending' => SecurityViolation::where('status', 'pending')->count(),
             'critical' => SecurityViolation::where('severity', 'critical')->count(),
-            'suspended_users' => User::where('account_status', 'suspended')->count(),
+            'suspended_users' => User::where('is_active', false)->count(),
         ];
 
         // Violations récentes à haute sévérité
