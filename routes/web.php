@@ -259,6 +259,56 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/{id}/reject', [App\Http\Controllers\Admin\SalaryAdvanceController::class, 'reject'])->name('reject');
     });
 
+    // Gestion des Étudiants
+    Route::prefix('students')->name('students.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\StudentController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\StudentController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\StudentController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [App\Http\Controllers\Admin\StudentController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [App\Http\Controllers\Admin\StudentController::class, 'update'])->name('update');
+        Route::get('/download-template', [App\Http\Controllers\Admin\StudentController::class, 'downloadTemplate'])->name('download-template');
+        Route::post('/import', [App\Http\Controllers\Admin\StudentController::class, 'import'])->name('import');
+        Route::post('/assign-campuses-bulk', [App\Http\Controllers\Admin\StudentController::class, 'assignCampusesBulk'])->name('assign-campuses-bulk');
+    });
+
+    // Gestion des Niveaux et Spécialités
+    Route::prefix('levels')->name('levels.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\LevelController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\Admin\LevelController::class, 'store'])->name('store');
+        Route::put('/{level}', [App\Http\Controllers\Admin\LevelController::class, 'update'])->name('update');
+        Route::delete('/{level}', [App\Http\Controllers\Admin\LevelController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('specialties')->name('specialties.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\SpecialtyController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\Admin\SpecialtyController::class, 'store'])->name('store');
+        Route::put('/{specialty}', [App\Http\Controllers\Admin\SpecialtyController::class, 'update'])->name('update');
+        Route::delete('/{specialty}', [App\Http\Controllers\Admin\SpecialtyController::class, 'destroy'])->name('destroy');
+    });
+
+    // Gestion des Plaintes (Complaints)
+    Route::prefix('complaints')->name('complaints.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ComplaintController::class, 'index'])->name('index');
+        Route::get('/{id}', [App\Http\Controllers\Admin\ComplaintController::class, 'show'])->name('show');
+        Route::post('/{id}/respond', [App\Http\Controllers\Admin\ComplaintController::class, 'respond'])->name('respond');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\ComplaintController::class, 'destroy'])->name('destroy');
+    });
+
+    // Gestion des Résultats Académiques
+    Route::prefix('results')->name('results.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\AcademicResultController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\AcademicResultController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\AcademicResultController::class, 'store'])->name('store');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\AcademicResultController::class, 'destroy'])->name('destroy');
+    });
+
+    // Gestion des Moratoires
+    Route::prefix('moratoriums')->name('moratoriums.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\MoratoriumController::class, 'index'])->name('index');
+        Route::post('/{id}/approve', [App\Http\Controllers\Admin\MoratoriumController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [App\Http\Controllers\Admin\MoratoriumController::class, 'reject'])->name('reject');
+    });
+
     // Portefeuilles (Wallets)
     Route::prefix('wallets')->name('wallets.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\WalletController::class, 'index'])->name('index');

@@ -137,6 +137,7 @@ class PayrollCalculator
         // ===== 1. PRÉSENCES GPS (Attendance) =====
         $attendances = Attendance::where('user_id', $user->id)
             ->whereBetween('timestamp', [$startDate, $endDate])
+            ->where('status', 'valid')
             ->orderBy('timestamp', 'asc')
             ->get();
 
@@ -155,69 +156,91 @@ class PayrollCalculator
         foreach ($groupedByDateShift as $dateShift => $shiftAttendances) {
             list($date, $shift) = explode('_', $dateShift);
 
-            $checkIn = $shiftAttendances->where('type', 'check-in')->first();
-            $checkOut = $shiftAttendances->where('type', 'check-out')->first();
+            // Trier les pointages de ce shift par ordre chronologique
+            $sortedAttendances = $shiftAttendances->sortBy('timestamp');
+            
+            $currentCheckIn = null;
+            $shiftTotalMinutes = 0;
+            $isFirstCheckInOfShift = true;
 
-            if ($checkIn) {
-                // Récupérer l'heure de début normale et la limite de retard (ex: 08:15)
-                $morningStart = Setting::get('morning_start_time', '08:15');
-                $workStart = $checkIn->timestamp->copy()->setTime(8, 0, 0);
-                $lateThreshold = $checkIn->timestamp->copy()->setTimeFrom(Carbon::parse($morningStart));
+            foreach ($sortedAttendances as $attendance) {
+                if ($attendance->type === 'check-in') {
+                    // Si on a déjà un check-in sans checkout, on ferme virtuellement la session précédente ?
+                    // Normalement l'app empêche cela, mais par sécurité :
+                    if ($currentCheckIn) {
+                        // On ne compte rien pour le check-in précédent orphelin ici, 
+                        // ou on pourrait compter jusqu'au nouveau check-in.
+                    }
+                    $currentCheckIn = $attendance;
 
-                $endHour = 17; $endMin = 0;
+                    // Gérer les retards
+                    if ($attendance->is_late && $attendance->late_minutes > 0) {
+                        if ($attendance->is_travel_late) {
+                            // Toujours compter les retards de trajet (entre campus)
+                            $totalTravelLateMinutes += $attendance->late_minutes;
+                        } elseif ($isFirstCheckInOfShift) {
+                            // Ne compter le retard "normal" que sur le PREMIER pointage du shift (ex: 8h15)
+                            $totalLateMinutes += $attendance->late_minutes;
+                        }
+                    }
+                    $isFirstCheckInOfShift = false;
 
-                // Si le check-in est en soirée (après 17h) ou shift evening, étendre à 21:30
-                if ($shift === 'evening' || $checkIn->timestamp->format('H:i') >= '17:00') {
-                    $endHour = 21; $endMin = 30;
-                }
-                $workEnd = $checkIn->timestamp->copy()->setTime($endHour, $endMin, 0);
+                } elseif ($attendance->type === 'check-out' && $currentCheckIn) {
+                    // Calculer la durée de cette session
+                    $startTime = $currentCheckIn->timestamp;
+                    $endTime = $attendance->timestamp;
 
-                // NOUVELLE LOGIQUE : Si l'employé arrive avant la limite de retard (08:15),
-                // on lui fait cadeau des minutes et on considère qu'il a commencé à 08:00.
-                if ($checkIn->timestamp->lte($lateThreshold)) {
-                    $effectiveCheckIn = $workStart;
-                } else {
-                    $effectiveCheckIn = $checkIn->timestamp;
-                }
+                    // Logique de cadeau de minutes (08:00 vs 08:15) uniquement sur le 1er check-in du matin
+                    if ($currentCheckIn->shift === 'morning' && $startTime->format('H:i') <= Setting::get('morning_start_time', '08:15')) {
+                         $startTime = $startTime->copy()->setTime(8, 0, 0);
+                    }
 
-                if ($checkOut) {
-                    // Session complète : plafonner le check-out
-                    $effectiveCheckOut = $checkOut->timestamp->gt($workEnd) ? $workEnd : $checkOut->timestamp;
-                    $sessionMinutes = $effectiveCheckIn->diffInMinutes($effectiveCheckOut);
+                    // Plafonner la fin de journée
+                    $endHour = ($shift === 'evening' || $startTime->format('H:i') >= '17:00') ? 21 : 17;
+                    $endMin = ($shift === 'evening' || $startTime->format('H:i') >= '17:00') ? 30 : 0;
+                    $workEndLimit = $startTime->copy()->setTime($endHour, $endMin, 0);
+                    
+                    if ($endTime->gt($workEndLimit)) {
+                        $endTime = $workEndLimit;
+                    }
 
-                    // Soustraire la pause déjeuner
+                    $sessionMinutes = max(0, $startTime->diffInMinutes($endTime));
+                    
+                    // Soustraire la pause déjeuner si elle chevauche cette session spécifique
                     $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
-                        $effectiveCheckIn, $effectiveCheckOut, $user->employee_type
+                        $startTime, $endTime, $user->employee_type
                     );
                     $sessionMinutes -= $breakMinutes;
 
-                    $totalHoursWorked += max(0, $sessionMinutes / 60);
+                    $shiftTotalMinutes += max(0, $sessionMinutes);
                     $completedSessions++;
-                } else {
-                    // Session en cours (pas de checkout) : compter les heures progressivement
-                    $now = now();
-                    // Ne compter que si c'est aujourd'hui (session active)
-                    if (Carbon::parse($date)->isToday()) {
-                        $effectiveNow = $now->gt($workEnd) ? $workEnd : $now;
-                        $sessionMinutes = $effectiveCheckIn->diffInMinutes($effectiveNow);
-                        $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
-                            $effectiveCheckIn, $effectiveNow, $user->employee_type
-                        );
-                        $sessionMinutes -= $breakMinutes;
-                        $totalHoursWorked += max(0, $sessionMinutes / 60);
-                    }
-                    $daysWithoutCheckout++;
-                }
-
-                // Compter les retards (séparer retards normaux et retards de trajet)
-                if ($checkIn->is_late && $checkIn->late_minutes > 0) {
-                    if ($checkIn->is_travel_late) {
-                        $totalTravelLateMinutes += $checkIn->late_minutes;
-                    } else {
-                        $totalLateMinutes += $checkIn->late_minutes;
-                    }
+                    $currentCheckIn = null; // Session terminée
                 }
             }
+
+            // Si session encore ouverte à la fin du shift (pas de checkout)
+            if ($currentCheckIn) {
+                $now = now();
+                if ($currentCheckIn->timestamp->isToday()) {
+                    $startTime = $currentCheckIn->timestamp;
+                    // Limite du shift
+                    $endHour = ($shift === 'evening' || $startTime->format('H:i') >= '17:00') ? 21 : 17;
+                    $endMin = ($shift === 'evening' || $startTime->format('H:i') >= '17:00') ? 30 : 0;
+                    $workEndLimit = $startTime->copy()->setTime($endHour, $endMin, 0);
+                    
+                    $endTime = $now->gt($workEndLimit) ? $workEndLimit : $now;
+                    
+                    $sessionMinutes = max(0, $startTime->diffInMinutes($endTime));
+                    $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                        $startTime, $endTime, $user->employee_type
+                    );
+                    $sessionMinutes -= $breakMinutes;
+                    $shiftTotalMinutes += max(0, $sessionMinutes);
+                }
+                $daysWithoutCheckout++;
+            }
+
+            $totalHoursWorked += ($shiftTotalMinutes / 60);
         }
 
         // ===== 2. PRÉSENCES MANUELLES (ManualAttendance) =====
@@ -493,18 +516,27 @@ class PayrollCalculator
             foreach ($groupedByDateShift as $dateShift => $shiftAttendances) {
                 list($date, $shift) = explode('_', $dateShift);
 
-                $checkIn = $shiftAttendances->where('type', 'check-in')->first();
-                $checkOut = $shiftAttendances->where('type', 'check-out')->first();
+                $sortedAttendances = $shiftAttendances->sortBy('timestamp');
+                $currentCheckIn = null;
 
-                if ($checkIn && $checkOut) {
-                    $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
-                    $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
-                        $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
-                    );
-                    $hoursWorked -= ($breakMinutes / 60);
-                    $ueHours += max(0, $hoursWorked);
-                    $daysWorked += 0.5;
-                } elseif ($checkIn) {
+                foreach ($sortedAttendances as $attendance) {
+                    if ($attendance->type === 'check-in') {
+                        $currentCheckIn = $attendance;
+                    } elseif ($attendance->type === 'check-out' && $currentCheckIn) {
+                        $hoursWorked = $currentCheckIn->timestamp->diffInHours($attendance->timestamp, true);
+                        $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                            $currentCheckIn->timestamp, $attendance->timestamp, $user->employee_type
+                        );
+                        $hoursWorked -= ($breakMinutes / 60);
+                        $ueHours += max(0, $hoursWorked);
+                        $daysWorked += 0.5; // Compter comme demi-session
+                        $currentCheckIn = null;
+                    }
+                }
+
+                // Gérer le cas sans checkout (seulement si c'est aujourd'hui ou par défaut selon la politique)
+                if ($currentCheckIn) {
+                    // Logique par défaut pour vacataires sans checkout (ex: forfais de session)
                     $ueHours += ($shift === 'morning') ? 8 : 3.5;
                     $daysWorked += 0.5;
                 }
@@ -563,18 +595,25 @@ class PayrollCalculator
             foreach ($groupedGeneric as $dateShift => $shiftAttendances) {
                 list($date, $shift) = explode('_', $dateShift);
 
-                $checkIn = $shiftAttendances->where('type', 'check-in')->first();
-                $checkOut = $shiftAttendances->where('type', 'check-out')->first();
+                $sortedAttendances = $shiftAttendances->sortBy('timestamp');
+                $currentCheckIn = null;
 
-                if ($checkIn && $checkOut) {
-                    $hoursWorked = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
-                    $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
-                        $checkIn->timestamp, $checkOut->timestamp, $user->employee_type
-                    );
-                    $hoursWorked -= ($breakMinutes / 60);
-                    $genericHours += max(0, $hoursWorked);
-                    $daysWorked += 0.5;
-                } elseif ($checkIn) {
+                foreach ($sortedAttendances as $attendance) {
+                    if ($attendance->type === 'check-in') {
+                        $currentCheckIn = $attendance;
+                    } elseif ($attendance->type === 'check-out' && $currentCheckIn) {
+                        $hoursWorked = $currentCheckIn->timestamp->diffInHours($attendance->timestamp, true);
+                        $breakMinutes = \App\Models\NotificationSetting::calculateBreakOverlapMinutes(
+                            $currentCheckIn->timestamp, $attendance->timestamp, $user->employee_type
+                        );
+                        $hoursWorked -= ($breakMinutes / 60);
+                        $genericHours += max(0, $hoursWorked);
+                        $daysWorked += 0.5;
+                        $currentCheckIn = null;
+                    }
+                }
+
+                if ($currentCheckIn) {
                     $genericHours += ($shift === 'morning') ? 8 : 3.5;
                     $daysWorked += 0.5;
                 }

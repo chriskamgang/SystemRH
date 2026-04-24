@@ -30,6 +30,8 @@ class User extends Authenticatable
         'monthly_salary',
         'photo',
         'employee_type',
+        'specialite',
+        'niveau',
         'volume_horaire_hebdomadaire',
         'jours_travail',
         'custom_start_time',
@@ -217,6 +219,30 @@ class User extends Authenticatable
         return $this->hasMany(EmployeeDocument::class);
     }
 
+    // Plaintes (Complaints)
+    public function complaints()
+    {
+        return $this->hasMany(Complaint::class);
+    }
+
+    // Résultats Académiques (Academic Results)
+    public function academicResults()
+    {
+        return $this->hasMany(AcademicResult::class);
+    }
+
+    // Relation avec le Niveau
+    public function level()
+    {
+        return $this->belongsTo(Level::class, 'niveau', 'name');
+    }
+
+    // Relation avec la Spécialité
+    public function specialty()
+    {
+        return $this->belongsTo(Specialty::class, 'specialite', 'name');
+    }
+
     /**
      * Accessors
      */
@@ -256,6 +282,11 @@ class User extends Authenticatable
     public function isTitulaire()
     {
         return $this->employee_type === 'enseignant_titulaire';
+    }
+
+    public function isStudent()
+    {
+        return $this->employee_type === 'etudiant';
     }
 
     public function getVolumeHoraireHebdomadaire()

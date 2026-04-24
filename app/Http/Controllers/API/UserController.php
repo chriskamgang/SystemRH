@@ -49,6 +49,7 @@ class UserController extends Controller
         $request->validate([
             'first_name' => 'nullable|string|max:100',
             'last_name' => 'nullable|string|max:100',
+            'email' => 'nullable|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -61,6 +62,10 @@ class UserController extends Controller
 
         if ($request->last_name) {
             $data['last_name'] = $request->last_name;
+        }
+
+        if ($request->email) {
+            $data['email'] = $request->email;
         }
 
         if ($request->phone) {

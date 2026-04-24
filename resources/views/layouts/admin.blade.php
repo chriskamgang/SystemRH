@@ -363,6 +363,43 @@
                     @endif
                 </a>
 
+                <!-- Gestion Académique -->
+                <div x-data="{ open: {{ request()->routeIs('admin.students.*') || request()->routeIs('admin.levels.*') || request()->routeIs('admin.specialties.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-3 mb-2 rounded-lg hover:bg-gray-800 {{ request()->routeIs('admin.students.*') || request()->routeIs('admin.levels.*') || request()->routeIs('admin.specialties.*') ? 'bg-gray-800' : '' }}">
+                        <div class="flex items-center">
+                            <i class="fas fa-graduation-cap w-5 text-indigo-400"></i>
+                            <span class="ml-3 font-semibold text-indigo-200">Gestion Académique</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="open" x-collapse class="pl-4 space-y-1 mb-4">
+                        <a href="{{ route('admin.levels.index') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.levels.*') ? 'bg-blue-600' : '' }}">
+                            <i class="fas fa-layer-group w-4"></i>
+                            <span class="ml-2">Niveaux</span>
+                        </a>
+                        <a href="{{ route('admin.specialties.index') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.specialties.*') ? 'bg-blue-600' : '' }}">
+                            <i class="fas fa-microscope w-4"></i>
+                            <span class="ml-2">Spécialités</span>
+                        </a>
+                        <a href="{{ route('admin.students.index') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-sm {{ request()->routeIs('admin.students.*') ? 'bg-blue-600' : '' }}">
+                            <i class="fas fa-user-graduate w-4"></i>
+                            <span class="ml-2">Étudiants</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Moratoires -->
+                <a href="{{ route('admin.moratoriums.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.moratoriums.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-file-invoice-dollar w-5 text-yellow-400"></i>
+                    <span class="ml-3">Moratoires</span>
+                    @php
+                        $pendingMoratoriums = \App\Models\MoratoriumRequest::where('status', 'pending')->count();
+                    @endphp
+                    @if($pendingMoratoriums > 0)
+                        <span class="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingMoratoriums }}</span>
+                    @endif
+                </a>
+
                 <!-- Portefeuilles -->
                 <a href="{{ route('admin.wallets.index') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.wallets.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-wallet w-5 text-green-400"></i>

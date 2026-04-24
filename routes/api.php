@@ -199,11 +199,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [\App\Http\Controllers\API\SalaryAdvanceController::class, 'store']);
     });
 
+    // ========== MORATOIRE (POUR ÉTUDIANTS) ==========
+    Route::prefix('moratoriums')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\MoratoriumController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\API\MoratoriumController::class, 'store']);
+    });
+
     // ========== TACHES (Tasks) ==========
     Route::prefix('tasks')->group(function () {
         Route::get('/', [\App\Http\Controllers\API\TaskController::class, 'index']);
         Route::get('/{id}', [\App\Http\Controllers\API\TaskController::class, 'show']);
         Route::put('/{id}/status', [\App\Http\Controllers\API\TaskController::class, 'updateStatus']);
+    });
+
+    // ========== PLAINTES (Complaints) ==========
+    Route::prefix('complaints')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\ComplaintController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\API\ComplaintController::class, 'store']);
+    });
+
+    // ========== RÉSULTATS (Academic Results) ==========
+    Route::prefix('results')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\ResultController::class, 'index']);
     });
 
     // Test route

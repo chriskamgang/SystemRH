@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\UniteEnseignement;
 use App\Models\User;
+use App\Models\Level;
+use App\Models\Specialty;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -87,8 +89,11 @@ class UniteEnseignementController extends Controller
             ->where('is_active', true)
             ->orderBy('first_name')
             ->get();
+            
+        $levels = \App\Models\Level::where('is_active', true)->orderBy('name')->get();
+        $specialties = \App\Models\Specialty::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.unites-enseignement.create', compact('vacataires', 'vacataireId'));
+        return view('admin.unites-enseignement.create', compact('vacataires', 'vacataireId', 'levels', 'specialties'));
     }
 
     /**
@@ -151,8 +156,10 @@ class UniteEnseignementController extends Controller
     public function edit($id)
     {
         $ue = UniteEnseignement::with('vacataire')->findOrFail($id);
+        $levels = \App\Models\Level::where('is_active', true)->orderBy('name')->get();
+        $specialties = \App\Models\Specialty::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.unites-enseignement.edit', compact('ue'));
+        return view('admin.unites-enseignement.edit', compact('ue', 'levels', 'specialties'));
     }
 
     /**
@@ -321,20 +328,9 @@ class UniteEnseignementController extends Controller
             ->orderBy('code_ue')
             ->paginate(50); // Augmenté à 50 pour meilleure UX
 
-        // Récupérer les valeurs uniques pour les filtres (OPTIMISÉ avec whereNotNull)
-        $specialites = UniteEnseignement::select('specialite')
-            ->whereNotNull('specialite')
-            ->where('specialite', '!=', '')
-            ->distinct()
-            ->limit(100)
-            ->pluck('specialite');
-
-        $niveaux = UniteEnseignement::select('niveau')
-            ->whereNotNull('niveau')
-            ->where('niveau', '!=', '')
-            ->distinct()
-            ->limit(100)
-            ->pluck('niveau');
+        // Utiliser les nouveaux modèles pour les filtres
+        $specialties_list = Specialty::where('is_active', true)->orderBy('name')->get();
+        $levels_list = Level::where('is_active', true)->orderBy('name')->get();
 
         $anneesAcademiques = UniteEnseignement::select('annee_academique')
             ->whereNotNull('annee_academique')
@@ -343,11 +339,16 @@ class UniteEnseignementController extends Controller
             ->limit(20)
             ->pluck('annee_academique');
 
+        $allEmployees = User::where('is_active', true)
+            ->orderBy('first_name')
+            ->get();
+
         return view('admin.unites-enseignement.catalog', compact(
             'unites',
-            'specialites',
-            'niveaux',
-            'anneesAcademiques'
+            'specialties_list',
+            'levels_list',
+            'anneesAcademiques',
+            'allEmployees'
         ));
     }
 
@@ -356,7 +357,9 @@ class UniteEnseignementController extends Controller
      */
     public function createStandalone()
     {
-        return view('admin.unites-enseignement.create-standalone');
+        $levels = \App\Models\Level::where('is_active', true)->orderBy('name')->get();
+        $specialties = \App\Models\Specialty::where('is_active', true)->orderBy('name')->get();
+        return view('admin.unites-enseignement.create-standalone', compact('levels', 'specialties'));
     }
 
     /**

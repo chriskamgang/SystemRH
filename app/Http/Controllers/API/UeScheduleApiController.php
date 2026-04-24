@@ -17,9 +17,18 @@ class UeScheduleApiController extends Controller
     public function monEmploi(Request $request)
     {
         $user = $request->user();
-        $ueIds = UniteEnseignement::where('enseignant_id', $user->id)
-            ->where('statut', 'activee')
-            ->pluck('id');
+        
+        if ($user->employee_type === 'etudiant') {
+            // Pour les étudiants, on cherche les UE de leur spécialité et niveau
+            $ueIds = UniteEnseignement::where('specialite', $user->specialite)
+                ->where('niveau', $user->niveau)
+                ->pluck('id');
+        } else {
+            // Pour les enseignants, on cherche leurs propres UE
+            $ueIds = UniteEnseignement::where('enseignant_id', $user->id)
+                ->where('statut', 'activee')
+                ->pluck('id');
+        }
 
         $schedules = UeSchedule::whereIn('unite_enseignement_id', $ueIds)
             ->where('is_active', true)
@@ -65,9 +74,15 @@ class UeScheduleApiController extends Controller
         $user = $request->user();
         $jourActuel = UeSchedule::getCurrentDayFr();
 
-        $ueIds = UniteEnseignement::where('enseignant_id', $user->id)
-            ->where('statut', 'activee')
-            ->pluck('id');
+        if ($user->employee_type === 'etudiant') {
+            $ueIds = UniteEnseignement::where('specialite', $user->specialite)
+                ->where('niveau', $user->niveau)
+                ->pluck('id');
+        } else {
+            $ueIds = UniteEnseignement::where('enseignant_id', $user->id)
+                ->where('statut', 'activee')
+                ->pluck('id');
+        }
 
         $schedules = UeSchedule::whereIn('unite_enseignement_id', $ueIds)
             ->where('is_active', true)

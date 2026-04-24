@@ -1,0 +1,79 @@
+<!-- Dashboard Layout -->
+<div class="min-h-screen flex bg-gray-50 font-sans text-gray-900">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 min-h-screen">
+        <div class="p-6 text-white font-bold text-xl tracking-wider">Attendance</div>
+        <nav class="mt-4">
+            <a href="#" class="block py-3 px-6 bg-blue-600 text-white">Dashboard</a>
+            <div class="px-6 py-2 text-xs font-semibold text-slate-500 uppercase mt-4">Gestion</div>
+            <a href="#" class="block py-2.5 px-6 hover:bg-slate-800 transition">Employés</a>
+            <a href="#" class="block py-2.5 px-6 hover:bg-slate-800 transition">Campus</a>
+            <a href="#" class="block py-2.5 px-6 hover:bg-slate-800 transition">Présences</a>
+            <div class="px-6 py-2 text-xs font-semibold text-slate-500 uppercase mt-4">Finances</div>
+            <a href="#" class="block py-2.5 px-6 hover:bg-slate-800 transition flex justify-between">
+                Moratoires <span class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">1</span>
+            </a>
+            <a href="#" class="block py-2.5 px-6 hover:bg-slate-800 transition">Rapport sur la paie</a>
+            <div class="px-6 py-2 text-xs font-semibold text-slate-500 uppercase mt-4">Système</div>
+            <a href="#" class="block py-2.5 px-6 hover:bg-slate-800 transition text-red-400">Sécurité Anti-Fraude</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+        <!-- Topbar -->
+        <header class="bg-white border-b border-gray-200 py-4 px-8 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">Tableau de Bord</h1>
+            <div class="flex items-center gap-4">
+                <input type="search" placeholder="Rechercher un employé..." class="bg-gray-100 border-none rounded-lg px-4 py-2 w-64 focus:ring-2 focus:ring-blue-500">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">A</div>
+                    <span class="text-sm font-medium">Admin Système</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Body -->
+        <div class="p-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold">Demandes de Moratoire</h2>
+                    <select class="border-gray-300 rounded-lg text-sm">
+                        <option>Tous les statuts</option>
+                    </select>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                            <tr>
+                                <th class="p-4">Date</th>
+                                <th class="p-4">Étudiant</th>
+                                <th class="p-4">Motivation</th>
+                                <th class="p-4">Statut</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr>
+                                <td class="p-4 text-sm text-gray-600">19/04/2026</td>
+                                <td class="p-4">
+                                    <div class="font-bold">Jean Etudiant</div>
+                                    <div class="text-xs text-gray-500">STUD001 • Info L3</div>
+                                </td>
+                                <td class="p-4 text-sm italic">"WIABDNEIJSA ANAO"</td>
+                                <td class="p-4">
+                                    <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-medium">En attente</span>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button class="text-green-600 hover:text-green-800 font-bold text-sm mr-4">Approuver</button>
+                                    <button class="text-red-600 hover:text-red-800 font-bold text-sm">Rejeter</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
