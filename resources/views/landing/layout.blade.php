@@ -162,7 +162,9 @@
 
             <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
                 <p>&copy; {{ date('Y') }} INSAM Presence. Tous droits réservés.</p>
-                <p class="text-sm mt-2">Développé avec ❤️ pour les établissements d'enseignement supérieur</p>
+                <p class="text-sm mt-2">
+                    <a href="{{ route('landing.privacy-policy') }}" class="text-gray-400 hover:text-white transition">Politique de confidentialité</a>
+                </p>
             </div>
         </div>
     </footer>

@@ -39,12 +39,12 @@ Route::get('/check-update', function (Request $request) {
     // Versions configurables — mettre à jour ici à chaque release
     $config = [
         'android' => [
-            'latest_version' => '2.1.0',
+            'latest_version' => '2.1.1',
             'min_version' => '2.0.2',       // Garder 2.0.2 tant que le nouvel APK n'est pas déployé
             'download_url' => url('/downloads/insam-presence.apk'),
         ],
         'ios' => [
-            'latest_version' => '2.1.0',
+            'latest_version' => '2.1.1',
             'min_version' => '2.0.2',
             'download_url' => '', // App Store URL quand disponible
         ],

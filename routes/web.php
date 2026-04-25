@@ -22,6 +22,7 @@ Route::get('/tarifs', [LandingController::class, 'pricing'])->name('landing.pric
 Route::get('/temoignages', [LandingController::class, 'testimonials'])->name('landing.testimonials');
 Route::get('/faq', [LandingController::class, 'faq'])->name('landing.faq');
 Route::get('/telecharger', [LandingController::class, 'download'])->name('landing.download');
+Route::get('/privacy-policy', [LandingController::class, 'privacyPolicy'])->name('landing.privacy-policy');
 Route::post('/telecharger/ios-beta', [LandingController::class, 'registerIosBeta'])->name('landing.ios-beta');
 
 // Authentication routes

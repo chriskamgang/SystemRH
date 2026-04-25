@@ -64,6 +64,14 @@ class LandingController extends Controller
     }
 
     /**
+     * Politique de confidentialité
+     */
+    public function privacyPolicy()
+    {
+        return view('landing.privacy-policy');
+    }
+
+    /**
      * Inscription beta iOS
      */
     public function registerIosBeta(Request $request)
