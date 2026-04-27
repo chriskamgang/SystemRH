@@ -20,6 +20,7 @@ class AutoCheckoutEndOfDay extends Command
         $openCheckIns = Attendance::where('type', 'check-in')
             ->where('status', 'valid')
             ->whereDate('timestamp', '<', today())
+            ->whereHas('user') // Ignorer les check-ins dont le user a été supprimé
             ->get()
             ->filter(function ($checkIn) {
                 return !Attendance::where('user_id', $checkIn->user_id)
