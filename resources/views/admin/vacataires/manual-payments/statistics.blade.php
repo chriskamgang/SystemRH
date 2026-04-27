@@ -10,7 +10,7 @@
         <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm opacity-90">Total Pay\u00e9 {{ now()->year }}</p>
+                    <p class="text-sm opacity-90">Total Payé {{ now()->year }}</p>
                     <p class="text-3xl font-bold mt-2">{{ number_format($paymentsParMois->sum(), 0, ',', ' ') }}</p>
                     <p class="text-xs opacity-75 mt-1">FCFA</p>
                 </div>
@@ -25,7 +25,7 @@
                 <div>
                     <p class="text-sm opacity-90">Vacataires Distincts</p>
                     <p class="text-3xl font-bold mt-2">{{ $topVacataires->count() }}</p>
-                    <p class="text-xs opacity-75 mt-1">Cette ann\u00e9e</p>
+                    <p class="text-xs opacity-75 mt-1">Cette année</p>
                 </div>
                 <div class="bg-white bg-opacity-20 rounded-full p-4">
                     <i class="fas fa-users text-4xl"></i>
@@ -49,9 +49,9 @@
         </div>
     </div>
 
-    <!-- Graphique: \u00c9volution des paiements par mois -->
+    <!-- Graphique: Évolution des paiements par mois -->
     <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-semibold mb-4">\u00c9volution des paiements par mois ({{ now()->year }})</h3>
+        <h3 class="text-lg font-semibold mb-4">Évolution des paiements par mois ({{ now()->year }})</h3>
         <canvas id="paymentsChart" height="80"></canvas>
     </div>
 
@@ -80,9 +80,9 @@
             </div>
         </div>
 
-        <!-- R\u00e9partition par d\u00e9partement -->
+        <!-- Répartition par département -->
         <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold mb-4">R\u00e9partition par d\u00e9partement</h3>
+            <h3 class="text-lg font-semibold mb-4">Répartition par département</h3>
             <canvas id="departmentChart" height="200"></canvas>
         </div>
     </div>
@@ -90,12 +90,12 @@
 
 @push('scripts')
 <script>
-// Donn\u00e9es pour le graphique d'\u00e9volution
+// Données pour le graphique d'évolution
 const paymentsData = @json($paymentsParMois);
-const months = ['Jan', 'F\u00e9v', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Ao\u00fb', 'Sep', 'Oct', 'Nov', 'D\u00e9c'];
+const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 const monthlyData = months.map((month, index) => paymentsData[index + 1] || 0);
 
-// Graphique d'\u00e9volution
+// Graphique d'évolution
 const ctx1 = document.getElementById('paymentsChart').getContext('2d');
 new Chart(ctx1, {
     type: 'line',
@@ -138,12 +138,12 @@ new Chart(ctx1, {
     }
 });
 
-// Donn\u00e9es pour le graphique par d\u00e9partement
+// Données pour le graphique par département
 const departmentData = @json($parDepartement);
-const deptLabels = departmentData.map(d => d.department?.name || 'Non assign\u00e9');
+const deptLabels = departmentData.map(d => d.department?.name || 'Non assigné');
 const deptValues = departmentData.map(d => d.total);
 
-// Graphique par d\u00e9partement
+// Graphique par département
 const ctx2 = document.getElementById('departmentChart').getContext('2d');
 new Chart(ctx2, {
     type: 'doughnut',

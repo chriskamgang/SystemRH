@@ -15,7 +15,7 @@
                 <i class="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
                 <div>
                     <p class="text-sm text-yellow-700">
-                        <strong>Attention:</strong> La modification de ce paiement recalculera les heures valid\u00e9es des unit\u00e9s d'enseignement concern\u00e9es.
+                        <strong>Attention:</strong> La modification de ce paiement recalculera les heures validées des unités d'enseignement concernées.
                     </p>
                 </div>
             </div>
@@ -45,7 +45,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Ann\u00e9e <span class="text-red-500">*</span>
+                        Année <span class="text-red-500">*</span>
                     </label>
                     <select name="year" x-model="year" class="w-full border-gray-300 rounded-lg" required>
                         @foreach($years as $y)
@@ -58,14 +58,14 @@
 
         <!-- Saisie des heures par UE -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-lg font-semibold mb-4">Heures par mati\u00e8re (UE)</h2>
+            <h2 class="text-lg font-semibold mb-4">Heures par matière (UE)</h2>
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code UE</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mati\u00e8re</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Matière</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vol. Total</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures ce mois <span class="text-red-500">*</span></th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
@@ -117,7 +117,7 @@
             </div>
         </div>
 
-        <!-- R\u00e9sum\u00e9 et actions -->
+        <!-- Résumé et actions -->
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex justify-between items-center">
                 <div>
@@ -174,7 +174,7 @@ function editPaymentForm() {
         },
 
         removeUE(index) {
-            if (confirm('Retirer cette mati\u00e8re du paiement ?')) {
+            if (confirm('Retirer cette matière du paiement ?')) {
                 this.ues.splice(index, 1);
                 this.calculateTotal();
             }

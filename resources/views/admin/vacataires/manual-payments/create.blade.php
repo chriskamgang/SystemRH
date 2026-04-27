@@ -10,7 +10,7 @@
 
         <!-- Étape 1: Sélection du vacataire et de la période -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-lg font-semibold mb-4">1. S\u00e9lection du vacataire et de la p\u00e9riode</h2>
+            <h2 class="text-lg font-semibold mb-4">1. Sélection du vacataire et de la période</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -45,10 +45,10 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Ann\u00e9e <span class="text-red-500">*</span>
+                        Année <span class="text-red-500">*</span>
                     </label>
                     <select name="year" x-model="year" class="w-full border-gray-300 rounded-lg" required>
-                        <option value="">-- Choisir une ann\u00e9e --</option>
+                        <option value="">-- Choisir une année --</option>
                         @foreach($years as $y)
                             <option value="{{ $y }}">{{ $y }}</option>
                         @endforeach
@@ -64,18 +64,18 @@
 
         <!-- Étape 2: Saisie des heures par UE -->
         <div x-show="ues.length > 0" class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-lg font-semibold mb-4">2. Saisie des heures par mati\u00e8re (UE)</h2>
+            <h2 class="text-lg font-semibold mb-4">2. Saisie des heures par matière (UE)</h2>
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code UE</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mati\u00e8re</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Matière</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Niveau</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Taux/h</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vol. Total</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">D\u00e9j\u00e0 Valid\u00e9</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Déjà Validé</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Restant</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures ce mois <span class="text-red-500">*</span></th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>

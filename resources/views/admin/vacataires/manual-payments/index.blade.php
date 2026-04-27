@@ -13,7 +13,7 @@
                     <i class="fas fa-coins text-3xl text-blue-500"></i>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">Total Pay\u00e9</p>
+                    <p class="text-sm font-medium text-gray-500">Total Payé</p>
                     <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_paye'], 0, ',', ' ') }}</p>
                     <p class="text-xs text-gray-500">FCFA</p>
                 </div>
@@ -28,7 +28,7 @@
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Vacataires</p>
                     <p class="text-2xl font-bold text-gray-900">{{ $stats['nb_vacataires'] }}</p>
-                    <p class="text-xs text-gray-500">Pay\u00e9s ce mois</p>
+                    <p class="text-xs text-gray-500">Payés ce mois</p>
                 </div>
             </div>
         </div>
@@ -76,7 +76,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Ann\u00e9e</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Année</label>
                 <select name="year" class="w-full border-gray-300 rounded-lg">
                     <option value="">Toutes</option>
                     @for($y = date('Y'); $y >= date('Y') - 2; $y--)
@@ -102,8 +102,8 @@
                 <select name="status" class="w-full border-gray-300 rounded-lg">
                     <option value="">Tous</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>En attente</option>
-                    <option value="validated" {{ request('status') == 'validated' ? 'selected' : '' }}>Valid\u00e9</option>
-                    <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Pay\u00e9</option>
+                    <option value="validated" {{ request('status') == 'validated' ? 'selected' : '' }}>Validé</option>
+                    <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Payé</option>
                 </select>
             </div>
 
@@ -112,7 +112,7 @@
                     <i class="fas fa-search mr-2"></i>Filtrer
                 </button>
                 <a href="{{ route('admin.vacataires.manual-payments.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
-                    <i class="fas fa-redo mr-2"></i>R\u00e9initialiser
+                    <i class="fas fa-redo mr-2"></i>Réinitialiser
                 </a>
             </div>
         </form>
@@ -131,7 +131,7 @@
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vacataire</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">P\u00e9riode</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Période</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">UE</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
@@ -164,9 +164,9 @@
                             @if($payment->status == 'pending')
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">En attente</span>
                             @elseif($payment->status == 'validated')
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Valid\u00e9</span>
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Validé</span>
                             @else
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Pay\u00e9</span>
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Payé</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
@@ -188,7 +188,7 @@
                 @empty
                     <tr>
                         <td colspan="8" class="px-6 py-4 text-center text-gray-500">
-                            Aucun paiement trouv\u00e9
+                            Aucun paiement trouvé
                         </td>
                     </tr>
                 @endforelse

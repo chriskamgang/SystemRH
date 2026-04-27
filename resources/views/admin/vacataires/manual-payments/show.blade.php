@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'D\u00e9tails du Paiement')
-@section('page-title', 'D\u00e9tails du Paiement Manuel')
+@section('title', 'Détails du Paiement')
+@section('page-title', 'Détails du Paiement Manuel')
 
 @section('content')
 <div class="max-w-6xl mx-auto space-y-6">
@@ -13,11 +13,11 @@
                 <p class="text-gray-600">{{ $payment->user->employee_id }}</p>
                 <p class="text-sm text-gray-500 mt-2">
                     <i class="fas fa-calendar mr-2"></i>
-                    P\u00e9riode: {{ \Carbon\Carbon::create()->month($payment->month)->translatedFormat('F') }} {{ $payment->year }}
+                    Période: {{ \Carbon\Carbon::create()->month($payment->month)->translatedFormat('F') }} {{ $payment->year }}
                 </p>
                 <p class="text-sm text-gray-500">
                     <i class="fas fa-clock mr-2"></i>
-                    Cr\u00e9\u00e9 le: {{ $payment->created_at->format('d/m/Y \u00e0 H:i') }}
+                    Créé le: {{ $payment->created_at->format('d/m/Y à H:i') }}
                 </p>
             </div>
 
@@ -28,11 +28,11 @@
                     </span>
                 @elseif($payment->status == 'validated')
                     <span class="px-4 py-2 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">
-                        <i class="fas fa-check mr-2"></i>Valid\u00e9
+                        <i class="fas fa-check mr-2"></i>Validé
                     </span>
                 @else
                     <span class="px-4 py-2 text-sm font-semibold rounded-full bg-green-100 text-green-800">
-                        <i class="fas fa-check-double mr-2"></i>Pay\u00e9
+                        <i class="fas fa-check-double mr-2"></i>Payé
                     </span>
                 @endif
 
@@ -140,10 +140,10 @@
         </div>
     @endif
 
-    <!-- D\u00e9tails par UE -->
+    <!-- Détails par UE -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="px-6 py-4 bg-gray-50 border-b">
-            <h3 class="text-lg font-semibold">D\u00e9tail par mati\u00e8re (UE)</h3>
+            <h3 class="text-lg font-semibold">Détail par matière (UE)</h3>
         </div>
 
         <div class="overflow-x-auto">
@@ -151,7 +151,7 @@
                 <thead class="bg-gray-100">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code UE</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mati\u00e8re</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Matière</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures Saisies</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Taux Horaire</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
@@ -200,7 +200,7 @@
             <h3 class="text-lg font-semibold mb-4">Notes</h3>
             <p class="text-gray-700 whitespace-pre-line">{{ $payment->notes }}</p>
         </div>
-    @endif>
+    @endif
 
     <!-- Historique -->
     <div class="bg-white rounded-lg shadow p-6">
@@ -208,13 +208,13 @@
         <div class="space-y-2 text-sm">
             <p>
                 <i class="fas fa-plus-circle text-green-500 mr-2"></i>
-                <strong>Cr\u00e9\u00e9 le:</strong> {{ $payment->created_at->format('d/m/Y \u00e0 H:i') }}
+                <strong>Créé le:</strong> {{ $payment->created_at->format('d/m/Y à H:i') }}
             </p>
 
             @if($payment->validated_at)
                 <p>
                     <i class="fas fa-check-circle text-blue-500 mr-2"></i>
-                    <strong>Valid\u00e9 le:</strong> {{ $payment->validated_at->format('d/m/Y \u00e0 H:i') }}
+                    <strong>Validé le:</strong> {{ $payment->validated_at->format('d/m/Y à H:i') }}
                     @if($payment->validatedBy)
                         par {{ $payment->validatedBy->full_name }}
                     @endif
@@ -224,13 +224,13 @@
             @if($payment->paid_at)
                 <p>
                     <i class="fas fa-money-check-alt text-green-500 mr-2"></i>
-                    <strong>Pay\u00e9 le:</strong> {{ $payment->paid_at->format('d/m/Y \u00e0 H:i') }}
+                    <strong>Payé le:</strong> {{ $payment->paid_at->format('d/m/Y à H:i') }}
                 </p>
             @endif
 
             <p>
                 <i class="fas fa-edit text-gray-500 mr-2"></i>
-                <strong>Derni\u00e8re modification:</strong> {{ $payment->updated_at->format('d/m/Y \u00e0 H:i') }}
+                <strong>Dernière modification:</strong> {{ $payment->updated_at->format('d/m/Y à H:i') }}
             </p>
         </div>
     </div>
@@ -238,7 +238,7 @@
     <!-- Actions -->
     <div class="flex justify-between">
         <a href="{{ route('admin.vacataires.manual-payments.index') }}" class="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
-            <i class="fas fa-arrow-left mr-2"></i>Retour \u00e0 la liste
+            <i class="fas fa-arrow-left mr-2"></i>Retour à la liste
         </a>
     </div>
 </div>
