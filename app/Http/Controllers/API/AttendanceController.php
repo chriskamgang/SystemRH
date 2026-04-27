@@ -527,28 +527,63 @@ class AttendanceController extends Controller
         $ueWarning = null;
 
         // Si le check-in a une UE associée (vacataire ou semi-permanent)
+        $scheduleCappedHours = null;
         if ($checkIn->unite_enseignement_id) {
             $ue = \App\Models\UniteEnseignement::find($checkIn->unite_enseignement_id);
 
             if ($ue) {
-                $heuresRestantes = $ue->heures_restantes;
+                // PLAFONNEMENT PAR CRENEAU: ne pas depasser la duree programmee
+                $dayMap = ['Monday' => 'lundi', 'Tuesday' => 'mardi', 'Wednesday' => 'mercredi',
+                           'Thursday' => 'jeudi', 'Friday' => 'vendredi', 'Saturday' => 'samedi', 'Sunday' => 'dimanche'];
+                $jourSemaine = $dayMap[$checkIn->timestamp->format('l')] ?? null;
 
-                // Si les heures de cette session dépassent les heures restantes
+                if ($jourSemaine) {
+                    $schedule = \App\Models\UeSchedule::where('unite_enseignement_id', $ue->id)
+                        ->where('jour_semaine', $jourSemaine)
+                        ->where('is_active', true)
+                        ->first();
+
+                    if ($schedule) {
+                        $scheduleDurationMinutes = Carbon::parse($schedule->heure_debut)
+                            ->diffInMinutes(Carbon::parse($schedule->heure_fin));
+                        $scheduleDurationHours = round($scheduleDurationMinutes / 60, 2);
+
+                        if ($sessionDurationHours > $scheduleDurationHours) {
+                            $isCapped = true;
+                            $scheduleCappedHours = $scheduleDurationHours;
+                            $nonCountedHours = round($sessionDurationHours - $scheduleDurationHours, 2);
+                            $sessionDurationMinutes = $scheduleDurationMinutes;
+                            $sessionDurationHours = $scheduleDurationHours;
+
+                            $ueWarning = [
+                                'message' => "Session plafonnee a {$scheduleDurationHours}h (duree programmee du cours).",
+                                'ue_nom' => $ue->nom_matiere,
+                                'duree_programmee' => $scheduleDurationHours,
+                                'heures_session_reelles' => round($sessionDurationMinutes / 60 + $nonCountedHours, 2),
+                                'heures_comptabilisees' => $scheduleDurationHours,
+                                'heures_non_comptabilisees' => $nonCountedHours,
+                            ];
+                        }
+                    }
+                }
+
+                // PLAFONNEMENT GLOBAL: ne pas depasser le volume horaire restant de l'UE
+                $heuresRestantes = $ue->heures_restantes;
                 if ($sessionDurationHours > $heuresRestantes) {
                     $isCapped = true;
                     $cappedHours = $heuresRestantes;
                     $nonCountedHours = round($sessionDurationHours - $heuresRestantes, 2);
+                    $sessionDurationMinutes = (int) ($heuresRestantes * 60);
+                    $sessionDurationHours = $heuresRestantes;
 
                     $ueWarning = [
-                        'message' => 'Attention: Les heures de cette session dépassent le volume horaire restant pour cette UE.',
+                        'message' => 'Attention: Les heures de cette session depassent le volume horaire restant pour cette UE.',
                         'ue_nom' => $ue->nom_matiere,
                         'volume_horaire_total' => $ue->volume_horaire_total,
                         'heures_deja_effectuees' => $ue->heures_effectuees,
                         'heures_restantes' => $heuresRestantes,
-                        'heures_session_reelles' => $sessionDurationHours,
                         'heures_comptabilisees' => $cappedHours,
                         'heures_non_comptabilisees' => $nonCountedHours,
-                        'explication' => "Les {$nonCountedHours}h supplémentaires ne seront pas payées car vous avez atteint le maximum autorisé de {$ue->volume_horaire_total}h pour cette UE.",
                     ];
                 }
             }

@@ -239,8 +239,33 @@
                                     @php
                                         $duration = $attendance->check_in_time->diff($attendance->check_out_time);
                                         $hours = $duration->h + ($duration->days * 24);
+                                        $minutes = $duration->i;
+
+                                        // Plafonnement par créneau pour les vacataires avec UE
+                                        $cappedBySchedule = false;
+                                        if ($attendance->unite_enseignement) {
+                                            $dayMap = ['Monday' => 'lundi', 'Tuesday' => 'mardi', 'Wednesday' => 'mercredi',
+                                                       'Thursday' => 'jeudi', 'Friday' => 'vendredi', 'Saturday' => 'samedi', 'Sunday' => 'dimanche'];
+                                            $jour = $dayMap[$attendance->check_in_time->format('l')] ?? null;
+                                            if ($jour) {
+                                                $sched = \App\Models\UeSchedule::where('unite_enseignement_id', $attendance->unite_enseignement->id)
+                                                    ->where('jour_semaine', $jour)->where('is_active', true)->first();
+                                                if ($sched) {
+                                                    $schedMins = \Carbon\Carbon::parse($sched->heure_debut)->diffInMinutes(\Carbon\Carbon::parse($sched->heure_fin));
+                                                    $actualMins = ($hours * 60) + $minutes;
+                                                    if ($actualMins > $schedMins) {
+                                                        $hours = intdiv($schedMins, 60);
+                                                        $minutes = $schedMins % 60;
+                                                        $cappedBySchedule = true;
+                                                    }
+                                                }
+                                            }
+                                        }
                                     @endphp
-                                    <div class="text-sm font-medium text-gray-900">{{ $hours }}h {{ $duration->i }}min</div>
+                                    <div class="text-sm font-medium {{ $cappedBySchedule ? 'text-blue-600' : 'text-gray-900' }}">{{ $hours }}h {{ $minutes }}min</div>
+                                    @if($cappedBySchedule)
+                                    <div class="text-xs text-blue-500">plafonne</div>
+                                    @endif
                                     @else
                                     <span class="text-xs text-gray-400">-</span>
                                     @endif

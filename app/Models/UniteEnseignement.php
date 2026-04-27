@@ -168,6 +168,9 @@ class UniteEnseignement extends Model
             ->orderBy('timestamp', 'asc')
             ->get();
 
+        $dayMap = ['Monday' => 'lundi', 'Tuesday' => 'mardi', 'Wednesday' => 'mercredi',
+                   'Thursday' => 'jeudi', 'Friday' => 'vendredi', 'Saturday' => 'samedi', 'Sunday' => 'dimanche'];
+
         foreach ($attendances as $checkIn) {
             // Trouver le check-out correspondant
             $checkOut = \App\Models\Attendance::where('user_id', $this->enseignant_id)
@@ -178,22 +181,34 @@ class UniteEnseignement extends Model
                 ->first();
 
             if ($checkOut) {
-                $sessionHours = $checkIn->timestamp->diffInHours($checkOut->timestamp, true);
+                $sessionHours = $checkIn->timestamp->diffInMinutes($checkOut->timestamp) / 60;
+
+                // PLAFONNEMENT PAR CRENEAU: si un emploi du temps existe, ne pas depasser la duree programmee
+                $jourSemaine = $dayMap[$checkIn->timestamp->format('l')] ?? null;
+                if ($jourSemaine) {
+                    $schedule = \App\Models\UeSchedule::where('unite_enseignement_id', $this->id)
+                        ->where('jour_semaine', $jourSemaine)
+                        ->where('is_active', true)
+                        ->first();
+
+                    if ($schedule) {
+                        $scheduleDuration = \Carbon\Carbon::parse($schedule->heure_debut)
+                            ->diffInMinutes(\Carbon\Carbon::parse($schedule->heure_fin)) / 60;
+                        $sessionHours = min($sessionHours, $scheduleDuration);
+                    }
+                }
 
                 // PLAFONNEMENT: Ne pas dépasser le volume horaire total
                 $heuresRestantes = $this->volume_horaire_total - $totalHours;
 
                 if ($heuresRestantes <= 0) {
-                    // On a déjà atteint le maximum, ne plus compter
                     break;
                 }
 
                 if ($sessionHours > $heuresRestantes) {
-                    // Cette session dépasse, on plafonne
                     $totalHours += $heuresRestantes;
-                    break; // On arrête de compter les sessions suivantes
+                    break;
                 } else {
-                    // Session normale, on compte tout
                     $totalHours += $sessionHours;
                 }
             }
