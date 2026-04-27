@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\Attendance;
-use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -16,10 +15,11 @@ class AutoCheckoutEndOfDay extends Command
     {
         $this->info('Recherche des check-ins ouverts...');
 
-        // Trouver tous les check-ins sans check-out (aujourd'hui et jours précédents)
+        // Trouver tous les check-ins sans check-out sur le MEME campus (jours passés)
+        // L'employé doit faire check-out sur le même campus où il a fait check-in
         $openCheckIns = Attendance::where('type', 'check-in')
             ->where('status', 'valid')
-            ->whereDate('timestamp', '<', today()) // Seulement les jours passés
+            ->whereDate('timestamp', '<', today())
             ->get()
             ->filter(function ($checkIn) {
                 return !Attendance::where('user_id', $checkIn->user_id)
@@ -41,7 +41,7 @@ class AutoCheckoutEndOfDay extends Command
             $endTime = $checkIn->shift === 'evening' ? '21:00:00' : '17:00:00';
             $checkoutTimestamp = Carbon::parse($checkIn->timestamp->toDateString() . ' ' . $endTime);
 
-            // Créer un auto-checkout
+            // Pas de check-out = demi-journée (4h comptabilisées)
             Attendance::create([
                 'user_id' => $checkIn->user_id,
                 'campus_id' => $checkIn->campus_id,
@@ -53,8 +53,8 @@ class AutoCheckoutEndOfDay extends Command
                 'longitude' => $checkIn->longitude,
                 'accuracy' => $checkIn->accuracy,
                 'is_half_day' => true,
-                'device_info' => ['auto_checkout' => true, 'reason' => 'Pas de check-out - demi-journée'],
-                'notes' => 'Auto-checkout: pas de check-out effectué, demi-journée comptabilisée',
+                'device_info' => ['auto_checkout' => true, 'reason' => 'Pas de check-out - demi-journee'],
+                'notes' => 'Auto-checkout: pas de check-out effectue, demi-journee comptabilisee',
                 'status' => 'valid',
             ]);
 
@@ -62,10 +62,10 @@ class AutoCheckoutEndOfDay extends Command
             $checkIn->update(['is_half_day' => true]);
 
             $count++;
-            $this->line("  → Auto-checkout pour {$checkIn->user->last_name} {$checkIn->user->first_name} du {$checkIn->timestamp->format('d/m/Y')}");
+            $this->line("  -> Auto-checkout pour {$checkIn->user->last_name} {$checkIn->user->first_name} du {$checkIn->timestamp->format('d/m/Y')}");
         }
 
-        $this->info("✓ {$count} check-in(s) clôturé(s) en demi-journée.");
+        $this->info("{$count} check-in(s) cloture(s) en demi-journee.");
         return 0;
     }
 }

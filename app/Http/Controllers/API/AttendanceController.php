@@ -268,18 +268,17 @@ class AttendanceController extends Controller
         $now = now();
         $shift = $this->detectShift($now);
 
-        // Vérifier s'il y a déjà un check-in actif sur CE campus pour cette plage
-        // Tous les types d'employés peuvent se déplacer entre campus
-        $todayCheckInsThisCampus = Attendance::where('user_id', $user->id)
-            ->where('campus_id', $campus->id)
+        // Vérifier s'il y a un check-in actif sur N'IMPORTE QUEL campus
+        // L'employé doit d'abord faire check-out avant de changer de campus
+        $allTodayCheckIns = Attendance::where('user_id', $user->id)
             ->where('type', 'check-in')
             ->where('shift', $shift)
             ->whereDate('timestamp', today())
             ->get();
 
-        foreach ($todayCheckInsThisCampus as $checkIn) {
+        foreach ($allTodayCheckIns as $checkIn) {
             $hasCheckOut = Attendance::where('user_id', $user->id)
-                ->where('campus_id', $campus->id)
+                ->where('campus_id', $checkIn->campus_id)
                 ->where('shift', $shift)
                 ->where('type', 'check-out')
                 ->where('timestamp', '>', $checkIn->timestamp)
@@ -288,9 +287,18 @@ class AttendanceController extends Controller
 
             if (!$hasCheckOut) {
                 $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+                $activeCampusName = $checkIn->campus ? $checkIn->campus->name : 'un autre campus';
+
+                if ($checkIn->campus_id === $campus->id) {
+                    $msg = "Vous avez deja un check-in actif pour la plage du {$shiftLabel} sur ce campus. Veuillez d'abord faire un check-out.";
+                } else {
+                    $msg = "Vous avez un check-in actif sur {$activeCampusName}. Veuillez d'abord faire le check-out la-bas avant de pointer ici.";
+                }
+
                 return response()->json([
-                    'message' => "Vous avez déjà un check-in actif pour la plage du {$shiftLabel} sur ce campus. Veuillez d'abord faire un check-out.",
-                    'existing_checkin' => $checkIn,
+                    'message' => $msg,
+                    'existing_checkin' => $checkIn->load('campus'),
+                    'active_campus' => $activeCampusName,
                     'shift' => $shift,
                 ], 400);
             }
@@ -485,6 +493,16 @@ class AttendanceController extends Controller
         if (!$checkIn) {
             return response()->json([
                 'message' => "Aucun check-in actif trouvé pour aujourd'hui.",
+            ], 400);
+        }
+
+        // Forcer le check-out sur le même campus que le check-in
+        if ($checkIn->campus_id !== $campus->id) {
+            $checkInCampusName = $checkIn->campus ? $checkIn->campus->name : 'un autre campus';
+            return response()->json([
+                'message' => "Vous devez faire le check-out sur {$checkInCampusName} (campus de votre check-in).",
+                'checkin_campus_id' => $checkIn->campus_id,
+                'checkin_campus' => $checkInCampusName,
             ], 400);
         }
 
