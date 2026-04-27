@@ -233,7 +233,9 @@
 
                                 <!-- Durée -->
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    @if($attendance->check_in_time && $attendance->check_out_time)
+                                    @if($attendance->is_half_day)
+                                    <div class="text-sm font-medium text-orange-600">4h 00min</div>
+                                    @elseif($attendance->check_in_time && $attendance->check_out_time)
                                     @php
                                         $duration = $attendance->check_in_time->diff($attendance->check_out_time);
                                         $hours = $duration->h + ($duration->days * 24);
