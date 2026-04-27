@@ -80,6 +80,14 @@
                     </td>
                     <td class="px-6 py-4">
                         <span class="text-lg font-bold text-red-600">{{ number_format($deduction->amount, 0, ',', ' ') }} FCFA</span>
+                        @if($deduction->num_installments > 1)
+                            <div class="text-xs text-gray-500 mt-1">
+                                Tranche {{ $deduction->installment_number }}/{{ $deduction->num_installments }}
+                            </div>
+                            <div class="text-xs text-blue-600">
+                                Total: {{ number_format($deduction->total_amount, 0, ',', ' ') }} FCFA
+                            </div>
+                        @endif
                     </td>
                     <td class="px-6 py-4">
                         <p class="text-sm text-gray-900">{{ Str::limit($deduction->reason, 50) }}</p>
@@ -101,11 +109,17 @@
                     <td class="px-6 py-4 text-right text-sm space-x-2">
                         @if($deduction->status === 'active')
                             <button onclick="editDeduction({{ $deduction->id }}, {{ $deduction->amount }}, '{{ addslashes($deduction->reason) }}')"
-                                class="text-blue-600 hover:text-blue-900">
+                                class="text-blue-600 hover:text-blue-900" title="Modifier">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="cancelDeduction({{ $deduction->id }})"
-                                class="text-red-600 hover:text-red-900">
+                            @if($deduction->num_installments > 1 && $deduction->group_id)
+                                <button onclick="cancelDeduction({{ $deduction->id }}, true)"
+                                    class="text-orange-600 hover:text-orange-900" title="Annuler toutes les tranches">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            @endif
+                            <button onclick="cancelDeduction({{ $deduction->id }}, false)"
+                                class="text-red-600 hover:text-red-900" title="Annuler cette déduction">
                                 <i class="fas fa-times-circle"></i>
                             </button>
                         @endif
@@ -163,7 +177,7 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Mois *</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mois de début *</label>
                         <select id="month" required class="w-full px-4 py-2 border rounded-lg">
                             @for($m = 1; $m <= 12; $m++)
                                 <option value="{{ $m }}" {{ $m == now()->month ? 'selected' : '' }}>
@@ -179,6 +193,23 @@
                                 <option value="{{ $y }}">{{ $y }}</option>
                             @endfor
                         </select>
+                    </div>
+                </div>
+
+                <div id="installmentSection">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre de tranches</label>
+                    <div class="flex items-center gap-4">
+                        <select id="num_installments" class="w-full px-4 py-2 border rounded-lg" onchange="updateInstallmentPreview()">
+                            <option value="1">1 mois (paiement unique)</option>
+                            <option value="2">2 mois</option>
+                            <option value="3">3 mois</option>
+                            <option value="4">4 mois</option>
+                            <option value="6">6 mois</option>
+                            <option value="9">9 mois</option>
+                            <option value="12">12 mois</option>
+                        </select>
+                    </div>
+                    <div id="installmentPreview" class="hidden mt-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
                     </div>
                 </div>
             </div>
@@ -204,6 +235,9 @@ function openCreateModal() {
     document.getElementById('deduction_id').value = '';
     document.getElementById('deductionForm').reset();
     document.getElementById('user_id').disabled = false;
+    document.getElementById('installmentSection').classList.remove('hidden');
+    document.getElementById('installmentPreview').classList.add('hidden');
+    document.getElementById('num_installments').value = '1';
     document.getElementById('deductionModal').classList.remove('hidden');
 }
 
@@ -213,12 +247,45 @@ function editDeduction(id, amount, reason) {
     document.getElementById('amount').value = amount;
     document.getElementById('reason').value = reason;
     document.getElementById('user_id').disabled = true;
+    document.getElementById('installmentSection').classList.add('hidden');
     document.getElementById('deductionModal').classList.remove('hidden');
 }
 
 function closeModal() {
     document.getElementById('deductionModal').classList.add('hidden');
 }
+
+function updateInstallmentPreview() {
+    const num = parseInt(document.getElementById('num_installments').value) || 1;
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    const preview = document.getElementById('installmentPreview');
+
+    if (num > 1 && amount > 0) {
+        const perMonth = Math.round(amount / num);
+        const monthSelect = document.getElementById('month');
+        const yearSelect = document.getElementById('year');
+        const startMonth = parseInt(monthSelect.value);
+        const startYear = parseInt(yearSelect.value);
+
+        const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+                       'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+        let endMonth = startMonth + num - 1;
+        let endYear = startYear;
+        while (endMonth > 12) { endMonth -= 12; endYear++; }
+
+        preview.innerHTML = `<strong>${num} tranches de ${perMonth.toLocaleString('fr-FR')} FCFA/mois</strong><br>` +
+            `De ${months[startMonth - 1]} ${startYear} à ${months[endMonth - 1]} ${endYear}`;
+        preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+    }
+}
+
+// Mettre à jour l'aperçu quand le montant change
+document.getElementById('amount').addEventListener('input', updateInstallmentPreview);
+document.getElementById('month').addEventListener('change', updateInstallmentPreview);
+document.getElementById('year').addEventListener('change', updateInstallmentPreview);
 
 document.getElementById('deductionForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -233,6 +300,7 @@ document.getElementById('deductionForm').addEventListener('submit', function(e) 
         reason: document.getElementById('reason').value,
         month: document.getElementById('month').value,
         year: document.getElementById('year').value,
+        num_installments: document.getElementById('num_installments').value,
         _token: '{{ csrf_token() }}'
     };
 
@@ -247,18 +315,22 @@ document.getElementById('deductionForm').addEventListener('submit', function(e) 
             alert(data.message);
             location.reload();
         } else {
-            alert('Erreur: ' + data.message);
+            alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
         }
     });
 });
 
-function cancelDeduction(id) {
-    if(!confirm('Voulez-vous vraiment annuler cette déduction?')) return;
+function cancelDeduction(id, cancelAll) {
+    const msg = cancelAll
+        ? 'Annuler TOUTES les tranches restantes de cette déduction ?'
+        : 'Annuler uniquement cette tranche ?';
+
+    if(!confirm(msg)) return;
 
     fetch(`/admin/manual-deductions/${id}/cancel`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
-        body: JSON.stringify({_token: '{{ csrf_token() }}'})
+        body: JSON.stringify({cancel_all: cancelAll, _token: '{{ csrf_token() }}'})
     })
     .then(res => res.json())
     .then(data => {

@@ -9,6 +9,10 @@ class ManualDeduction extends Model
     protected $fillable = [
         'user_id',
         'amount',
+        'total_amount',
+        'num_installments',
+        'installment_number',
+        'group_id',
         'reason',
         'month',
         'year',
@@ -20,6 +24,9 @@ class ManualDeduction extends Model
 
     protected $casts = [
         'amount' => 'float',
+        'total_amount' => 'float',
+        'num_installments' => 'integer',
+        'installment_number' => 'integer',
         'month' => 'integer',
         'year' => 'integer',
         'cancelled_at' => 'datetime',
@@ -43,6 +50,11 @@ class ManualDeduction extends Model
         return $this->belongsTo(User::class, 'cancelled_by');
     }
 
+    public function installments()
+    {
+        return $this->hasMany(self::class, 'group_id', 'group_id');
+    }
+
     /**
      * Scopes
      */
@@ -54,5 +66,27 @@ class ManualDeduction extends Model
     public function scopeForMonth($query, $year, $month)
     {
         return $query->where('year', $year)->where('month', $month);
+    }
+
+    public function isInstallment(): bool
+    {
+        return $this->num_installments > 1;
+    }
+
+    public function getPaidInstallmentsCountAttribute(): int
+    {
+        if (!$this->group_id) return 0;
+        return self::where('group_id', $this->group_id)
+            ->where('status', 'active')
+            ->count();
+    }
+
+    public function getRemainingAmountAttribute(): float
+    {
+        if (!$this->group_id) return 0;
+        $paid = self::where('group_id', $this->group_id)
+            ->where('status', 'active')
+            ->sum('amount');
+        return max(0, ($this->total_amount ?? 0) - $paid);
     }
 }
