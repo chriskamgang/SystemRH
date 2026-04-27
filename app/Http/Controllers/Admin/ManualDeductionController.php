@@ -140,6 +140,7 @@ class ManualDeductionController extends Controller
 
     /**
      * Update the specified deduction.
+     * Permet aussi de convertir une déduction simple en tranches.
      */
     public function update(Request $request, $id)
     {
@@ -155,8 +156,59 @@ class ManualDeductionController extends Controller
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'reason' => 'required|string|max:1000',
+            'num_installments' => 'nullable|integer|min:1|max:24',
         ]);
 
+        $newInstallments = $request->num_installments ?? 1;
+        $totalAmount = $request->amount;
+
+        // Cas 1: Conversion d'une déduction simple en tranches
+        if ($newInstallments > 1 && $deduction->num_installments <= 1) {
+            $installmentAmount = round($totalAmount / $newInstallments, 0);
+            $groupId = time() . rand(100, 999);
+
+            // Mettre à jour la déduction existante comme tranche 1
+            $deduction->update([
+                'amount' => $installmentAmount,
+                'total_amount' => $totalAmount,
+                'num_installments' => $newInstallments,
+                'installment_number' => 1,
+                'group_id' => $groupId,
+                'reason' => $request->reason,
+            ]);
+
+            // Créer les tranches suivantes
+            for ($i = 1; $i < $newInstallments; $i++) {
+                $month = $deduction->month + $i;
+                $year = $deduction->year;
+                while ($month > 12) { $month -= 12; $year++; }
+
+                $amount = ($i === $newInstallments - 1)
+                    ? $totalAmount - ($installmentAmount * ($newInstallments - 1))
+                    : $installmentAmount;
+
+                ManualDeduction::create([
+                    'user_id' => $deduction->user_id,
+                    'amount' => $amount,
+                    'total_amount' => $totalAmount,
+                    'num_installments' => $newInstallments,
+                    'installment_number' => $i + 1,
+                    'group_id' => $groupId,
+                    'reason' => $request->reason,
+                    'month' => $month,
+                    'year' => $year,
+                    'status' => 'active',
+                    'applied_by' => auth()->id(),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Déduction convertie en {$newInstallments} tranches de " . number_format($installmentAmount, 0, ',', ' ') . " FCFA/mois.",
+            ]);
+        }
+
+        // Cas 2: Modification simple (montant/motif)
         $deduction->update([
             'amount' => $request->amount,
             'reason' => $request->reason,

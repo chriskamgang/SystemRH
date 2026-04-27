@@ -108,7 +108,7 @@
                     </td>
                     <td class="px-6 py-4 text-right text-sm space-x-2">
                         @if($deduction->status === 'active')
-                            <button onclick="editDeduction({{ $deduction->id }}, {{ $deduction->amount }}, '{{ addslashes($deduction->reason) }}')"
+                            <button onclick="editDeduction({{ $deduction->id }}, {{ $deduction->num_installments > 1 ? $deduction->total_amount : $deduction->amount }}, '{{ addslashes($deduction->reason) }}', {{ $deduction->num_installments ?? 1 }})"
                                 class="text-blue-600 hover:text-blue-900" title="Modifier">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -241,13 +241,22 @@ function openCreateModal() {
     document.getElementById('deductionModal').classList.remove('hidden');
 }
 
-function editDeduction(id, amount, reason) {
+function editDeduction(id, amount, reason, numInstallments) {
     document.getElementById('modalTitle').textContent = 'Modifier Déduction';
     document.getElementById('deduction_id').value = id;
     document.getElementById('amount').value = amount;
     document.getElementById('reason').value = reason;
     document.getElementById('user_id').disabled = true;
-    document.getElementById('installmentSection').classList.add('hidden');
+
+    // Montrer les tranches uniquement pour les déductions simples (pas déjà en tranches)
+    if (!numInstallments || numInstallments <= 1) {
+        document.getElementById('installmentSection').classList.remove('hidden');
+        document.getElementById('num_installments').value = '1';
+        document.getElementById('installmentPreview').classList.add('hidden');
+    } else {
+        document.getElementById('installmentSection').classList.add('hidden');
+    }
+
     document.getElementById('deductionModal').classList.remove('hidden');
 }
 
