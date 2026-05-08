@@ -494,6 +494,39 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::put('/admins/{id}', [App\Http\Controllers\Admin\RoleController::class, 'updateAdmin'])->name('update-admin');
     });
 
+    // ========== CNPS ==========
+    Route::prefix('cnps')->name('cnps.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\CnpsController::class, 'index'])->name('index');
+        Route::get('/{id}', [App\Http\Controllers\Admin\CnpsController::class, 'show'])->name('show');
+        Route::post('/', [App\Http\Controllers\Admin\CnpsController::class, 'store'])->name('store');
+        Route::post('/{id}/contribution', [App\Http\Controllers\Admin\CnpsController::class, 'addContribution'])->name('add-contribution');
+    });
+
+    // ========== EVALUATIONS ==========
+    Route::prefix('evaluations')->name('evaluations.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\EvaluationController::class, 'index'])->name('index');
+        Route::get('/create-campaign', [App\Http\Controllers\Admin\EvaluationController::class, 'createCampaign'])->name('create-campaign');
+        Route::post('/campaigns', [App\Http\Controllers\Admin\EvaluationController::class, 'storeCampaign'])->name('store-campaign');
+        Route::get('/campaigns/{id}', [App\Http\Controllers\Admin\EvaluationController::class, 'show'])->name('show');
+        Route::get('/{id}/detail', [App\Http\Controllers\Admin\EvaluationController::class, 'showEvaluation'])->name('detail');
+    });
+
+    // ========== FORMATIONS ==========
+    Route::prefix('training')->name('training.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\TrainingController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\TrainingController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\TrainingController::class, 'store'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\Admin\TrainingController::class, 'show'])->name('show');
+        Route::get('/{programId}/sessions/create', [App\Http\Controllers\Admin\TrainingController::class, 'createSession'])->name('create-session');
+        Route::post('/{programId}/sessions', [App\Http\Controllers\Admin\TrainingController::class, 'storeSession'])->name('store-session');
+    });
+
+    // ========== ORGANIGRAMME ==========
+    Route::get('/orgchart', [App\Http\Controllers\Admin\OrgChartController::class, 'index'])->name('orgchart.index');
+
+    // ========== ANALYTIQUE RH ==========
+    Route::get('/hr-analytics', [App\Http\Controllers\Admin\HrAnalyticsController::class, 'index'])->name('hr-analytics.index');
+
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 

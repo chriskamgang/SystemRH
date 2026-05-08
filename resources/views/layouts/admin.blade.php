@@ -229,6 +229,34 @@
                     <span class="ml-3">Taches</span>
                 </a>
 
+                {{-- ========== RESSOURCES HUMAINES ========== --}}
+                <p class="px-4 pt-5 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Ressources Humaines</p>
+
+                <a href="{{ route('admin.cnps.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.cnps.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-shield-alt w-5 text-green-400"></i>
+                    <span class="ml-3">CNPS</span>
+                </a>
+
+                <a href="{{ route('admin.evaluations.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.evaluations.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-star w-5 text-yellow-400"></i>
+                    <span class="ml-3">Evaluations</span>
+                </a>
+
+                <a href="{{ route('admin.training.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.training.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-graduation-cap w-5 text-purple-400"></i>
+                    <span class="ml-3">Formations</span>
+                </a>
+
+                <a href="{{ route('admin.orgchart.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.orgchart.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-sitemap w-5 text-cyan-400"></i>
+                    <span class="ml-3">Organigramme</span>
+                </a>
+
+                <a href="{{ route('admin.hr-analytics.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.hr-analytics.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-chart-line w-5 text-orange-400"></i>
+                    <span class="ml-3">Analytique RH</span>
+                </a>
+
                 {{-- ========== ENSEIGNEMENT ========== --}}
                 <p class="px-4 pt-5 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Enseignement</p>
 
