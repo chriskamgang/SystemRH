@@ -118,11 +118,12 @@ class JustificationRequestController extends Controller
                 ? "Votre justification de $typeLabel du $dateFormatted a ete approuvee."
                 : "Votre justification de $typeLabel du $dateFormatted a ete refusee.";
 
-            PushNotificationService::sendToUser($user, $title, $body, [
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser($user, $title, $body, [
                 'type' => 'justification_decision',
                 'justification_id' => (string) $justification->id,
                 'decision' => $decision,
-            ]);
+            ], 'justification');
         } catch (\Exception $e) {
             \Log::warning('Erreur notification justification: ' . $e->getMessage());
         }

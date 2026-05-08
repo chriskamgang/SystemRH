@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Complaint;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 
 class ComplaintController extends Controller
@@ -32,6 +33,24 @@ class ComplaintController extends Controller
             'admin_response' => $request->admin_response,
             'status' => $request->status,
         ]);
+
+        // Notifier l'employe
+        try {
+            $user = $complaint->user;
+            if ($user) {
+                $statusLabel = $request->status === 'resolved' ? 'resolue' : 'en cours de traitement';
+                $pushService = new PushNotificationService();
+                $pushService->sendToUser(
+                    $user,
+                    'Reponse a votre reclamation',
+                    "Votre reclamation est $statusLabel. Consultez la reponse dans l'application.",
+                    ['type' => 'complaint_response', 'complaint_id' => (string) $id],
+                    'system'
+                );
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Notification reclamation echouee: ' . $e->getMessage());
+        }
 
         return redirect()->route('admin.complaints.show', $id)->with('success', 'Réponse envoyée avec succès.');
     }

@@ -143,7 +143,7 @@ class MessagingController extends Controller
         foreach ($otherParticipants as $participant) {
             if ($participant->fcm_token) {
                 try {
-                    PushNotificationService::sendToUser(
+                    (new PushNotificationService())->sendToUser(
                         $participant,
                         $user->full_name,
                         mb_substr($request->body, 0, 100),
@@ -213,7 +213,7 @@ class MessagingController extends Controller
             $recipient = User::find($recipientId);
             if ($recipient?->fcm_token) {
                 try {
-                    PushNotificationService::sendToUser(
+                    (new PushNotificationService())->sendToUser(
                         $recipient,
                         $user->full_name,
                         mb_substr($request->message, 0, 100),
@@ -243,7 +243,7 @@ class MessagingController extends Controller
         $recipient = User::find($recipientId);
         if ($recipient?->fcm_token) {
             try {
-                PushNotificationService::sendToUser(
+                (new PushNotificationService())->sendToUser(
                     $recipient,
                     'Nouveau message de ' . $user->full_name,
                     mb_substr($request->message, 0, 100),

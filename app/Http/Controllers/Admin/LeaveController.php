@@ -187,11 +187,12 @@ class LeaveController extends Controller
                 ? "Votre demande de {$leave->getTypeLabel()} du {$leave->start_date->format('d/m')} au {$leave->end_date->format('d/m')} a été approuvée."
                 : "Votre demande de {$leave->getTypeLabel()} du {$leave->start_date->format('d/m')} au {$leave->end_date->format('d/m')} a été refusée.";
 
-            PushNotificationService::sendToUser($user, $title, $body, [
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser($user, $title, $body, [
                 'type' => 'leave_decision',
                 'leave_id' => (string) $leave->id,
                 'decision' => $decision,
-            ]);
+            ], 'leave');
         } catch (\Exception $e) {
             \Log::warning('Erreur notification congé: ' . $e->getMessage());
         }

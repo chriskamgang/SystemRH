@@ -74,16 +74,16 @@ class WorkCertificateController extends Controller
         ]);
 
         // Notifier l'employe
-        if ($user->fcm_token) {
-            try {
-                PushNotificationService::sendToUser(
-                    $user,
-                    'Attestation prete',
-                    'Votre ' . ($typeLabels[$cert->type] ?? 'attestation') . ' est disponible au telechargement.',
-                    ['type' => 'certificate', 'id' => (string) $cert->id]
-                );
-            } catch (\Exception $e) {}
-        }
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser(
+                $user,
+                'Attestation prete',
+                'Votre ' . ($typeLabels[$cert->type] ?? 'attestation') . ' est disponible au telechargement.',
+                ['type' => 'certificate', 'id' => (string) $cert->id],
+                'certificate'
+            );
+        } catch (\Exception $e) {}
 
         return redirect()->route('admin.certificates.index')
             ->with('success', 'Attestation generee et disponible pour ' . $user->full_name);
@@ -97,16 +97,16 @@ class WorkCertificateController extends Controller
         $cert->update(['status' => 'rejected']);
 
         $user = $cert->user;
-        if ($user->fcm_token) {
-            try {
-                PushNotificationService::sendToUser(
-                    $user,
-                    'Demande d\'attestation rejetee',
-                    $request->comment,
-                    ['type' => 'certificate_rejected']
-                );
-            } catch (\Exception $e) {}
-        }
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser(
+                $user,
+                'Demande d\'attestation rejetee',
+                $request->comment,
+                ['type' => 'certificate_rejected'],
+                'certificate'
+            );
+        } catch (\Exception $e) {}
 
         return redirect()->route('admin.certificates.index')
             ->with('success', 'Demande rejetee.');
