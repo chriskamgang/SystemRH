@@ -72,6 +72,22 @@
         </div>
     </div>
 
+    <!-- Bouton rapport utilisation app -->
+    <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg shadow-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold">Utilisation de l'Application Mobile</h3>
+                <p class="text-emerald-100 text-sm mt-1">
+                    Voir qui utilise l'app, combien de jours de pointage, et telecharger le rapport pour primer les employes.
+                </p>
+            </div>
+            <a href="{{ route('admin.app-usage') }}"
+                class="inline-flex items-center px-5 py-3 bg-white text-emerald-700 rounded-lg hover:bg-emerald-50 font-semibold text-sm shadow transition">
+                <i class="fas fa-mobile-alt mr-2"></i> Voir le rapport
+            </a>
+        </div>
+    </div>
+
     <!-- Charts -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Graphique Présences -->

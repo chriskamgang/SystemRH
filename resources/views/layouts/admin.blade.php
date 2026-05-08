@@ -125,6 +125,10 @@
                     <i class="fas fa-home w-5"></i>
                     <span class="ml-3">Dashboard</span>
                 </a>
+                <a href="{{ route('admin.app-usage') }}" class="flex items-center px-4 py-3 mb-2 rounded-lg {{ request()->routeIs('admin.app-usage*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-mobile-alt w-5"></i>
+                    <span class="ml-3">Utilisation App</span>
+                </a>
                 @endif
 
                 @if($can('employees'))

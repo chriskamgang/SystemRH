@@ -364,6 +364,74 @@ class MobileApiController extends Controller
     }
 
     /**
+     * Historique des fiches de paie disponibles
+     * GET /api/user/payslip-history
+     */
+    public function payslipHistory(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $isVacataire = $user->employee_type === 'enseignant_vacataire';
+            $hireDate = $user->created_at;
+            $now = now();
+
+            $history = [];
+
+            // Generer la liste des mois depuis l'embauche (max 24 mois)
+            $startMonth = max($hireDate->copy()->startOfMonth(), $now->copy()->subMonths(23)->startOfMonth());
+            $current = $now->copy()->startOfMonth();
+
+            while ($current->gte($startMonth)) {
+                $month = $current->month;
+                $year = $current->year;
+
+                try {
+                    if ($isVacataire) {
+                        $payroll = PayrollCalculator::calculateVacatairePayroll($user, $year, $month);
+                        $netSalary = $payroll['net_amount'] ?? 0;
+                        $grossSalary = $payroll['gross_amount'] ?? 0;
+                    } else {
+                        $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+                        $netSalary = $payroll['net_salary'] ?? 0;
+                        $grossSalary = $payroll['gross_salary'] ?? $user->monthly_salary ?? 0;
+                    }
+
+                    $manualDeductionsTotal = ManualDeduction::where('user_id', $user->id)
+                        ->where('month', $month)
+                        ->where('year', $year)
+                        ->where('status', 'active')
+                        ->sum('amount');
+
+                    if ($isVacataire) {
+                        $netSalary = max(0, $netSalary - $manualDeductionsTotal);
+                    }
+
+                    $history[] = [
+                        'month' => $month,
+                        'year' => $year,
+                        'period' => $current->locale('fr')->isoFormat('MMMM YYYY'),
+                        'gross_salary' => round($grossSalary),
+                        'net_salary' => round($netSalary),
+                        'deductions' => round($manualDeductionsTotal),
+                    ];
+                } catch (\Exception $e) {
+                    // Mois sans donnees
+                }
+
+                $current->subMonth();
+            }
+
+            return response()->json([
+                'success' => true,
+                'history' => $history,
+                'is_vacataire' => $isVacataire,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Télécharger la fiche de paie en PDF
      * GET /api/user/payslip?month=3&year=2026
      */

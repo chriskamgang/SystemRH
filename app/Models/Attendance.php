@@ -26,6 +26,7 @@ class Attendance extends Model
         'device_info',
         'notes',
         'status',
+        'is_offline',
     ];
 
     protected $casts = [
@@ -37,6 +38,7 @@ class Attendance extends Model
         'is_travel_late' => 'boolean',
         'late_minutes' => 'integer',
         'is_half_day' => 'boolean',
+        'is_offline' => 'boolean',
         'device_info' => 'array',
     ];
 

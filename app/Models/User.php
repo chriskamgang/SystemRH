@@ -46,6 +46,10 @@ class User extends Authenticatable
         'device_model',
         'device_os',
         'email_verified_at',
+        'address',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'manager_id',
     ];
 
     /**
@@ -211,6 +215,66 @@ class User extends Authenticatable
         return $this->belongsToMany(Task::class, 'task_user')
             ->withPivot('status', 'note', 'completed_at', 'penalty_amount', 'penalty_approved', 'penalty_approved_at', 'penalty_approved_by')
             ->withTimestamps();
+    }
+
+    // Manager / subordonnes (organigramme)
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function subordinates()
+    {
+        return $this->hasMany(User::class, 'manager_id');
+    }
+
+    // Evaluations
+    public function evaluations()
+    {
+        return $this->hasMany(Evaluation::class, 'employee_id');
+    }
+
+    // CNPS
+    public function cnpsRecord()
+    {
+        return $this->hasOne(CnpsRecord::class);
+    }
+
+    public function cnpsContributions()
+    {
+        return $this->hasMany(CnpsContribution::class);
+    }
+
+    // Onboarding
+    public function onboardingProcesses()
+    {
+        return $this->hasMany(OnboardingProcess::class);
+    }
+
+    // Formations (inscriptions)
+    public function trainingEnrollments()
+    {
+        return $this->hasMany(TrainingEnrollment::class);
+    }
+
+    // Attestations de travail
+    public function workCertificates()
+    {
+        return $this->hasMany(WorkCertificate::class);
+    }
+
+    // Conversations (messagerie)
+    public function conversations()
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_participants')
+            ->withPivot('last_read_at')
+            ->withTimestamps();
+    }
+
+    // Demandes de congé
+    public function leaveRequests()
+    {
+        return $this->hasMany(LeaveRequest::class);
     }
 
     // Documents & Pièces jointes

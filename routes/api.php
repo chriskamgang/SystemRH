@@ -89,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('attendance')->group(function () {
         Route::post('/check-in', [AttendanceController::class, 'checkIn']);
         Route::post('/check-out', [AttendanceController::class, 'checkOut']);
+        Route::post('/offline-sync', [AttendanceController::class, 'offlineSync']);
         Route::get('/my-history', [AttendanceController::class, 'myHistory']);
         Route::get('/today', [AttendanceController::class, 'today']);
         Route::get('/stats', [AttendanceController::class, 'stats']);
@@ -140,6 +141,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/manual-deductions', [\App\Http\Controllers\API\MobileApiController::class, 'getManualDeductions']);
         Route::get('/loans', [\App\Http\Controllers\API\MobileApiController::class, 'getLoans']);
         Route::get('/payslip', [\App\Http\Controllers\API\MobileApiController::class, 'downloadPayslip']);
+        Route::get('/payslip-history', [\App\Http\Controllers\API\MobileApiController::class, 'payslipHistory']);
+    });
+
+    // ========== ATTESTATIONS DE TRAVAIL ==========
+    Route::prefix('certificates')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\WorkCertificateController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\API\WorkCertificateController::class, 'store']);
+        Route::get('/{id}/download', [\App\Http\Controllers\API\WorkCertificateController::class, 'download']);
+    });
+
+    // ========== MESSAGERIE INTERNE ==========
+    Route::prefix('messaging')->group(function () {
+        Route::get('/conversations', [\App\Http\Controllers\API\MessagingController::class, 'conversations']);
+        Route::get('/conversations/{id}/messages', [\App\Http\Controllers\API\MessagingController::class, 'messages']);
+        Route::post('/conversations/{id}/messages', [\App\Http\Controllers\API\MessagingController::class, 'sendMessage']);
+        Route::post('/conversations', [\App\Http\Controllers\API\MessagingController::class, 'createConversation']);
+        Route::get('/contacts', [\App\Http\Controllers\API\MessagingController::class, 'contacts']);
     });
 
     // ========== PRESENCE NOTIFICATIONS ==========
@@ -193,6 +211,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('wallet/transfer', [\App\Http\Controllers\API\WalletController::class, 'transfer']);
     Route::get('wallet/transactions', [\App\Http\Controllers\API\WalletController::class, 'transactions']);
 
+    // ========== ABSENCES & RETARDS (Justifications) ==========
+    Route::prefix('justifications')->group(function () {
+        Route::get('/absences', [\App\Http\Controllers\API\JustificationController::class, 'absences']);
+        Route::get('/tardiness', [\App\Http\Controllers\API\JustificationController::class, 'tardiness']);
+        Route::get('/summary', [\App\Http\Controllers\API\JustificationController::class, 'summary']);
+        Route::get('/my-requests', [\App\Http\Controllers\API\JustificationController::class, 'myRequests']);
+        Route::post('/', [\App\Http\Controllers\API\JustificationController::class, 'store']);
+    });
+
+    // ========== CONGÉS (Leave Requests) ==========
+    Route::prefix('leaves')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\LeaveController::class, 'index']);
+        Route::get('/balances', [\App\Http\Controllers\API\LeaveController::class, 'balances']);
+        Route::post('/', [\App\Http\Controllers\API\LeaveController::class, 'store']);
+        Route::post('/{id}/cancel', [\App\Http\Controllers\API\LeaveController::class, 'cancel']);
+    });
+
     // ========== AVANCES SUR SALAIRE ==========
     Route::prefix('salary-advances')->group(function () {
         Route::get('/', [\App\Http\Controllers\API\SalaryAdvanceController::class, 'index']);
@@ -221,6 +256,57 @@ Route::middleware('auth:sanctum')->group(function () {
     // ========== RÉSULTATS (Academic Results) ==========
     Route::prefix('results')->group(function () {
         Route::get('/', [\App\Http\Controllers\API\ResultController::class, 'index']);
+    });
+
+    // ========== EVALUATIONS ANNUELLES ==========
+    Route::prefix('evaluations')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\EvaluationController::class, 'index']);
+        Route::get('/{id}', [\App\Http\Controllers\API\EvaluationController::class, 'show']);
+        Route::post('/{id}/self-evaluate', [\App\Http\Controllers\API\EvaluationController::class, 'selfEvaluate']);
+    });
+
+    // ========== CNPS / DIPE ==========
+    Route::prefix('cnps')->group(function () {
+        Route::get('/record', [\App\Http\Controllers\API\CnpsController::class, 'myRecord']);
+        Route::get('/contributions', [\App\Http\Controllers\API\CnpsController::class, 'myContributions']);
+    });
+
+    // ========== ORGANIGRAMME ==========
+    Route::prefix('orgchart')->group(function () {
+        Route::get('/departments', [\App\Http\Controllers\API\OrgChartController::class, 'index']);
+        Route::get('/departments/{id}/members', [\App\Http\Controllers\API\OrgChartController::class, 'departmentMembers']);
+        Route::get('/my-hierarchy', [\App\Http\Controllers\API\OrgChartController::class, 'myHierarchy']);
+    });
+
+    // ========== ONBOARDING / OFFBOARDING ==========
+    Route::prefix('onboarding')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\OnboardingController::class, 'index']);
+        Route::get('/{id}', [\App\Http\Controllers\API\OnboardingController::class, 'show']);
+        Route::post('/{processId}/tasks/{taskId}/complete', [\App\Http\Controllers\API\OnboardingController::class, 'completeTask']);
+    });
+
+    // ========== RECRUTEMENT ==========
+    Route::prefix('recruitment')->group(function () {
+        Route::get('/postings', [\App\Http\Controllers\API\RecruitmentController::class, 'jobPostings']);
+        Route::get('/postings/{id}', [\App\Http\Controllers\API\RecruitmentController::class, 'jobPostingDetail']);
+        Route::post('/postings/{id}/apply', [\App\Http\Controllers\API\RecruitmentController::class, 'apply']);
+        Route::get('/postings/{id}/pipeline', [\App\Http\Controllers\API\RecruitmentController::class, 'pipeline']);
+    });
+
+    // ========== FORMATION / E-LEARNING ==========
+    Route::prefix('training')->group(function () {
+        Route::get('/catalog', [\App\Http\Controllers\API\TrainingController::class, 'catalog']);
+        Route::get('/my-enrollments', [\App\Http\Controllers\API\TrainingController::class, 'myEnrollments']);
+        Route::get('/programs/{id}', [\App\Http\Controllers\API\TrainingController::class, 'programDetail']);
+        Route::post('/programs/{id}/enroll', [\App\Http\Controllers\API\TrainingController::class, 'enroll']);
+        Route::post('/programs/{programId}/materials/{materialId}/complete', [\App\Http\Controllers\API\TrainingController::class, 'completeMaterial']);
+    });
+
+    // ========== ANALYTICS RH ==========
+    Route::prefix('analytics')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\API\HrAnalyticsController::class, 'dashboard']);
+        Route::get('/trends', [\App\Http\Controllers\API\HrAnalyticsController::class, 'trends']);
+        Route::get('/department/{id}', [\App\Http\Controllers\API\HrAnalyticsController::class, 'departmentStats']);
     });
 
     // Test route

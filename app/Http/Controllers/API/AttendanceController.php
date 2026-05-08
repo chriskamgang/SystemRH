@@ -641,6 +641,209 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Synchronisation d'un pointage effectue hors-ligne
+     * Le client envoie les coordonnees GPS + timestamp original
+     */
+    public function offlineSync(Request $request)
+    {
+        $request->validate([
+            'campus_id' => 'required|exists:campuses,id',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric',
+            'offline_timestamp' => 'required|date',
+            'is_offline' => 'required|boolean',
+            'type' => 'nullable|in:check-in,check-out',
+            'unite_enseignement_id' => 'nullable|exists:unites_enseignement,id',
+        ]);
+
+        $user = $request->user();
+        $campus = Campus::findOrFail($request->campus_id);
+        $type = $request->input('type', 'check-in');
+        $offlineTime = Carbon::parse($request->offline_timestamp);
+
+        // Verifier que le timestamp offline n'est pas trop ancien (max 48h)
+        if ($offlineTime->lt(now()->subHours(48))) {
+            return response()->json([
+                'message' => 'Le pointage hors-ligne date de plus de 48h et ne peut plus etre synchronise.',
+            ], 400);
+        }
+
+        // Verifier que le timestamp n'est pas dans le futur
+        if ($offlineTime->gt(now()->addMinutes(5))) {
+            return response()->json([
+                'message' => 'Le timestamp est dans le futur.',
+            ], 400);
+        }
+
+        // Verifier l'assignation campus
+        if (!$user->campuses->contains($campus->id)) {
+            return response()->json([
+                'message' => 'Vous n\'etes pas assigne a ce campus.',
+            ], 403);
+        }
+
+        // Detecter le shift selon l'heure offline
+        $shift = $this->detectShift($offlineTime);
+
+        if ($type === 'check-out') {
+            // Chercher un check-in actif pour ce jour
+            $checkIn = Attendance::where('user_id', $user->id)
+                ->where('type', 'check-in')
+                ->where('shift', $shift)
+                ->whereDate('timestamp', $offlineTime->toDateString())
+                ->orderBy('timestamp', 'desc')
+                ->first();
+
+            if (!$checkIn) {
+                // Essayer l'autre shift
+                $otherShift = $shift === 'morning' ? 'evening' : 'morning';
+                $checkIn = Attendance::where('user_id', $user->id)
+                    ->where('type', 'check-in')
+                    ->where('shift', $otherShift)
+                    ->whereDate('timestamp', $offlineTime->toDateString())
+                    ->orderBy('timestamp', 'desc')
+                    ->first();
+                if ($checkIn) $shift = $otherShift;
+            }
+
+            if (!$checkIn) {
+                return response()->json([
+                    'message' => 'Aucun check-in actif trouve pour cette date.',
+                ], 400);
+            }
+
+            // Creer le check-out offline
+            $checkout = Attendance::create([
+                'user_id' => $user->id,
+                'campus_id' => $campus->id,
+                'type' => 'check-out',
+                'shift' => $shift,
+                'timestamp' => $offlineTime,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'accuracy' => $request->accuracy,
+                'status' => 'valid',
+                'is_offline' => true,
+                'unite_enseignement_id' => $checkIn->unite_enseignement_id,
+            ]);
+
+            return response()->json([
+                'message' => 'Check-out hors-ligne synchronise avec succes.',
+                'attendance' => $checkout->load('campus'),
+                'offline_synced' => true,
+            ], 201);
+        }
+
+        // CHECK-IN offline
+        // Verifier doublon
+        $existing = Attendance::where('user_id', $user->id)
+            ->where('type', 'check-in')
+            ->where('shift', $shift)
+            ->where('campus_id', $campus->id)
+            ->whereDate('timestamp', $offlineTime->toDateString())
+            ->first();
+
+        if ($existing) {
+            // Verifier si ce check-in a deja un check-out
+            $hasCheckOut = Attendance::where('user_id', $user->id)
+                ->where('type', 'check-out')
+                ->where('shift', $shift)
+                ->where('timestamp', '>', $existing->timestamp)
+                ->whereDate('timestamp', $offlineTime->toDateString())
+                ->exists();
+
+            if (!$hasCheckOut) {
+                return response()->json([
+                    'message' => 'Un check-in actif existe deja pour cette plage horaire.',
+                ], 400);
+            }
+        }
+
+        // Calculer le retard par rapport a l'heure offline
+        $isVacataire = $user->employee_type === 'enseignant_vacataire';
+        $isFirstCheckIn = !Attendance::where('user_id', $user->id)
+            ->where('type', 'check-in')
+            ->where('shift', $shift)
+            ->whereDate('timestamp', $offlineTime->toDateString())
+            ->exists();
+
+        $isLate = false;
+        $lateMinutes = 0;
+        $isHalfDay = false;
+
+        if (!$isVacataire && $isFirstCheckIn) {
+            if ($user->hasCustomWorkHours()) {
+                $shiftStartTime = Carbon::parse($user->custom_start_time);
+                $lateTolerance = $user->getLateTolerance($campus);
+                $shiftTimes = ['start' => $user->custom_start_time, 'end' => $user->custom_end_time];
+            } else {
+                $shiftTimes = $this->getShiftTimes($shift);
+                $shiftStartTime = Carbon::parse($shiftTimes['start']);
+                $lateTolerance = 0;
+            }
+
+            $toleranceTime = $shiftStartTime->copy()->addMinutes($lateTolerance);
+            $currentTime = Carbon::parse($offlineTime->format('H:i:s'));
+
+            $isLate = $currentTime->gt($toleranceTime);
+            $lateMinutes = $isLate ? $shiftStartTime->diffInMinutes($currentTime) : 0;
+
+            $halfDayThreshold = (int) Setting::get('half_day_threshold_minutes', 120);
+            if ($isLate && $lateMinutes >= $halfDayThreshold) {
+                $isHalfDay = true;
+            }
+        }
+
+        $attendanceData = [
+            'user_id' => $user->id,
+            'campus_id' => $campus->id,
+            'type' => 'check-in',
+            'shift' => $shift,
+            'timestamp' => $offlineTime,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'accuracy' => $request->accuracy,
+            'is_late' => $isLate,
+            'late_minutes' => $lateMinutes,
+            'is_half_day' => $isHalfDay,
+            'status' => 'valid',
+            'is_offline' => true,
+        ];
+
+        if ($request->unite_enseignement_id) {
+            $attendanceData['unite_enseignement_id'] = $request->unite_enseignement_id;
+        }
+
+        $attendance = Attendance::create($attendanceData);
+
+        // Creer un enregistrement de retard si necessaire
+        if ($isLate && !$isVacataire) {
+            Tardiness::create([
+                'user_id' => $user->id,
+                'campus_id' => $campus->id,
+                'attendance_id' => $attendance->id,
+                'date' => $offlineTime->toDateString(),
+                'scheduled_time' => $shiftTimes['start'] ?? '08:00',
+                'actual_time' => $offlineTime->format('H:i:s'),
+                'late_minutes' => $lateMinutes,
+                'status' => 'pending',
+            ]);
+        }
+
+        $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+
+        return response()->json([
+            'message' => "Check-in hors-ligne synchronise pour la plage du {$shiftLabel}." .
+                ($isLate ? " Retard de {$lateMinutes} minutes." : ''),
+            'attendance' => $attendance->load(['campus', 'tardiness']),
+            'is_late' => $isLate,
+            'late_minutes' => $lateMinutes,
+            'offline_synced' => true,
+        ], 201);
+    }
+
+    /**
      * Historique des pointages de l'utilisateur
      */
     public function myHistory(Request $request)

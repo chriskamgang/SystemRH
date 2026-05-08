@@ -35,6 +35,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Rapport utilisation app
+    Route::get('/app-usage', [DashboardController::class, 'appUsage'])->name('app-usage');
+    Route::get('/app-usage/export-excel', [DashboardController::class, 'exportAppUsageExcel'])->name('app-usage.export-excel');
+    Route::get('/app-usage/export-pdf', [DashboardController::class, 'exportAppUsagePdf'])->name('app-usage.export-pdf');
+
     // Employees
     Route::resource('employees', EmployeeController::class);
     Route::post('employees/{id}/reset-device', [EmployeeController::class, 'resetDevice'])->name('employees.reset-device');
@@ -249,6 +254,30 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::put('/{id}', [App\Http\Controllers\Admin\ManualDeductionController::class, 'update'])->name('update');
         Route::post('/{id}/cancel', [App\Http\Controllers\Admin\ManualDeductionController::class, 'cancel'])->name('cancel');
         Route::delete('/{id}', [App\Http\Controllers\Admin\ManualDeductionController::class, 'destroy'])->name('destroy');
+    });
+
+    // Demandes de justification (absences/retards)
+    Route::prefix('justification-requests')->name('justification-requests.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\JustificationRequestController::class, 'index'])->name('index');
+        Route::post('/{id}/approve', [App\Http\Controllers\Admin\JustificationRequestController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [App\Http\Controllers\Admin\JustificationRequestController::class, 'reject'])->name('reject');
+    });
+
+    // Attestations de travail
+    Route::prefix('certificates')->name('certificates.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\WorkCertificateController::class, 'index'])->name('index');
+        Route::post('/{id}/generate', [App\Http\Controllers\Admin\WorkCertificateController::class, 'generate'])->name('generate');
+        Route::post('/{id}/reject', [App\Http\Controllers\Admin\WorkCertificateController::class, 'reject'])->name('reject');
+    });
+
+    // Demandes de congé
+    Route::prefix('leaves')->name('leaves.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\LeaveController::class, 'index'])->name('index');
+        Route::get('/balances', [App\Http\Controllers\Admin\LeaveController::class, 'balances'])->name('balances');
+        Route::get('/{id}', [App\Http\Controllers\Admin\LeaveController::class, 'show'])->name('show');
+        Route::post('/{id}/approve', [App\Http\Controllers\Admin\LeaveController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [App\Http\Controllers\Admin\LeaveController::class, 'reject'])->name('reject');
+        Route::post('/update-balance', [App\Http\Controllers\Admin\LeaveController::class, 'updateBalance'])->name('update-balance');
     });
 
     // Demandes d'avance sur salaire

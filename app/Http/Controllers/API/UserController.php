@@ -27,6 +27,11 @@ class UserController extends Controller
                 'full_name' => $user->full_name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'address' => $user->address,
+                'emergency_contact_name' => $user->emergency_contact_name,
+                'emergency_contact_phone' => $user->emergency_contact_phone,
+                'banque' => $user->banque,
+                'numero_compte' => $user->numero_compte,
                 'photo' => $user->photo,
                 'employee_type' => $user->employee_type,
                 'role' => $user->role,
@@ -51,25 +56,22 @@ class UserController extends Controller
             'last_name' => 'nullable|string|max:100',
             'email' => 'nullable|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'emergency_contact_name' => 'nullable|string|max:100',
+            'emergency_contact_phone' => 'nullable|string|max:20',
+            'banque' => 'nullable|string|max:100',
+            'numero_compte' => 'nullable|string|max:50',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
+        $fields = ['first_name', 'last_name', 'email', 'phone', 'address',
+                    'emergency_contact_name', 'emergency_contact_phone', 'banque', 'numero_compte'];
+
         $data = [];
-
-        if ($request->first_name) {
-            $data['first_name'] = $request->first_name;
-        }
-
-        if ($request->last_name) {
-            $data['last_name'] = $request->last_name;
-        }
-
-        if ($request->email) {
-            $data['email'] = $request->email;
-        }
-
-        if ($request->phone) {
-            $data['phone'] = $request->phone;
+        foreach ($fields as $field) {
+            if ($request->has($field) && $request->$field !== null) {
+                $data[$field] = $request->$field;
+            }
         }
 
         // Upload de la photo

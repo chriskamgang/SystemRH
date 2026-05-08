@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Campus;
 use App\Models\Attendance;
+use App\Models\Department;
+use App\Exports\AppUsageExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DashboardController extends Controller
 {
@@ -382,5 +386,204 @@ class DashboardController extends Controller
         $position->delete();
 
         return redirect()->back()->with('success', 'Poste supprimé avec succès.');
+    }
+
+    /**
+     * Rapport d'utilisation de l'application mobile.
+     */
+    public function appUsage(Request $request)
+    {
+        $data = $this->getAppUsageData($request);
+
+        $departments = Department::orderBy('name')->get();
+        $campuses = Campus::orderBy('name')->get();
+
+        return view('admin.app-usage', array_merge($data, [
+            'departments' => $departments,
+            'campuses' => $campuses,
+            'filters' => $request->all(),
+        ]));
+    }
+
+    /**
+     * Exporter le rapport d'utilisation en Excel.
+     */
+    public function exportAppUsageExcel(Request $request)
+    {
+        $data = $this->getAppUsageData($request);
+        $period = $this->getFilterPeriodLabel($request);
+
+        return Excel::download(
+            new AppUsageExport($data['employees'], $period),
+            'utilisation-app-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * Exporter le rapport d'utilisation en PDF.
+     */
+    public function exportAppUsagePdf(Request $request)
+    {
+        $data = $this->getAppUsageData($request);
+        $period = $this->getFilterPeriodLabel($request);
+
+        $pdf = Pdf::loadView('admin.pdf.app-usage', array_merge($data, [
+            'period' => $period,
+        ]))->setPaper('a4', 'landscape');
+
+        return $pdf->download('utilisation-app-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Generer les donnees d'utilisation de l'app.
+     */
+    private function getAppUsageData(Request $request): array
+    {
+        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $dateTo = $request->input('date_to', now()->toDateString());
+        $departmentId = $request->input('department_id');
+        $employeeType = $request->input('employee_type');
+        $minDays = (int) $request->input('min_days', 0);
+
+        // Utilisateurs qui ont au moins 1 pointage dans la periode
+        $usersQuery = User::where('role_id', '!=', 1)
+            ->where('is_active', true)
+            ->whereHas('attendances', function ($q) use ($dateFrom, $dateTo) {
+                $q->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo]);
+            });
+
+        if ($departmentId) {
+            $usersQuery->where('department_id', $departmentId);
+        }
+        if ($employeeType) {
+            $usersQuery->where('employee_type', $employeeType);
+        }
+
+        $users = $usersQuery->with(['department', 'campuses'])->get();
+
+        $employees = [];
+        $totalCheckinDays = 0;
+        $totalCompleteDays = 0;
+
+        foreach ($users as $user) {
+            // Jours distincts avec check-in
+            $checkinDays = Attendance::where('user_id', $user->id)
+                ->where('type', 'check-in')
+                ->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo])
+                ->select(DB::raw('DATE(timestamp) as day'))
+                ->distinct()
+                ->count();
+
+            // Jours distincts avec check-out
+            $checkoutDays = Attendance::where('user_id', $user->id)
+                ->where('type', 'check-out')
+                ->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo])
+                ->select(DB::raw('DATE(timestamp) as day'))
+                ->distinct()
+                ->count();
+
+            // Jours complets (check-in ET check-out le meme jour)
+            $completeDays = DB::table('attendances as a1')
+                ->where('a1.user_id', $user->id)
+                ->where('a1.type', 'check-in')
+                ->whereBetween(DB::raw('DATE(a1.timestamp)'), [$dateFrom, $dateTo])
+                ->whereExists(function ($q) use ($user) {
+                    $q->select(DB::raw(1))
+                        ->from('attendances as a2')
+                        ->where('a2.user_id', $user->id)
+                        ->where('a2.type', 'check-out')
+                        ->whereColumn(DB::raw('DATE(a2.timestamp)'), DB::raw('DATE(a1.timestamp)'));
+                })
+                ->select(DB::raw('DATE(a1.timestamp) as day'))
+                ->distinct()
+                ->count();
+
+            // Total pointages
+            $totalAttendances = Attendance::where('user_id', $user->id)
+                ->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo])
+                ->count();
+
+            // Retards
+            $lateCount = Attendance::where('user_id', $user->id)
+                ->where('type', 'check-in')
+                ->where('is_late', true)
+                ->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo])
+                ->count();
+
+            // Premier et dernier usage
+            $firstUsage = Attendance::where('user_id', $user->id)
+                ->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo])
+                ->min('timestamp');
+            $lastUsage = Attendance::where('user_id', $user->id)
+                ->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo])
+                ->max('timestamp');
+
+            // Taux de ponctualite
+            $punctualityRate = $checkinDays > 0
+                ? round((($checkinDays - $lateCount) / $checkinDays) * 100, 1)
+                : 100;
+
+            if ($minDays > 0 && $checkinDays < $minDays) {
+                continue;
+            }
+
+            $employeeData = [
+                'id' => $user->id,
+                'employee_id' => $user->employee_id,
+                'full_name' => $user->full_name,
+                'employee_type' => $user->employee_type,
+                'employee_type_label' => $this->getEmployeeTypeLabel($user->employee_type),
+                'department' => $user->department?->name,
+                'campuses' => $user->campuses->pluck('name')->join(', '),
+                'checkin_days' => $checkinDays,
+                'checkout_days' => $checkoutDays,
+                'complete_days' => $completeDays,
+                'total_attendances' => $totalAttendances,
+                'late_count' => $lateCount,
+                'punctuality_rate' => $punctualityRate,
+                'first_usage' => $firstUsage ? Carbon::parse($firstUsage)->format('d/m/Y') : null,
+                'last_usage' => $lastUsage ? Carbon::parse($lastUsage)->format('d/m/Y') : null,
+            ];
+
+            $employees[] = $employeeData;
+            $totalCheckinDays += $checkinDays;
+            $totalCompleteDays += $completeDays;
+        }
+
+        // Trier par jours de check-in decroissant
+        usort($employees, fn($a, $b) => $b['checkin_days'] <=> $a['checkin_days']);
+
+        return [
+            'employees' => $employees,
+            'total_users' => count($employees),
+            'total_active_employees' => User::where('role_id', '!=', 1)->where('is_active', true)->count(),
+            'total_checkin_days' => $totalCheckinDays,
+            'total_complete_days' => $totalCompleteDays,
+            'avg_checkin_days' => count($employees) > 0 ? round($totalCheckinDays / count($employees), 1) : 0,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ];
+    }
+
+    private function getEmployeeTypeLabel(string $type): string
+    {
+        return match ($type) {
+            'permanent' => 'Permanent',
+            'semi_permanent' => 'Semi-Permanent',
+            'enseignant_vacataire' => 'Vacataire',
+            'enseignant_titulaire' => 'Titulaire',
+            'administratif' => 'Administratif',
+            'technique' => 'Technique',
+            'direction' => 'Direction',
+            'etudiant' => 'Etudiant',
+            default => ucfirst($type),
+        };
+    }
+
+    private function getFilterPeriodLabel(Request $request): string
+    {
+        $from = $request->input('date_from', now()->startOfMonth()->format('d/m/Y'));
+        $to = $request->input('date_to', now()->format('d/m/Y'));
+        return "Du $from au $to";
     }
 }
