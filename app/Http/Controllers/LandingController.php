@@ -72,6 +72,14 @@ class LandingController extends Controller
     }
 
     /**
+     * Page Support
+     */
+    public function support()
+    {
+        return view('landing.support');
+    }
+
+    /**
      * Inscription beta iOS
      */
     public function registerIosBeta(Request $request)

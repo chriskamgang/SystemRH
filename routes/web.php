@@ -23,6 +23,7 @@ Route::get('/temoignages', [LandingController::class, 'testimonials'])->name('la
 Route::get('/faq', [LandingController::class, 'faq'])->name('landing.faq');
 Route::get('/telecharger', [LandingController::class, 'download'])->name('landing.download');
 Route::get('/privacy-policy', [LandingController::class, 'privacyPolicy'])->name('landing.privacy-policy');
+Route::get('/support', [LandingController::class, 'support'])->name('landing.support');
 Route::post('/telecharger/ios-beta', [LandingController::class, 'registerIosBeta'])->name('landing.ios-beta');
 
 // Authentication routes
