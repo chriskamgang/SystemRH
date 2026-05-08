@@ -439,15 +439,15 @@ class DashboardController extends Controller
      */
     private function getAppUsageData(Request $request): array
     {
-        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $dateFrom = $request->input('date_from', now()->subMonths(2)->startOfMonth()->toDateString());
         $dateTo = $request->input('date_to', now()->toDateString());
         $departmentId = $request->input('department_id');
         $employeeType = $request->input('employee_type');
         $minDays = (int) $request->input('min_days', 0);
 
         // Utilisateurs qui ont au moins 1 pointage dans la periode
-        $usersQuery = User::where('role_id', '!=', 1)
-            ->where('is_active', true)
+        // On exclut uniquement le compte admin systeme (id=1)
+        $usersQuery = User::where('id', '!=', 1)
             ->whereHas('attendances', function ($q) use ($dateFrom, $dateTo) {
                 $q->whereBetween(DB::raw('DATE(timestamp)'), [$dateFrom, $dateTo]);
             });
@@ -556,7 +556,7 @@ class DashboardController extends Controller
         return [
             'employees' => $employees,
             'total_users' => count($employees),
-            'total_active_employees' => User::where('role_id', '!=', 1)->where('is_active', true)->count(),
+            'total_active_employees' => User::where('id', '!=', 1)->where('is_active', true)->count(),
             'total_checkin_days' => $totalCheckinDays,
             'total_complete_days' => $totalCompleteDays,
             'avg_checkin_days' => count($employees) > 0 ? round($totalCheckinDays / count($employees), 1) : 0,
