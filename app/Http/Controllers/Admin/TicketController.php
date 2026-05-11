@@ -76,7 +76,22 @@ class TicketController extends Controller
             'comments.user',
         ])->findOrFail($id);
 
-        return view('admin.tickets.show', compact('ticket'));
+        // Charger les services avec leurs departements pour l'assignation
+        $ticketServices = \App\Models\TicketService::with('department')->active()->get();
+
+        // Construire la map service_slug => membres du departement
+        $serviceMembers = [];
+        foreach ($ticketServices as $svc) {
+            if ($svc->department_id) {
+                $members = User::where('department_id', $svc->department_id)
+                    ->where('is_active', true)
+                    ->orderBy('first_name')
+                    ->get(['id', 'first_name', 'last_name', 'employee_id']);
+                $serviceMembers[$svc->slug] = $members;
+            }
+        }
+
+        return view('admin.tickets.show', compact('ticket', 'serviceMembers'));
     }
 
     /**
@@ -86,6 +101,7 @@ class TicketController extends Controller
     {
         $request->validate([
             'assigned_to_service' => 'required|string|in:' . implode(',', array_keys(Ticket::getActiveServices())),
+            'assigned_to_user_id' => 'nullable|exists:users,id',
             'priority' => 'required|string|in:' . implode(',', array_keys(Ticket::PRIORITIES)),
             'comment' => 'nullable|string|max:1000',
         ]);
@@ -96,6 +112,7 @@ class TicketController extends Controller
 
         $ticket->update([
             'assigned_to_service' => $request->assigned_to_service,
+            'assigned_to_user_id' => $request->assigned_to_user_id,
             'assigned_by' => auth()->id(),
             'priority' => $request->priority,
             'status' => 'assigned',

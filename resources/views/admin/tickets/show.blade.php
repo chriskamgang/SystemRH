@@ -104,14 +104,17 @@
 
                 {{-- Réceptionniste : Assigner (si ticket nouveau) --}}
                 @if($ticket->status === 'new')
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-lg shadow p-6" x-data="{
+                    selectedService: '{{ $ticket->target_service }}',
+                    serviceMembers: {{ Js::from($serviceMembers) }}
+                }">
                     <h3 class="font-bold text-red-600 mb-3"><i class="fas fa-hand-point-right"></i> Valider et assigner ce ticket</h3>
                     <form method="POST" action="{{ route('admin.tickets.assign', $ticket->id) }}">
                         @csrf
                         <div class="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Service destinataire</label>
-                                <select name="assigned_to_service" class="w-full px-3 py-2 border rounded-lg text-sm" required>
+                                <select name="assigned_to_service" x-model="selectedService" class="w-full px-3 py-2 border rounded-lg text-sm" required>
                                     @foreach(\App\Models\Ticket::getActiveServices() as $key => $label)
                                         <option value="{{ $key }}" {{ $ticket->target_service === $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
@@ -127,6 +130,22 @@
                                 </select>
                             </div>
                         </div>
+
+                        {{-- Assigner a un membre du service --}}
+                        <div class="mb-4" x-show="serviceMembers[selectedService] && serviceMembers[selectedService].length > 0">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Assigner a un membre (optionnel)</label>
+                            <select name="assigned_to_user_id" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                <option value="">-- Aucun (tout le service) --</option>
+                                <template x-for="member in (serviceMembers[selectedService] || [])" :key="member.id">
+                                    <option :value="member.id" x-text="member.first_name + ' ' + member.last_name + ' (' + (member.employee_id || '') + ')'"></option>
+                                </template>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Membres du departement lie a ce service</p>
+                        </div>
+                        <div class="mb-4" x-show="!serviceMembers[selectedService] || serviceMembers[selectedService].length === 0">
+                            <p class="text-xs text-orange-500"><i class="fas fa-info-circle"></i> Aucun departement lie a ce service. Configurez-le dans <a href="{{ route('admin.tickets.settings') }}" class="underline">Parametres</a>.</p>
+                        </div>
+
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Note interne (optionnel)</label>
                             <textarea name="comment" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Raison de la redirection, instructions..."></textarea>
@@ -272,6 +291,13 @@
                         <dt class="text-gray-500">Cree le</dt>
                         <dd>{{ $ticket->created_at->format('d/m/Y a H:i') }}</dd>
                     </div>
+                    @if($ticket->assignedToUser)
+                    <div>
+                        <dt class="text-gray-500">Assigne a</dt>
+                        <dd class="font-medium text-blue-600">{{ $ticket->assignedToUser->first_name }} {{ $ticket->assignedToUser->last_name }}</dd>
+                        <dd class="text-xs text-gray-400">{{ $ticket->assignedToUser->employee_id }}</dd>
+                    </div>
+                    @endif
                     @if($ticket->assigned_at)
                     <div>
                         <dt class="text-gray-500">Assigne le</dt>
