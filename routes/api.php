@@ -253,6 +253,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [\App\Http\Controllers\API\ComplaintController::class, 'store']);
     });
 
+    // ========== TICKETS ==========
+    Route::prefix('tickets')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\TicketController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\API\TicketController::class, 'store']);
+        Route::post('/{id}/comment', [\App\Http\Controllers\API\TicketController::class, 'addComment']);
+        Route::post('/{id}/rate', [\App\Http\Controllers\API\TicketController::class, 'rate']);
+    });
+
     // ========== RÉSULTATS (Academic Results) ==========
     Route::prefix('results')->group(function () {
         Route::get('/', [\App\Http\Controllers\API\ResultController::class, 'index']);

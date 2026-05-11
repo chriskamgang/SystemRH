@@ -325,6 +325,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::delete('/{id}', [App\Http\Controllers\Admin\ComplaintController::class, 'destroy'])->name('destroy');
     });
 
+    // Tickets de plainte
+    Route::prefix('tickets')->name('tickets.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\TicketController::class, 'index'])->name('index');
+        Route::get('/{id}', [App\Http\Controllers\Admin\TicketController::class, 'show'])->name('show');
+        Route::post('/{id}/assign', [App\Http\Controllers\Admin\TicketController::class, 'assign'])->name('assign');
+        Route::post('/{id}/internal-comment', [App\Http\Controllers\Admin\TicketController::class, 'addInternalComment'])->name('internal-comment');
+        Route::post('/{id}/submit-response', [App\Http\Controllers\Admin\TicketController::class, 'submitResponse'])->name('submit-response');
+        Route::post('/{id}/forward', [App\Http\Controllers\Admin\TicketController::class, 'forwardToEmployee'])->name('forward');
+        Route::post('/{id}/resolve', [App\Http\Controllers\Admin\TicketController::class, 'resolve'])->name('resolve');
+        Route::post('/{id}/close', [App\Http\Controllers\Admin\TicketController::class, 'close'])->name('close');
+    });
+
     // Gestion des Résultats Académiques
     Route::prefix('results')->name('results.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\AcademicResultController::class, 'index'])->name('index');

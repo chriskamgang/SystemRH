@@ -229,6 +229,15 @@
                     <span class="ml-3">Taches</span>
                 </a>
 
+                <a href="{{ route('admin.tickets.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.tickets.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-ticket-alt w-5 text-cyan-400"></i>
+                    <span class="ml-3">Tickets</span>
+                    @php $newTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count(); @endphp
+                    @if($newTickets > 0)
+                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $newTickets }}</span>
+                    @endif
+                </a>
+
                 {{-- ========== RESSOURCES HUMAINES ========== --}}
                 <p class="px-4 pt-5 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Ressources Humaines</p>
 
