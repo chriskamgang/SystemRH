@@ -151,8 +151,11 @@
                 <div class="bg-white rounded-lg shadow p-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-600">Retards Total</p>
+                            <p class="text-sm text-gray-600">Retards Non Justifies</p>
                             <p class="text-3xl font-bold text-gray-800">{{ $stats['late_count'] }}</p>
+                            @if($stats['justified_late_count'] > 0)
+                                <p class="text-xs text-green-600 mt-1">{{ $stats['justified_late_count'] }} justifie(s) sur {{ $stats['total_late_count'] }} total</p>
+                            @endif
                         </div>
                         <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                             <i class="fas fa-exclamation-triangle text-2xl text-orange-600"></i>

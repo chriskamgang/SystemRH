@@ -243,16 +243,21 @@ class EmployeeController extends Controller
         }])->findOrFail($id);
 
         // Statistiques de l'employé
+        $totalTardiness = $employee->tardiness()->count();
+        $justifiedTardiness = $employee->tardiness()->where('status', 'justified')->count();
+        $unjustifiedTardiness = $totalTardiness - $justifiedTardiness;
+
         $stats = [
             'total_checkins' => $employee->attendances()->where('type', 'check-in')->count(),
-            'late_count' => $employee->attendances()->where('type', 'check-in')->where('is_late', true)->count(),
+            'late_count' => $unjustifiedTardiness,
+            'justified_late_count' => $justifiedTardiness,
+            'total_late_count' => $totalTardiness,
             'this_month_checkins' => $employee->attendances()
                 ->where('type', 'check-in')
                 ->whereMonth('timestamp', now()->month)
                 ->count(),
-            'avg_late_minutes' => $employee->attendances()
-                ->where('type', 'check-in')
-                ->where('is_late', true)
+            'avg_late_minutes' => $employee->tardiness()
+                ->where('status', '!=', 'justified')
                 ->avg('late_minutes') ?? 0,
         ];
 
