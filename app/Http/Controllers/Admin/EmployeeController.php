@@ -171,8 +171,15 @@ class EmployeeController extends Controller
             'custom_end_time.date_format' => 'L\'heure de fin doit être au format HH:MM',
         ]);
 
-        // Si pas de role_id fourni, assigner le rôle "Employé Standard" par défaut
-        if (!$request->filled('role_id')) {
+        // Gerer l'acces admin
+        $validated['can_access_admin'] = $request->has('can_access_admin') ? true : false;
+
+        // Si pas d'acces admin, forcer le role employe
+        if (!$validated['can_access_admin']) {
+            $defaultRole = \App\Models\Role::where('name', 'employe')->first();
+            $validated['role_id'] = $defaultRole ? $defaultRole->id : 4;
+        } elseif (!$request->filled('role_id')) {
+            // Acces admin mais pas de role choisi : role employe par defaut
             $defaultRole = \App\Models\Role::where('name', 'employe')->first();
             $validated['role_id'] = $defaultRole ? $defaultRole->id : 4;
         }
@@ -316,8 +323,15 @@ class EmployeeController extends Controller
             'volume_horaire_hebdomadaire.max' => 'Le volume horaire hebdomadaire ne peut pas dépasser 168 heures (nombre d\'heures dans une semaine).',
         ]);
 
-        // Si pas de role_id fourni, assigner le rôle "Employé Standard" par défaut
-        if (!$request->filled('role_id')) {
+        // Gerer l'acces admin
+        $validated['can_access_admin'] = $request->has('can_access_admin') ? true : false;
+
+        // Si pas d'acces admin, forcer le role employe
+        if (!$validated['can_access_admin']) {
+            $defaultRole = \App\Models\Role::where('name', 'employe')->first();
+            $validated['role_id'] = $defaultRole ? $defaultRole->id : 4;
+        } elseif (!$request->filled('role_id')) {
+            // Acces admin mais pas de role choisi : role employe par defaut
             $defaultRole = \App\Models\Role::where('name', 'employe')->first();
             $validated['role_id'] = $defaultRole ? $defaultRole->id : 4;
         }

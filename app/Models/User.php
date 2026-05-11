@@ -50,6 +50,7 @@ class User extends Authenticatable
         'emergency_contact_name',
         'emergency_contact_phone',
         'manager_id',
+        'can_access_admin',
     ];
 
     /**
@@ -73,6 +74,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'can_access_admin' => 'boolean',
             'jours_travail' => 'array',
             'volume_horaire_hebdomadaire' => 'decimal:2',
         ];

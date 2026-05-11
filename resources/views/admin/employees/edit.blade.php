@@ -487,6 +487,40 @@
                 </div>
             </div>
 
+            <!-- Acces au tableau de bord -->
+            <div class="md:col-span-2 mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                <h4 class="text-sm font-bold text-indigo-800 mb-3">
+                    <i class="fas fa-desktop mr-2"></i>Acces au tableau de bord (site web)
+                </h4>
+                <p class="text-xs text-indigo-600 mb-3">
+                    Cochez cette case pour permettre a cet employe de se connecter au site web d'administration avec ses memes identifiants.
+                </p>
+
+                <div class="flex items-center mb-4">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="can_access_admin" value="1"
+                               id="can_access_admin_toggle"
+                               {{ old('can_access_admin', $employee->can_access_admin) ? 'checked' : '' }}
+                               class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
+                               onchange="document.getElementById('role_section').style.display = this.checked ? 'block' : 'none'">
+                        <span class="ml-2 text-gray-700 font-medium">Peut acceder au tableau de bord</span>
+                    </label>
+                </div>
+
+                <div id="role_section" style="display: {{ old('can_access_admin', $employee->can_access_admin) ? 'block' : 'none' }};">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <select name="role_id" class="w-full md:w-1/2 px-3 py-2 border rounded-lg text-sm">
+                        @foreach($roles as $role)
+                            <option value="{{ $role->id }}" {{ old('role_id', $employee->role_id) == $role->id ? 'selected' : '' }}>
+                                {{ $role->display_name }}
+                                @if($role->description) - {{ Str::limit($role->description, 50) }} @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Le role determine les menus et fonctionnalites accessibles sur le site.</p>
+                </div>
+            </div>
+
             <!-- Boutons -->
             <div class="flex justify-end gap-4 pt-6 border-t">
                 <a href="{{ route('admin.employees.index') }}" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition">

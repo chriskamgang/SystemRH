@@ -38,8 +38,8 @@ class LoginController extends Controller
                 return redirect()->intended('/admin/dashboard');
             }
 
-            // Vérifier si l'utilisateur a la permission d'accéder au dashboard
-            if ($user->hasPermission('access_dashboard')) {
+            // Verifier can_access_admin ET permission dashboard
+            if ($user->can_access_admin && $user->hasPermission('access_dashboard')) {
                 return redirect()->intended('/admin/dashboard');
             }
 
