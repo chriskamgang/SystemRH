@@ -132,7 +132,8 @@ class EmployeeController extends Controller
         $roles = Role::where('id', '!=', 1)->get();
         $campuses = Campus::all();
         $jobPositions = \App\Models\JobPosition::orderBy('name')->get();
-        return view('admin.employees.create', compact('roles', 'campuses', 'jobPositions'));
+        $departments = \App\Models\Department::where('is_active', true)->orderBy('name')->get();
+        return view('admin.employees.create', compact('roles', 'campuses', 'jobPositions', 'departments'));
     }
 
     /**
@@ -151,6 +152,7 @@ class EmployeeController extends Controller
             'employee_type' => 'required|string',
             'role_id' => 'nullable|exists:roles,id',
             'job_position_id' => 'nullable|exists:job_positions,id',
+            'department_id' => 'nullable|exists:departments,id',
             'campuses' => 'nullable|array',
             'campuses.*' => 'exists:campuses,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -273,8 +275,9 @@ class EmployeeController extends Controller
         $roles = Role::where('id', '!=', 1)->get();
         $campuses = Campus::all();
         $jobPositions = \App\Models\JobPosition::orderBy('name')->get();
+        $departments = \App\Models\Department::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.employees.edit', compact('employee', 'roles', 'campuses', 'jobPositions'));
+        return view('admin.employees.edit', compact('employee', 'roles', 'campuses', 'jobPositions', 'departments'));
     }
 
     /**
@@ -300,6 +303,7 @@ class EmployeeController extends Controller
             'employee_type' => 'required|string',
             'role_id' => 'nullable|exists:roles,id',
             'job_position_id' => 'nullable|exists:job_positions,id',
+            'department_id' => 'nullable|exists:departments,id',
             'campuses' => 'nullable|array',
             'campuses.*' => 'exists:campuses,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
