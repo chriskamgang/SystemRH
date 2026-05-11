@@ -41,10 +41,17 @@
                     {!! nl2br(e($ticket->description)) !!}
                 </div>
                 @if($ticket->attachment_path)
-                    <div class="mt-3">
-                        <a href="{{ Storage::url($ticket->attachment_path) }}" target="_blank" class="text-blue-600 hover:underline text-sm">
-                            <i class="fas fa-paperclip"></i> Piece jointe
-                        </a>
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border">
+                        <p class="text-xs text-gray-500 mb-2"><i class="fas fa-paperclip"></i> Piece jointe</p>
+                        @if(Str::endsWith($ticket->attachment_path, ['.jpg', '.jpeg', '.png', '.gif', '.webp']))
+                            <a href="{{ Storage::url($ticket->attachment_path) }}" target="_blank">
+                                <img src="{{ Storage::url($ticket->attachment_path) }}" alt="Piece jointe" class="max-h-64 rounded-lg border shadow-sm hover:opacity-90 transition">
+                            </a>
+                        @else
+                            <a href="{{ Storage::url($ticket->attachment_path) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium">
+                                <i class="fas fa-download"></i> Telecharger le fichier
+                            </a>
+                        @endif
                     </div>
                 @endif
             </div>
