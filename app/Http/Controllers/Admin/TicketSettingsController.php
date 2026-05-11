@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Department;
 use App\Models\Ticket;
 use App\Models\TicketService;
 use App\Models\TicketCategory;
@@ -18,8 +19,9 @@ class TicketSettingsController extends Controller
     {
         $services = TicketService::orderBy('sort_order')->get();
         $categories = TicketCategory::orderBy('sort_order')->get();
+        $departments = Department::orderBy('name')->get();
 
-        return view('admin.tickets.settings', compact('services', 'categories'));
+        return view('admin.tickets.settings', compact('services', 'categories', 'departments'));
     }
 
     // ─── Services ─────────────────────────────────
@@ -30,6 +32,7 @@ class TicketSettingsController extends Controller
             'name' => 'required|string|max:255|unique:ticket_services,name',
             'icon' => 'nullable|string|max:100',
             'color' => 'nullable|string|max:7',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
         $maxOrder = TicketService::max('sort_order') ?? -1;
@@ -41,6 +44,7 @@ class TicketSettingsController extends Controller
             'color' => $request->color,
             'is_active' => true,
             'sort_order' => $maxOrder + 1,
+            'department_id' => $request->department_id,
         ]);
 
         return back()->with('success', 'Service ajoute avec succes.');
@@ -55,6 +59,7 @@ class TicketSettingsController extends Controller
             'icon' => 'nullable|string|max:100',
             'color' => 'nullable|string|max:7',
             'sort_order' => 'nullable|integer|min:0',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
         $service->update([
@@ -63,6 +68,7 @@ class TicketSettingsController extends Controller
             'icon' => $request->icon,
             'color' => $request->color,
             'sort_order' => $request->sort_order ?? $service->sort_order,
+            'department_id' => $request->department_id,
         ]);
 
         return back()->with('success', 'Service mis a jour.');

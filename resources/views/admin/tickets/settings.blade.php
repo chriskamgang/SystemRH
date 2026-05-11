@@ -62,6 +62,9 @@
                                 @if($service->icon)
                                     <span class="text-xs text-gray-400 ml-1"><i class="{{ $service->icon }}"></i></span>
                                 @endif
+                                @if($service->department_id && $service->department)
+                                    <span class="text-xs text-blue-500 ml-1"><i class="fas fa-sitemap"></i> {{ $service->department->name }}</span>
+                                @endif
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -99,6 +102,14 @@
                                 <input type="text" name="color" value="{{ $service->color }}" class="px-2 py-1 border rounded text-sm" placeholder="Couleur (#hex)">
                                 <input type="number" name="sort_order" value="{{ $service->sort_order }}" class="px-2 py-1 border rounded text-sm" placeholder="Ordre" min="0">
                             </div>
+                            <div class="mb-2">
+                                <select name="department_id" class="w-full px-2 py-1 border rounded text-sm">
+                                    <option value="">Aucun</option>
+                                    @foreach($departments as $department)
+                                        <option value="{{ $department->id }}" @selected($service->department_id == $department->id)>{{ $department->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="flex gap-2">
                                 <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">Enregistrer</button>
                                 <button type="button" @click="editing = false" class="px-3 py-1 bg-gray-200 text-gray-600 rounded text-xs hover:bg-gray-300">Annuler</button>
@@ -120,7 +131,12 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2 mb-2">
                         <input type="text" name="color" class="px-2 py-1 border rounded text-sm" placeholder="Couleur (#hex)">
-                        <div></div>
+                        <select name="department_id" class="px-2 py-1 border rounded text-sm">
+                            <option value="">Aucun</option>
+                            @foreach($departments as $department)
+                                <option value="{{ $department->id }}">{{ $department->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
                         <i class="fas fa-plus mr-1"></i> Ajouter

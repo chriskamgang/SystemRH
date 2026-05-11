@@ -37,11 +37,13 @@ class TicketController extends Controller
                     'created_at' => $ticket->created_at->toIso8601String(),
                     'resolved_at' => $ticket->resolved_at?->toIso8601String(),
                     'closed_at' => $ticket->closed_at?->toIso8601String(),
+                    'attachment_url' => $ticket->attachment_path ? asset('storage/' . $ticket->attachment_path) : null,
                     'comments' => $ticket->publicComments->map(fn($c) => [
                         'id' => $c->id,
                         'comment' => $c->comment,
                         'user_name' => $c->user->first_name . ' ' . $c->user->last_name,
                         'type' => $c->comment_type,
+                        'attachment_url' => $c->attachment_path ? asset('storage/' . $c->attachment_path) : null,
                         'created_at' => $c->created_at->toIso8601String(),
                     ]),
                 ];
@@ -64,7 +66,13 @@ class TicketController extends Controller
             'target_service' => 'required|string|in:' . implode(',', array_keys(Ticket::getActiveServices())),
             'subject' => 'required|string|max:255',
             'description' => 'required|string|max:3000',
+            'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf,doc,docx',
         ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('tickets/attachments', 'public');
+        }
 
         $ticket = Ticket::create([
             'ticket_number' => Ticket::generateTicketNumber(),
@@ -74,6 +82,7 @@ class TicketController extends Controller
             'subject' => $request->subject,
             'description' => $request->description,
             'status' => 'new',
+            'attachment_path' => $attachmentPath,
         ]);
 
         return response()->json([
@@ -94,6 +103,7 @@ class TicketController extends Controller
     {
         $request->validate([
             'comment' => 'required|string|max:2000',
+            'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf,doc,docx',
         ]);
 
         $ticket = Ticket::where('user_id', $request->user()->id)->findOrFail($id);
@@ -102,11 +112,17 @@ class TicketController extends Controller
             return response()->json(['message' => 'Ce ticket est cloture.'], 400);
         }
 
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('tickets/attachments', 'public');
+        }
+
         TicketComment::create([
             'ticket_id' => $ticket->id,
             'user_id' => $request->user()->id,
             'comment' => $request->comment,
             'comment_type' => 'public',
+            'attachment_path' => $attachmentPath,
         ]);
 
         return response()->json(['message' => 'Commentaire ajoute.'], 201);
