@@ -181,44 +181,54 @@
                 @endif
 
                 {{-- ========== DEMANDES RH ========== --}}
+                @if($isAdmin || $can('leaves') || $can('justifications') || $can('certificates') || $can('salary_advances') || $can('tickets'))
                 <p class="px-4 pt-5 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Demandes RH</p>
 
+                @if($can('leaves'))
                 <a href="{{ route('admin.leaves.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.leaves.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-calendar-check w-5 text-blue-400"></i>
                     <span class="ml-3">Conges</span>
-                    @php $pendingLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count(); @endphp
-                    @if($pendingLeaves > 0)
-                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingLeaves }}</span>
+                    @php $sidebarLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count(); @endphp
+                    @if($sidebarLeaves > 0)
+                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarLeaves }}</span>
                     @endif
                 </a>
+                @endif
 
+                @if($can('justifications'))
                 <a href="{{ route('admin.justification-requests.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.justification-requests.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-file-medical w-5 text-orange-400"></i>
                     <span class="ml-3">Justifications</span>
-                    @php $pendingJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count(); @endphp
-                    @if($pendingJustifs > 0)
-                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingJustifs }}</span>
+                    @php $sidebarJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count(); @endphp
+                    @if($sidebarJustifs > 0)
+                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarJustifs }}</span>
                     @endif
                 </a>
+                @endif
 
+                @if($can('certificates'))
                 <a href="{{ route('admin.certificates.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.certificates.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-file-alt w-5 text-teal-400"></i>
                     <span class="ml-3">Attestations</span>
-                    @php $pendingCerts = \App\Models\WorkCertificate::where('status', 'pending')->count(); @endphp
-                    @if($pendingCerts > 0)
-                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingCerts }}</span>
+                    @php $sidebarCerts = \App\Models\WorkCertificate::where('status', 'pending')->count(); @endphp
+                    @if($sidebarCerts > 0)
+                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarCerts }}</span>
                     @endif
                 </a>
+                @endif
 
+                @if($can('salary_advances'))
                 <a href="{{ route('admin.salary-advances.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.salary-advances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-money-check-alt w-5 text-green-400"></i>
                     <span class="ml-3">Avances Salaire</span>
-                    @php $pendingAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count(); @endphp
-                    @if($pendingAdvances > 0)
-                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingAdvances }}</span>
+                    @php $sidebarAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count(); @endphp
+                    @if($sidebarAdvances > 0)
+                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarAdvances }}</span>
                     @endif
                 </a>
+                @endif
 
+                @if($isAdmin)
                 <a href="{{ route('admin.complaints.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.complaints.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-exclamation-triangle w-5 text-red-400"></i>
                     <span class="ml-3">Reclamations</span>
@@ -228,15 +238,19 @@
                     <i class="fas fa-tasks w-5"></i>
                     <span class="ml-3">Taches</span>
                 </a>
+                @endif
 
+                @if($can('tickets'))
                 <a href="{{ route('admin.tickets.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.tickets.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-ticket-alt w-5 text-cyan-400"></i>
                     <span class="ml-3">Tickets</span>
-                    @php $newTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count(); @endphp
-                    @if($newTickets > 0)
-                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $newTickets }}</span>
+                    @php $sidebarTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count(); @endphp
+                    @if($sidebarTickets > 0)
+                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarTickets }}</span>
                     @endif
                 </a>
+                @endif
+                @endif
 
                 {{-- ========== RESSOURCES HUMAINES ========== --}}
                 <p class="px-4 pt-5 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Ressources Humaines</p>
@@ -593,11 +607,80 @@
 
                 <div class="flex items-center space-x-4">
                     <!-- Notifications -->
+                    @php
+                        $notifTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count();
+                        $notifLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count();
+                        $notifJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count();
+                        $notifCerts = \App\Models\WorkCertificate::where('status', 'pending')->count();
+                        $notifAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count();
+                        $totalNotifs = $notifTickets + $notifLeaves + $notifJustifs + $notifCerts + $notifAdvances;
+                    @endphp
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" class="relative p-2 text-gray-600 hover:text-gray-800">
                             <i class="fas fa-bell text-xl"></i>
-                            <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                            @if($totalNotifs > 0)
+                                <span class="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full min-w-[20px] text-center">{{ $totalNotifs }}</span>
+                            @endif
                         </button>
+                        <div x-show="open" @click.away="open = false" x-cloak
+                             class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-50">
+                            <div class="px-4 py-3 border-b">
+                                <h3 class="font-bold text-sm text-gray-700">Notifications</h3>
+                            </div>
+                            <div class="max-h-80 overflow-y-auto">
+                                @if($notifTickets > 0)
+                                <a href="{{ route('admin.tickets.index') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 border-b">
+                                    <span class="w-8 h-8 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">{{ $notifTickets }}</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Tickets en attente</p>
+                                        <p class="text-xs text-gray-500">Nouveaux ou avec reponse</p>
+                                    </div>
+                                </a>
+                                @endif
+                                @if($notifLeaves > 0)
+                                <a href="{{ route('admin.leaves.index') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 border-b">
+                                    <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">{{ $notifLeaves }}</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Demandes de conge</p>
+                                        <p class="text-xs text-gray-500">En attente de validation</p>
+                                    </div>
+                                </a>
+                                @endif
+                                @if($notifJustifs > 0)
+                                <a href="{{ route('admin.justification-requests.index') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 border-b">
+                                    <span class="w-8 h-8 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">{{ $notifJustifs }}</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Justifications</p>
+                                        <p class="text-xs text-gray-500">En attente de validation</p>
+                                    </div>
+                                </a>
+                                @endif
+                                @if($notifCerts > 0)
+                                <a href="{{ route('admin.certificates.index') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 border-b">
+                                    <span class="w-8 h-8 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">{{ $notifCerts }}</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Attestations</p>
+                                        <p class="text-xs text-gray-500">En attente de traitement</p>
+                                    </div>
+                                </a>
+                                @endif
+                                @if($notifAdvances > 0)
+                                <a href="{{ route('admin.salary-advances.index') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 border-b">
+                                    <span class="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">{{ $notifAdvances }}</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Avances salaire</p>
+                                        <p class="text-xs text-gray-500">En attente d'approbation</p>
+                                    </div>
+                                </a>
+                                @endif
+                                @if($totalNotifs === 0)
+                                <div class="px-4 py-6 text-center text-gray-400 text-sm">
+                                    <i class="fas fa-check-circle text-2xl mb-2 text-green-400"></i>
+                                    <p>Aucune notification</p>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Search -->

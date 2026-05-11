@@ -62,11 +62,16 @@ class SeedDefaultRoles extends Command
         // Permissions a creer
         $permissionsToCreate = [
             ['name' => 'access_dashboard', 'display_name' => 'Acces au tableau de bord', 'description' => 'Permet de se connecter au site web', 'category' => 'dashboard'],
+            ['name' => 'dashboard.view', 'display_name' => 'Voir le dashboard', 'description' => 'Voir la page d\'accueil du dashboard', 'category' => 'dashboard'],
             ['name' => 'tickets.view', 'display_name' => 'Voir les tickets', 'description' => 'Voir et gerer les tickets', 'category' => 'tickets'],
             ['name' => 'employees.view', 'display_name' => 'Voir les employes', 'description' => 'Voir la liste des employes', 'category' => 'employees'],
             ['name' => 'attendance.view', 'display_name' => 'Voir les presences', 'description' => 'Voir les pointages et presences', 'category' => 'attendance'],
             ['name' => 'reports.view', 'display_name' => 'Voir les rapports', 'description' => 'Voir les rapports et statistiques', 'category' => 'reports'],
             ['name' => 'campus.view', 'display_name' => 'Voir les campus', 'description' => 'Voir et gerer les campus', 'category' => 'campus'],
+            ['name' => 'leaves.view', 'display_name' => 'Voir les conges', 'description' => 'Voir et gerer les demandes de conge', 'category' => 'leaves'],
+            ['name' => 'justifications.view', 'display_name' => 'Voir les justifications', 'description' => 'Voir et gerer les justifications de retard', 'category' => 'justifications'],
+            ['name' => 'certificates.view', 'display_name' => 'Voir les attestations', 'description' => 'Voir et gerer les demandes d\'attestation', 'category' => 'certificates'],
+            ['name' => 'salary_advances.view', 'display_name' => 'Voir les avances salaire', 'description' => 'Voir et gerer les avances sur salaire', 'category' => 'salary_advances'],
         ];
 
         foreach ($permissionsToCreate as $permData) {
@@ -83,11 +88,11 @@ class SeedDefaultRoles extends Command
 
         // Assignation des permissions par role
         $rolePermissions = [
-            'receptionniste' => ['access_dashboard', 'tickets.view'],
-            'rh' => ['access_dashboard', 'employees.view', 'attendance.view', 'reports.view'],
-            'chef_service' => ['access_dashboard', 'tickets.view'],
-            'chef_departement' => ['access_dashboard', 'employees.view', 'attendance.view'],
-            'responsable_campus' => ['access_dashboard', 'attendance.view', 'campus.view'],
+            'receptionniste' => ['access_dashboard', 'dashboard.view', 'tickets.view'],
+            'rh' => ['access_dashboard', 'dashboard.view', 'employees.view', 'attendance.view', 'reports.view', 'leaves.view', 'justifications.view', 'certificates.view', 'salary_advances.view'],
+            'chef_service' => ['access_dashboard', 'dashboard.view', 'tickets.view', 'attendance.view'],
+            'chef_departement' => ['access_dashboard', 'dashboard.view', 'employees.view', 'attendance.view'],
+            'responsable_campus' => ['access_dashboard', 'dashboard.view', 'attendance.view', 'campus.view'],
         ];
 
         foreach ($rolePermissions as $roleName => $permissionNames) {
