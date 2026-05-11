@@ -49,8 +49,8 @@ class TicketController extends Controller
 
         return response()->json([
             'tickets' => $tickets,
-            'services' => Ticket::SERVICES,
-            'categories' => Ticket::CATEGORIES,
+            'services' => Ticket::getActiveServices(),
+            'categories' => Ticket::getActiveCategories(),
         ]);
     }
 
@@ -60,8 +60,8 @@ class TicketController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'category' => 'required|string|in:' . implode(',', array_keys(Ticket::CATEGORIES)),
-            'target_service' => 'required|string|in:' . implode(',', array_keys(Ticket::SERVICES)),
+            'category' => 'required|string|in:' . implode(',', array_keys(Ticket::getActiveCategories())),
+            'target_service' => 'required|string|in:' . implode(',', array_keys(Ticket::getActiveServices())),
             'subject' => 'required|string|max:255',
             'description' => 'required|string|max:3000',
         ]);

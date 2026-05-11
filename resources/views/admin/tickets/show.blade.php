@@ -105,11 +105,11 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Service destinataire</label>
                                 <select name="assigned_to_service" class="w-full px-3 py-2 border rounded-lg text-sm" required>
-                                    @foreach(\App\Models\Ticket::SERVICES as $key => $label)
+                                    @foreach(\App\Models\Ticket::getActiveServices() as $key => $label)
                                         <option value="{{ $key }}" {{ $ticket->target_service === $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                <p class="text-xs text-gray-400 mt-1">L'employe a choisi : <strong>{{ \App\Models\Ticket::SERVICES[$ticket->target_service] ?? $ticket->target_service }}</strong></p>
+                                <p class="text-xs text-gray-400 mt-1">L'employe a choisi : <strong>{{ \App\Models\Ticket::getActiveServices()[$ticket->target_service] ?? $ticket->target_service }}</strong></p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Priorite</label>
@@ -243,7 +243,7 @@
                     </div>
                     <div>
                         <dt class="text-gray-500">Service demande par l'employe</dt>
-                        <dd class="font-medium">{{ \App\Models\Ticket::SERVICES[$ticket->target_service] ?? $ticket->target_service }}</dd>
+                        <dd class="font-medium">{{ \App\Models\Ticket::getActiveServices()[$ticket->target_service] ?? $ticket->target_service }}</dd>
                     </div>
                     @if($ticket->assigned_to_service)
                     <div>

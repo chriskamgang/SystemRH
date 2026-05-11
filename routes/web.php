@@ -328,6 +328,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Tickets de plainte
     Route::prefix('tickets')->name('tickets.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\TicketController::class, 'index'])->name('index');
+
+        // Settings (services & categories) — BEFORE dynamic {id} routes
+        Route::get('/settings', [App\Http\Controllers\Admin\TicketSettingsController::class, 'index'])->name('settings');
+        Route::post('/settings/services', [App\Http\Controllers\Admin\TicketSettingsController::class, 'storeService'])->name('settings.store-service');
+        Route::put('/settings/services/{id}', [App\Http\Controllers\Admin\TicketSettingsController::class, 'updateService'])->name('settings.update-service');
+        Route::post('/settings/services/{id}/toggle', [App\Http\Controllers\Admin\TicketSettingsController::class, 'toggleService'])->name('settings.toggle-service');
+        Route::delete('/settings/services/{id}', [App\Http\Controllers\Admin\TicketSettingsController::class, 'destroyService'])->name('settings.destroy-service');
+        Route::post('/settings/categories', [App\Http\Controllers\Admin\TicketSettingsController::class, 'storeCategory'])->name('settings.store-category');
+        Route::put('/settings/categories/{id}', [App\Http\Controllers\Admin\TicketSettingsController::class, 'updateCategory'])->name('settings.update-category');
+        Route::post('/settings/categories/{id}/toggle', [App\Http\Controllers\Admin\TicketSettingsController::class, 'toggleCategory'])->name('settings.toggle-category');
+        Route::delete('/settings/categories/{id}', [App\Http\Controllers\Admin\TicketSettingsController::class, 'destroyCategory'])->name('settings.destroy-category');
+
         Route::get('/{id}', [App\Http\Controllers\Admin\TicketController::class, 'show'])->name('show');
         Route::post('/{id}/assign', [App\Http\Controllers\Admin\TicketController::class, 'assign'])->name('assign');
         Route::post('/{id}/internal-comment', [App\Http\Controllers\Admin\TicketController::class, 'addInternalComment'])->name('internal-comment');

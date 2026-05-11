@@ -9,6 +9,60 @@ class Ticket extends Model
 {
     use HasFactory;
 
+    // ──────────────────────────────────────────────
+    // Dynamic DB-backed helpers (with constant fallback)
+    // ──────────────────────────────────────────────
+
+    /**
+     * Get active services from DB, falling back to constants.
+     */
+    public static function getActiveServices(): array
+    {
+        try {
+            $fromDb = TicketService::active()->get()->pluck('name', 'slug')->toArray();
+            if (!empty($fromDb)) {
+                return $fromDb;
+            }
+        } catch (\Exception $e) {
+            // Table may not exist yet (pre-migration)
+        }
+
+        return self::SERVICES;
+    }
+
+    /**
+     * Get active categories from DB, falling back to constants.
+     */
+    public static function getActiveCategories(): array
+    {
+        try {
+            $fromDb = TicketCategory::active()->get()->pluck('name', 'slug')->toArray();
+            if (!empty($fromDb)) {
+                return $fromDb;
+            }
+        } catch (\Exception $e) {
+            // Table may not exist yet (pre-migration)
+        }
+
+        return self::CATEGORIES;
+    }
+
+    /**
+     * Relation: service (via slug match on target_service).
+     */
+    public function service()
+    {
+        return $this->belongsTo(TicketService::class, 'target_service', 'slug');
+    }
+
+    /**
+     * Relation: category model (via slug match on category).
+     */
+    public function categoryModel()
+    {
+        return $this->belongsTo(TicketCategory::class, 'category', 'slug');
+    }
+
     protected $fillable = [
         'ticket_number',
         'user_id',
@@ -119,12 +173,15 @@ class Ticket extends Model
     // Helpers
     public function getServiceLabel(): string
     {
-        return self::SERVICES[$this->assigned_to_service ?? $this->target_service] ?? $this->target_service;
+        $slug = $this->assigned_to_service ?? $this->target_service;
+        $services = self::getActiveServices();
+        return $services[$slug] ?? self::SERVICES[$slug] ?? $slug;
     }
 
     public function getCategoryLabel(): string
     {
-        return self::CATEGORIES[$this->category] ?? $this->category;
+        $categories = self::getActiveCategories();
+        return $categories[$this->category] ?? self::CATEGORIES[$this->category] ?? $this->category;
     }
 
     public function getPriorityLabel(): string

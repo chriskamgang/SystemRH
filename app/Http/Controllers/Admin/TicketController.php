@@ -85,7 +85,7 @@ class TicketController extends Controller
     public function assign(Request $request, $id)
     {
         $request->validate([
-            'assigned_to_service' => 'required|string|in:' . implode(',', array_keys(Ticket::SERVICES)),
+            'assigned_to_service' => 'required|string|in:' . implode(',', array_keys(Ticket::getActiveServices())),
             'priority' => 'required|string|in:' . implode(',', array_keys(Ticket::PRIORITIES)),
             'comment' => 'nullable|string|max:1000',
         ]);
@@ -116,7 +116,8 @@ class TicketController extends Controller
         // Notifier l'employé
         $this->notifyEmployee($ticket, 'Votre ticket ' . $ticket->ticket_number . ' a ete pris en charge par la reception et transmis au service ' . $ticket->getServiceLabel() . '.');
 
-        return back()->with('success', 'Ticket assigne au service ' . Ticket::SERVICES[$request->assigned_to_service] . '.');
+        $services = Ticket::getActiveServices();
+        return back()->with('success', 'Ticket assigne au service ' . ($services[$request->assigned_to_service] ?? $request->assigned_to_service) . '.');
     }
 
     /**

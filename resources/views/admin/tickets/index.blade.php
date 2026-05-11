@@ -4,7 +4,12 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">Tickets de Plainte</h1>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold">Tickets de Plainte</h1>
+        <a href="{{ route('admin.tickets.settings') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700">
+            <i class="fas fa-cog mr-1"></i> Parametres
+        </a>
+    </div>
 
     {{-- Stats --}}
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
@@ -58,7 +63,7 @@
                 <label class="block text-xs font-medium text-gray-600 mb-1">Service</label>
                 <select name="service" class="px-3 py-2 border rounded-lg text-sm">
                     <option value="">Tous</option>
-                    @foreach(\App\Models\Ticket::SERVICES as $key => $label)
+                    @foreach(\App\Models\Ticket::getActiveServices() as $key => $label)
                         <option value="{{ $key }}" {{ request('service') == $key ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
@@ -111,7 +116,7 @@
                     <td class="px-4 py-3">
                         <span class="text-xs">{{ $ticket->getServiceLabel() }}</span>
                         @if($ticket->was_redirected)
-                            <span class="text-xs text-orange-500" title="Redirige depuis {{ \App\Models\Ticket::SERVICES[$ticket->target_service] ?? $ticket->target_service }}"><i class="fas fa-exchange-alt"></i></span>
+                            <span class="text-xs text-orange-500" title="Redirige depuis {{ \App\Models\Ticket::getActiveServices()[$ticket->target_service] ?? $ticket->target_service }}"><i class="fas fa-exchange-alt"></i></span>
                         @endif
                     </td>
                     <td class="px-4 py-3">
