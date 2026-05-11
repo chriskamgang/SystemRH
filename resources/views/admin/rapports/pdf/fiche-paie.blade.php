@@ -64,7 +64,7 @@
     <div class="header">
         <div class="header-left">
             <div class="company-name">IUEs/INSAM</div>
-            <div class="company-sub">Institut Universitaire de l'Estuaire / Institut Supérieur des Arts et Métiers</div>
+            <div class="company-sub">Institut Universitaire et Stratégique de l'Estuaire</div>
         </div>
         <div class="header-right">
             <div class="doc-title">FICHE DE PAIE</div>
