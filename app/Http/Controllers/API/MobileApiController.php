@@ -155,7 +155,8 @@ class MobileApiController extends Controller
                         'days_without_checkout' => $payroll['days_without_checkout'] ?? 0,
                     ],
                     'lateness' => [
-                        'total_late_minutes' => $payroll['total_late_minutes'] ?? 0,
+                        'total_late_minutes' => max(0, ($payroll['total_late_minutes'] ?? 0) - ($payroll['late_minutes_justified'] ?? 0)),
+                        'total_late_minutes_raw' => $payroll['total_late_minutes'] ?? 0,
                         'late_minutes_justified' => $payroll['late_minutes_justified'] ?? 0,
                         'late_penalty_amount' => $payroll['late_penalty_amount'] ?? 0,
                     ],

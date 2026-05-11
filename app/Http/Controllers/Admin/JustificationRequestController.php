@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\JustificationRequest;
 use App\Models\Absence;
 use App\Models\Tardiness;
+use App\Models\PayrollJustification;
 use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 
@@ -66,12 +67,47 @@ class JustificationRequestController extends Controller
                     'justified_at' => now(),
                 ]);
         } else {
-            Tardiness::where('user_id', $justification->user_id)
+            $tardiness = Tardiness::where('user_id', $justification->user_id)
                 ->whereDate('date', $justification->date)
-                ->update([
+                ->get();
+
+            $tardiness->each(function ($t) use ($justification) {
+                $t->update([
                     'status' => 'justified',
                     'justification' => $justification->reason,
                 ]);
+            });
+
+            // Créer/mettre à jour le PayrollJustification pour que le calcul de paie en tienne compte
+            $totalLateMinutes = $tardiness->sum('late_minutes');
+            if ($totalLateMinutes > 0) {
+                $year = $justification->date->year;
+                $month = $justification->date->month;
+
+                $existing = PayrollJustification::where('user_id', $justification->user_id)
+                    ->where('year', $year)
+                    ->where('month', $month)
+                    ->where('status', 'approved')
+                    ->first();
+
+                if ($existing) {
+                    $existing->update([
+                        'late_minutes_justified' => $existing->late_minutes_justified + (int) $totalLateMinutes,
+                        'reason' => $existing->reason . ' | ' . $justification->reason,
+                    ]);
+                } else {
+                    PayrollJustification::create([
+                        'user_id' => $justification->user_id,
+                        'created_by' => auth()->id(),
+                        'year' => $year,
+                        'month' => $month,
+                        'days_justified' => 0,
+                        'late_minutes_justified' => (int) $totalLateMinutes,
+                        'reason' => $justification->reason,
+                        'status' => 'approved',
+                    ]);
+                }
+            }
         }
 
         $this->notifyEmployee($justification, 'approved');
