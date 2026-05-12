@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class Ticket extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     // ──────────────────────────────────────────────
     // Dynamic DB-backed helpers (with constant fallback)
@@ -64,6 +65,7 @@ class Ticket extends Model
     }
 
     protected $fillable = [
+        'company_id',
         'ticket_number',
         'user_id',
         'category',

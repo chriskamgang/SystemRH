@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class TrainingProgram extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $fillable = [
-        'title', 'description', 'type', 'category', 'duration_hours',
+        'company_id', 'title', 'description', 'type', 'category', 'duration_hours',
         'level', 'is_mandatory', 'is_active', 'thumbnail', 'created_by',
     ];
 

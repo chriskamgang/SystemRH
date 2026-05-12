@@ -33,6 +33,18 @@ Route::post('/login', [LoginController::class, 'login']);
 // Admin routes (protected by auth middleware)
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
 
+    // === Gestion des entreprises (Super Admin) ===
+    Route::prefix('companies')->name('companies.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\CompanyController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Admin\CompanyController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Admin\CompanyController::class, 'store'])->name('store');
+        Route::get('/{id}', [\App\Http\Controllers\Admin\CompanyController::class, 'show'])->name('show');
+        Route::put('/{id}', [\App\Http\Controllers\Admin\CompanyController::class, 'update'])->name('update');
+        Route::post('/{id}/toggle', [\App\Http\Controllers\Admin\CompanyController::class, 'toggle'])->name('toggle');
+        Route::post('/{id}/switch', [\App\Http\Controllers\Admin\CompanyController::class, 'switchTo'])->name('switch');
+        Route::post('/switch-back', [\App\Http\Controllers\Admin\CompanyController::class, 'switchBack'])->name('switch-back');
+    });
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

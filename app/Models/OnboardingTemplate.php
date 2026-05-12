@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class OnboardingTemplate extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
-    protected $fillable = ['name', 'type', 'employee_type', 'is_active'];
+    protected $fillable = ['company_id', 'name', 'type', 'employee_type', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];
 

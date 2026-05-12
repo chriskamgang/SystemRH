@@ -5,10 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
+use App\Models\Traits\BelongsToCompany;
 
 class ManualAttendance extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
+        'company_id',
         'date',
         'check_in_time',
         'check_out_time',

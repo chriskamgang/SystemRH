@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,7 +11,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens, SoftDeletes;
+    use HasFactory, Notifiable, HasApiTokens, SoftDeletes, BelongsToCompany;
 
     /**
      * The attributes that are mass assignable.
@@ -51,6 +52,8 @@ class User extends Authenticatable
         'emergency_contact_phone',
         'manager_id',
         'can_access_admin',
+        'is_super_admin',
+        'company_id',
     ];
 
     /**
@@ -75,6 +78,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'can_access_admin' => 'boolean',
+            'is_super_admin' => 'boolean',
             'jours_travail' => 'array',
             'volume_horaire_hebdomadaire' => 'decimal:2',
         ];
@@ -329,7 +333,12 @@ class User extends Authenticatable
 
     public function isAdmin()
     {
-        return $this->role->name === 'admin';
+        return $this->role && $this->role->name === 'admin';
+    }
+
+    public function isSuperAdmin()
+    {
+        return $this->is_super_admin;
     }
 
     /**

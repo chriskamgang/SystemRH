@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class Conversation extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
-    protected $fillable = ['subject', 'is_group'];
+    protected $fillable = ['company_id', 'subject', 'is_group'];
 
     protected $casts = ['is_group' => 'boolean'];
 

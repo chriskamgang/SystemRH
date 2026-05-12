@@ -3,10 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class ManualDeduction extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
+        'company_id',
         'user_id',
         'amount',
         'total_amount',

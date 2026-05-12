@@ -121,6 +121,24 @@
             @endphp
             <nav class="flex-1 overflow-y-auto mt-4 px-4 pb-24">
 
+                {{-- ========== SUPER ADMIN : ENTREPRISES ========== --}}
+                @if(auth()->user()->isSuperAdmin())
+                <p class="px-4 pt-4 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Super Admin</p>
+                <a href="{{ route('admin.companies.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.companies.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-globe w-5"></i>
+                    <span class="ml-3">Entreprises</span>
+                </a>
+                @if(session('switched_company_name'))
+                <div class="mx-4 mb-2 px-3 py-2 bg-yellow-900/30 rounded-lg text-xs text-yellow-300">
+                    <i class="fas fa-building mr-1"></i> {{ session('switched_company_name') }}
+                    <form action="{{ route('admin.companies.switch-back') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="ml-1 underline hover:text-yellow-100">Quitter</button>
+                    </form>
+                </div>
+                @endif
+                @endif
+
                 {{-- ========== TABLEAU DE BORD ========== --}}
                 @if($can('dashboard'))
                 <p class="px-4 pt-4 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Tableau de bord</p>

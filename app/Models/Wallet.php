@@ -5,10 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Models\Traits\BelongsToCompany;
 
 class Wallet extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
+        'company_id',
         'user_id',
         'balance',
     ];

@@ -5,12 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Traits\BelongsToCompany;
 
 class UniteEnseignement extends Model
 {
+    use BelongsToCompany;
+
     protected $table = 'unites_enseignement';
 
     protected $fillable = [
+        'company_id',
         'enseignant_id',
         'code_ue',
         'nom_matiere',

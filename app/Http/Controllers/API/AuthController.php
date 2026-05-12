@@ -25,7 +25,8 @@ class AuthController extends Controller
             'device_os' => 'nullable|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        // Login sans scope company (on ne connait pas encore l'entreprise)
+        $user = User::withoutGlobalScopes()->where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
@@ -75,11 +76,31 @@ class AuthController extends Controller
         // Créer un token
         $token = $user->createToken('mobile-app')->plainTextToken;
 
-        // Charger les relations
-        $user->load(['role', 'department', 'campuses', 'permissions']);
+        // Verifier que l'entreprise est active
+        if ($user->company_id) {
+            $company = \App\Models\Company::find($user->company_id);
+            if ($company && !$company->is_active) {
+                return response()->json([
+                    'message' => 'Votre entreprise est actuellement desactivee. Contactez l\'administrateur.',
+                ], 403);
+            }
+        }
+
+        // Charger les relations (sans global scope pour eviter les problemes)
+        $user->load(['role', 'department', 'campuses', 'permissions', 'company']);
+
+        // Infos entreprise
+        $companyInfo = null;
+        if ($user->company) {
+            $companyInfo = [
+                'id' => $user->company->id,
+                'name' => $user->company->name,
+                'logo' => $user->company->logo ? asset('storage/' . $user->company->logo) : null,
+            ];
+        }
 
         return response()->json([
-            'message' => 'Connexion réussie',
+            'message' => 'Connexion reussie',
             'token' => $token,
             'user' => [
                 'id' => $user->id,
@@ -101,6 +122,7 @@ class AuthController extends Controller
                 'campuses' => $user->campuses,
                 'permissions' => $user->permissions,
                 'is_active' => $user->is_active,
+                'company' => $companyInfo,
             ],
         ], 200);
     }

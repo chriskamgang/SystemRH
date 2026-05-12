@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class SalaryAdvanceRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $fillable = [
-        'user_id', 'amount', 'reason', 'status', 'admin_note', 'reviewed_by', 'reviewed_at',
+        'company_id', 'user_id', 'amount', 'reason', 'status', 'admin_note', 'reviewed_by', 'reviewed_at',
     ];
 
     protected $casts = [

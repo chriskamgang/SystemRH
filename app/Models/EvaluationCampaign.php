@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class EvaluationCampaign extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
-    protected $fillable = ['title', 'description', 'year', 'start_date', 'end_date', 'status'];
+    protected $fillable = ['company_id', 'title', 'description', 'year', 'start_date', 'end_date', 'status'];
 
     protected $casts = [
         'start_date' => 'date',

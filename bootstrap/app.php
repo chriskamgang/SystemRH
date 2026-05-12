@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
+
+        // Multi-tenant : injecter le company_id dans chaque requete
+        $middleware->appendToGroup('web', \App\Http\Middleware\SetCurrentCompany::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\SetCurrentCompanyApi::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

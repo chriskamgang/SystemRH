@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class JobPosition extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
-    protected $fillable = ['name', 'description'];
+    protected $fillable = ['company_id', 'name', 'description'];
 
     /**
      * Liste des employés occupant ce poste

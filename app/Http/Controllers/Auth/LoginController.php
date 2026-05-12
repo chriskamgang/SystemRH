@@ -33,7 +33,25 @@ class LoginController extends Controller
 
             $user = Auth::user();
 
-            // Admin (role_id=1) a toujours accès
+            // Super admin a toujours acces
+            if ($user->isSuperAdmin()) {
+                return redirect()->intended('/admin/companies');
+            }
+
+            // Verifier que l'entreprise est active
+            if ($user->company_id) {
+                $company = \App\Models\Company::find($user->company_id);
+                if ($company && !$company->is_active) {
+                    Auth::logout();
+                    throw ValidationException::withMessages([
+                        'email' => ['Votre entreprise est actuellement desactivee. Contactez l\'administrateur.'],
+                    ]);
+                }
+                // Definir le company_id en session
+                session(['current_company_id' => $user->company_id]);
+            }
+
+            // Admin de l'entreprise a toujours acces
             if ($user->isAdmin()) {
                 return redirect()->intended('/admin/dashboard');
             }
@@ -43,10 +61,10 @@ class LoginController extends Controller
                 return redirect()->intended('/admin/dashboard');
             }
 
-            // Si pas de permission dashboard, déconnecter
+            // Si pas de permission dashboard, deconnecter
             Auth::logout();
             throw ValidationException::withMessages([
-                'email' => ['Vous n\'avez pas les droits d\'accès au panneau d\'administration.'],
+                'email' => ['Vous n\'avez pas les droits d\'acces au panneau d\'administration.'],
             ]);
         }
 

@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToCompany;
 
 class JobPosting extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompany;
 
     protected $fillable = [
-        'title', 'description', 'department_id', 'location', 'contract_type',
+        'company_id', 'title', 'description', 'department_id', 'location', 'contract_type',
         'salary_range', 'requirements', 'responsibilities', 'benefits',
         'status', 'positions_count', 'published_at', 'closes_at', 'created_by',
     ];
