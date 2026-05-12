@@ -88,10 +88,10 @@ class User extends Authenticatable
      * Relations
      */
 
-    // Relation avec Role
+    // Relation avec Role (sans scope company pour eviter les erreurs cross-tenant)
     public function role()
     {
-        return $this->belongsTo(Role::class);
+        return $this->belongsTo(Role::class)->withoutGlobalScopes();
     }
 
     // Relation avec Department
@@ -326,9 +326,14 @@ class User extends Authenticatable
      */
     public function hasPermission($permissionName)
     {
+        // Super admin a toutes les permissions
+        if ($this->is_super_admin) return true;
+
         // Vérifier si l'utilisateur a la permission via son rôle ou directement
-        return $this->role->permissions->contains('name', $permissionName) ||
-               $this->permissions->contains('name', $permissionName);
+        if ($this->role && $this->role->permissions) {
+            if ($this->role->permissions->contains('name', $permissionName)) return true;
+        }
+        return $this->permissions->contains('name', $permissionName);
     }
 
     public function isAdmin()
