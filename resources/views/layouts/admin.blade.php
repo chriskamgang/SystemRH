@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') - Attendance Admin</title>
+    <title>@yield('title', 'Dashboard') - Estuaire RH</title>
 
     <!-- Maps Configuration -->
     @php
@@ -106,16 +106,20 @@
         >
             <!-- Logo -->
             <div class="flex items-center justify-center h-16 bg-gray-800 flex-shrink-0">
-                <i class="fas fa-map-marker-alt text-2xl text-blue-500"></i>
-                <span class="ml-3 text-xl font-bold">Attendance</span>
+                <i class="fas fa-building text-2xl text-blue-500"></i>
+                <span class="ml-3 text-xl font-bold">Estuaire RH</span>
             </div>
 
             <!-- Navigation -->
             @php
                 $u = auth()->user();
+                $isSuperAdmin = $u->isSuperAdmin();
                 $isAdmin = $u->isAdmin();
+                // Super admin sans switch = pas de menus metier
+                $superAdminWithoutCompany = $isSuperAdmin && !session('current_company_id');
                 // Helper: admin voit tout, sinon vérifier module.view
-                $can = function($module) use ($u, $isAdmin) {
+                $can = function($module) use ($u, $isAdmin, $superAdminWithoutCompany) {
+                    if ($superAdminWithoutCompany) return false;
                     return $isAdmin || $u->hasPermission($module . '.view');
                 };
             @endphp
@@ -153,6 +157,7 @@
                 @endif
 
                 {{-- ========== PERSONNEL & PRESENCES ========== --}}
+                @if(!$superAdminWithoutCompany)
                 <p class="px-4 pt-5 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Personnel</p>
 
                 @if($can('employees'))
@@ -587,6 +592,7 @@
                     <span class="ml-3">Parametres</span>
                 </a>
                 @endif
+                @endif {{-- fin !$superAdminWithoutCompany (2 sections: Personnel + Systeme) --}}
             </nav>
 
             <!-- User Info -->
