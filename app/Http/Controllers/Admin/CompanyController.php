@@ -17,9 +17,10 @@ class CompanyController extends Controller
      */
     public function index()
     {
-        $companies = Company::withCount('users')
-            ->orderBy('name')
-            ->get();
+        // withoutGlobalScopes sur le count des users pour le super admin
+        $companies = Company::withCount(['users' => function ($q) {
+            $q->withoutGlobalScopes();
+        }])->orderBy('name')->get();
 
         return view('admin.companies.index', compact('companies'));
     }
@@ -112,7 +113,7 @@ class CompanyController extends Controller
      */
     public function show($id)
     {
-        $company = Company::withCount('users')->findOrFail($id);
+        $company = Company::withCount(['users' => fn($q) => $q->withoutGlobalScopes()])->findOrFail($id);
 
         $stats = [
             'total_employees' => User::withoutGlobalScopes()->where('company_id', $id)->where('is_active', true)->count(),

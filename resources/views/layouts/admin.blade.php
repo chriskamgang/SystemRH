@@ -644,12 +644,16 @@
                 <div class="flex items-center space-x-4">
                     <!-- Notifications -->
                     @php
-                        $notifTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count();
-                        $notifLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count();
-                        $notifJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count();
-                        $notifCerts = \App\Models\WorkCertificate::where('status', 'pending')->count();
-                        $notifAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count();
-                        $totalNotifs = $notifTickets + $notifLeaves + $notifJustifs + $notifCerts + $notifAdvances;
+                        if ($superAdminWithoutCompany) {
+                            $notifTickets = $notifLeaves = $notifJustifs = $notifCerts = $notifAdvances = $totalNotifs = 0;
+                        } else {
+                            $notifTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count();
+                            $notifLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count();
+                            $notifJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count();
+                            $notifCerts = \App\Models\WorkCertificate::where('status', 'pending')->count();
+                            $notifAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count();
+                            $totalNotifs = $notifTickets + $notifLeaves + $notifJustifs + $notifCerts + $notifAdvances;
+                        }
                     @endphp
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" class="relative p-2 text-gray-600 hover:text-gray-800">
