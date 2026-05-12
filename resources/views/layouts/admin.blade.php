@@ -8,8 +8,13 @@
 
     <!-- Maps Configuration -->
     @php
-        $mapProvider = \App\Models\Setting::get('map_provider', 'openstreetmap');
-        $googleMapsKey = \App\Models\Setting::get('google_maps_api_key', '');
+        try {
+            $mapProvider = \App\Models\Setting::get('map_provider', 'openstreetmap');
+            $googleMapsKey = \App\Models\Setting::get('google_maps_api_key', '');
+        } catch (\Exception $e) {
+            $mapProvider = 'openstreetmap';
+            $googleMapsKey = '';
+        }
     @endphp
 
     @if($mapProvider === 'google' && $googleMapsKey)
@@ -134,6 +139,20 @@
                     if ($superAdminWithoutCompany) return false;
                     return $isAdmin || $u->hasPermission($module . '.view');
                 };
+
+                // Pre-calculer tous les compteurs (protege si table manquante)
+                $sidebarLeaves = $sidebarJustifs = $sidebarCerts = $sidebarAdvances = $sidebarTickets = 0;
+                $sidebarMoratoriums = $sidebarIncidents = $sidebarViolations = 0;
+                if (!$superAdminWithoutCompany) {
+                    try { $sidebarLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                    try { $sidebarJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                    try { $sidebarCerts = \App\Models\WorkCertificate::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                    try { $sidebarAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                    try { $sidebarTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count(); } catch (\Exception $e) {}
+                    try { $sidebarMoratoriums = \App\Models\MoratoriumRequest::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                    try { $sidebarIncidents = \App\Models\PresenceIncident::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                    try { $sidebarViolations = \App\Models\SecurityViolation::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                }
             @endphp
             <nav class="flex-1 overflow-y-auto mt-4 px-4 pb-24">
 
@@ -223,7 +242,6 @@
                 <a href="{{ route('admin.leaves.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.leaves.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-calendar-check w-5 text-blue-400"></i>
                     <span class="ml-3">Conges</span>
-                    @php $sidebarLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count(); @endphp
                     @if($sidebarLeaves > 0)
                         <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarLeaves }}</span>
                     @endif
@@ -234,7 +252,6 @@
                 <a href="{{ route('admin.justification-requests.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.justification-requests.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-file-medical w-5 text-orange-400"></i>
                     <span class="ml-3">Justifications</span>
-                    @php $sidebarJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count(); @endphp
                     @if($sidebarJustifs > 0)
                         <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarJustifs }}</span>
                     @endif
@@ -245,7 +262,6 @@
                 <a href="{{ route('admin.certificates.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.certificates.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-file-alt w-5 text-teal-400"></i>
                     <span class="ml-3">Attestations</span>
-                    @php $sidebarCerts = \App\Models\WorkCertificate::where('status', 'pending')->count(); @endphp
                     @if($sidebarCerts > 0)
                         <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarCerts }}</span>
                     @endif
@@ -256,7 +272,6 @@
                 <a href="{{ route('admin.salary-advances.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.salary-advances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-money-check-alt w-5 text-green-400"></i>
                     <span class="ml-3">Avances Salaire</span>
-                    @php $sidebarAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count(); @endphp
                     @if($sidebarAdvances > 0)
                         <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarAdvances }}</span>
                     @endif
@@ -279,7 +294,6 @@
                 <a href="{{ route('admin.tickets.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.tickets.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-ticket-alt w-5 text-cyan-400"></i>
                     <span class="ml-3">Tickets</span>
-                    @php $sidebarTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count(); @endphp
                     @if($sidebarTickets > 0)
                         <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarTickets }}</span>
                     @endif
@@ -509,9 +523,8 @@
                 <a href="{{ route('admin.moratoriums.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.moratoriums.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-file-invoice-dollar w-5 text-yellow-400"></i>
                     <span class="ml-3">Moratoires</span>
-                    @php $pendingMoratoriums = \App\Models\MoratoriumRequest::where('status', 'pending')->count(); @endphp
-                    @if($pendingMoratoriums > 0)
-                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingMoratoriums }}</span>
+                    @if($sidebarMoratoriums > 0)
+                        <span class="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarMoratoriums }}</span>
                     @endif
                 </a>
 
@@ -524,9 +537,8 @@
                         <div class="flex items-center">
                             <i class="fas fa-bell w-5"></i>
                             <span class="ml-3">Alertes Presence</span>
-                            @php $pendingCount = \App\Models\PresenceIncident::where('status', 'pending')->count(); @endphp
-                            @if($pendingCount > 0)
-                                <span class="ml-2 px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingCount }}</span>
+                            @if($sidebarIncidents > 0)
+                                <span class="ml-2 px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarIncidents }}</span>
                             @endif
                         </div>
                         <i class="fas fa-chevron-down text-xs transition-transform" :class="{'rotate-180': open}"></i>
@@ -551,9 +563,8 @@
                         <div class="flex items-center">
                             <i class="fas fa-shield-alt w-5 text-red-400"></i>
                             <span class="ml-3">Securite</span>
-                            @php $pendingViolations = \App\Models\SecurityViolation::where('status', 'pending')->count(); @endphp
-                            @if($pendingViolations > 0)
-                                <span class="ml-2 px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $pendingViolations }}</span>
+                            @if($sidebarViolations > 0)
+                                <span class="ml-2 px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">{{ $sidebarViolations }}</span>
                             @endif
                         </div>
                         <i class="fas fa-chevron-down text-xs transition-transform" :class="{'rotate-180': open}"></i>
@@ -617,7 +628,7 @@
                     </div>
                     <div class="ml-3 flex-1">
                         <p class="text-sm font-medium">{{ auth()->user()->full_name }}</p>
-                        <p class="text-xs text-gray-400">{{ auth()->user()->role->display_name }}</p>
+                        <p class="text-xs text-gray-400">{{ auth()->user()->role->display_name ?? 'Super Admin' }}</p>
                     </div>
                     <form method="POST" action="{{ route('admin.logout') }}">
                         @csrf
@@ -644,14 +655,13 @@
                 <div class="flex items-center space-x-4">
                     <!-- Notifications -->
                     @php
-                        if ($superAdminWithoutCompany) {
-                            $notifTickets = $notifLeaves = $notifJustifs = $notifCerts = $notifAdvances = $totalNotifs = 0;
-                        } else {
-                            $notifTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count();
-                            $notifLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count();
-                            $notifJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count();
-                            $notifCerts = \App\Models\WorkCertificate::where('status', 'pending')->count();
-                            $notifAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count();
+                        $notifTickets = $notifLeaves = $notifJustifs = $notifCerts = $notifAdvances = $totalNotifs = 0;
+                        if (!$superAdminWithoutCompany) {
+                            try { $notifTickets = \App\Models\Ticket::whereIn('status', ['new', 'responded'])->count(); } catch (\Exception $e) {}
+                            try { $notifLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                            try { $notifJustifs = \App\Models\JustificationRequest::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                            try { $notifCerts = \App\Models\WorkCertificate::where('status', 'pending')->count(); } catch (\Exception $e) {}
+                            try { $notifAdvances = \App\Models\SalaryAdvanceRequest::where('status', 'pending')->count(); } catch (\Exception $e) {}
                             $totalNotifs = $notifTickets + $notifLeaves + $notifJustifs + $notifCerts + $notifAdvances;
                         }
                     @endphp

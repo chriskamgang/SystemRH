@@ -95,7 +95,7 @@ class CompanyController extends Controller
             'first_name' => $request->admin_first_name,
             'last_name' => $request->admin_last_name,
             'email' => $request->admin_email,
-            'password' => Hash::make($request->admin_password),
+            'password' => $request->admin_password,
             'employee_id' => 'ADM-' . strtoupper(Str::random(6)),
             'role_id' => $adminRole->id,
             'company_id' => $company->id,
