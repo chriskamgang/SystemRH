@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') - Estuaire RH</title>
+    <title>@yield('title', 'Dashboard') - {{ auth()->check() && auth()->user()->company ? auth()->user()->company->name : 'Estuaire RH' }}</title>
 
     <!-- Maps Configuration -->
     @php
@@ -105,9 +105,21 @@
             class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 flex flex-col"
         >
             <!-- Logo -->
-            <div class="flex items-center justify-center h-16 bg-gray-800 flex-shrink-0">
-                <i class="fas fa-building text-2xl text-blue-500"></i>
-                <span class="ml-3 text-xl font-bold">Estuaire RH</span>
+            @php
+                $currentCompany = null;
+                if (auth()->user()->company_id) {
+                    $currentCompany = \App\Models\Company::find(auth()->user()->company_id);
+                } elseif (session('current_company_id')) {
+                    $currentCompany = \App\Models\Company::find(session('current_company_id'));
+                }
+            @endphp
+            <div class="flex items-center justify-center h-16 bg-gray-800 flex-shrink-0 px-3">
+                @if($currentCompany && $currentCompany->logo)
+                    <img src="{{ asset('storage/' . $currentCompany->logo) }}" alt="{{ $currentCompany->name }}" class="w-8 h-8 rounded object-cover">
+                @else
+                    <i class="fas fa-building text-2xl text-blue-500"></i>
+                @endif
+                <span class="ml-3 text-lg font-bold truncate">{{ $currentCompany->name ?? 'Estuaire RH' }}</span>
             </div>
 
             <!-- Navigation -->
