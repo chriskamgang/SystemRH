@@ -223,7 +223,11 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @if($attendance->check_out_time)
                                     <div class="text-sm text-gray-900">{{ $attendance->check_out_time->format('H:i:s') }}</div>
+                                    @if($attendance->check_out && $attendance->check_out->is_half_day)
+                                    <div class="text-xs text-orange-500 font-medium">Auto-checkout</div>
+                                    @else
                                     <div class="text-xs text-gray-500">{{ $attendance->check_out_time->diffForHumans() }}</div>
+                                    @endif
                                     @elseif($attendance->check_in_time && $attendance->check_in_time->isToday())
                                     <span class="text-xs text-yellow-600 font-medium">En cours...</span>
                                     @else
@@ -275,7 +279,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @if($attendance->check_in && $attendance->check_in->is_half_day)
                                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
-                                            <i class="fas fa-adjust mr-1"></i> Demi-journée
+                                            <i class="fas fa-adjust mr-1"></i> Demi-journée (pas de check-out)
                                         </span>
                                     @elseif($attendance->is_late)
                                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
