@@ -30,7 +30,7 @@ class MoratoriumRequest extends Model
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withoutGlobalScopes();
     }
 
     /**
@@ -38,7 +38,7 @@ class MoratoriumRequest extends Model
      */
     public function validator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'validated_by');
+        return $this->belongsTo(User::class, 'validated_by')->withoutGlobalScopes();
     }
 
     /**

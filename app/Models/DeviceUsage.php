@@ -23,6 +23,6 @@ class DeviceUsage extends Model
     // Relation avec User
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 }

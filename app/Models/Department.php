@@ -30,12 +30,12 @@ class Department extends Model
      */
     public function campus()
     {
-        return $this->belongsTo(Campus::class);
+        return $this->belongsTo(Campus::class)->withoutGlobalScopes();
     }
 
     public function head()
     {
-        return $this->belongsTo(User::class, 'head_user_id');
+        return $this->belongsTo(User::class, 'head_user_id')->withoutGlobalScopes();
     }
 
     public function users()

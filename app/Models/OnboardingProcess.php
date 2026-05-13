@@ -22,7 +22,7 @@ class OnboardingProcess extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function template()
@@ -37,7 +37,7 @@ class OnboardingProcess extends Model
 
     public function initiator()
     {
-        return $this->belongsTo(User::class, 'initiated_by');
+        return $this->belongsTo(User::class, 'initiated_by')->withoutGlobalScopes();
     }
 
     public function getProgressAttribute()

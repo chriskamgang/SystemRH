@@ -18,12 +18,12 @@ class CampusTravelTime extends Model
 
     public function campusFrom()
     {
-        return $this->belongsTo(Campus::class, 'campus_from_id');
+        return $this->belongsTo(Campus::class, 'campus_from_id')->withoutGlobalScopes();
     }
 
     public function campusTo()
     {
-        return $this->belongsTo(Campus::class, 'campus_to_id');
+        return $this->belongsTo(Campus::class, 'campus_to_id')->withoutGlobalScopes();
     }
 
     /**

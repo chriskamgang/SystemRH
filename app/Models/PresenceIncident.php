@@ -50,12 +50,12 @@ class PresenceIncident extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function campus()
     {
-        return $this->belongsTo(Campus::class);
+        return $this->belongsTo(Campus::class)->withoutGlobalScopes();
     }
 
     public function attendance()
@@ -65,7 +65,7 @@ class PresenceIncident extends Model
 
     public function validator()
     {
-        return $this->belongsTo(User::class, 'validated_by');
+        return $this->belongsTo(User::class, 'validated_by')->withoutGlobalScopes();
     }
 
     public function uniteEnseignement()

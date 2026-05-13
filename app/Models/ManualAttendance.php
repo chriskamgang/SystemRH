@@ -33,12 +33,12 @@ class ManualAttendance extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function campus(): BelongsTo
     {
-        return $this->belongsTo(Campus::class);
+        return $this->belongsTo(Campus::class)->withoutGlobalScopes();
     }
 
     public function uniteEnseignement(): BelongsTo
@@ -48,7 +48,7 @@ class ManualAttendance extends Model
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScopes();
     }
 
     /**

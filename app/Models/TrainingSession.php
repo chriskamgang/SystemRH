@@ -29,7 +29,7 @@ class TrainingSession extends Model
 
     public function trainer()
     {
-        return $this->belongsTo(User::class, 'trainer_id');
+        return $this->belongsTo(User::class, 'trainer_id')->withoutGlobalScopes();
     }
 
     public function enrollments()

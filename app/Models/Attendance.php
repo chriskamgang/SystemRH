@@ -49,12 +49,12 @@ class Attendance extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function campus()
     {
-        return $this->belongsTo(Campus::class);
+        return $this->belongsTo(Campus::class)->withoutGlobalScopes();
     }
 
     public function tardiness()

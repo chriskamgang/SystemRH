@@ -41,17 +41,17 @@ class ManualDeduction extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function appliedBy()
     {
-        return $this->belongsTo(User::class, 'applied_by');
+        return $this->belongsTo(User::class, 'applied_by')->withoutGlobalScopes();
     }
 
     public function cancelledBy()
     {
-        return $this->belongsTo(User::class, 'cancelled_by');
+        return $this->belongsTo(User::class, 'cancelled_by')->withoutGlobalScopes();
     }
 
     public function installments()

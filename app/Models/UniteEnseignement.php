@@ -50,7 +50,7 @@ class UniteEnseignement extends Model
     // Enseignant (vacataire ou semi-permanent) à qui l'UE est attribuée
     public function enseignant(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'enseignant_id');
+        return $this->belongsTo(User::class, 'enseignant_id')->withoutGlobalScopes();
     }
 
     // Alias pour rétrocompatibilité
@@ -62,13 +62,13 @@ class UniteEnseignement extends Model
     // Admin qui a créé/attribué l'UE
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScopes();
     }
 
     // Admin qui a activé l'UE
     public function activator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'activated_by');
+        return $this->belongsTo(User::class, 'activated_by')->withoutGlobalScopes();
     }
 
     // Incidents de présence liés à cette UE

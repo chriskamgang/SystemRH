@@ -27,6 +27,6 @@ class OnboardingTask extends Model
 
     public function completedByUser()
     {
-        return $this->belongsTo(User::class, 'completed_by');
+        return $this->belongsTo(User::class, 'completed_by')->withoutGlobalScopes();
     }
 }

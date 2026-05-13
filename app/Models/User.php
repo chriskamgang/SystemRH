@@ -97,7 +97,7 @@ class User extends Authenticatable
     // Relation avec Department
     public function department()
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(Department::class)->withoutGlobalScopes();
     }
 
     // Relation avec le Poste (Job Position)

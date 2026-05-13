@@ -35,12 +35,12 @@ class Tardiness extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function campus()
     {
-        return $this->belongsTo(Campus::class);
+        return $this->belongsTo(Campus::class)->withoutGlobalScopes();
     }
 
     public function attendance()
@@ -50,6 +50,6 @@ class Tardiness extends Model
 
     public function justifiedBy()
     {
-        return $this->belongsTo(User::class, 'justified_by');
+        return $this->belongsTo(User::class, 'justified_by')->withoutGlobalScopes();
     }
 }

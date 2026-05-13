@@ -30,12 +30,12 @@ class Evaluation extends Model
 
     public function employee()
     {
-        return $this->belongsTo(User::class, 'employee_id');
+        return $this->belongsTo(User::class, 'employee_id')->withoutGlobalScopes();
     }
 
     public function evaluator()
     {
-        return $this->belongsTo(User::class, 'evaluator_id');
+        return $this->belongsTo(User::class, 'evaluator_id')->withoutGlobalScopes();
     }
 
     public function scores()

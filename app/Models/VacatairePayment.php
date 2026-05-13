@@ -51,17 +51,17 @@ class VacatairePayment extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function department()
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(Department::class)->withoutGlobalScopes();
     }
 
     public function validatedBy()
     {
-        return $this->belongsTo(User::class, 'validated_by');
+        return $this->belongsTo(User::class, 'validated_by')->withoutGlobalScopes();
     }
 
     public function details()

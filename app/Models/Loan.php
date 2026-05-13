@@ -38,7 +38,7 @@ class Loan extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     /**
@@ -46,7 +46,7 @@ class Loan extends Model
      */
     public function createdBy()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScopes();
     }
 
     /**
@@ -54,7 +54,7 @@ class Loan extends Model
      */
     public function completedBy()
     {
-        return $this->belongsTo(User::class, 'completed_by');
+        return $this->belongsTo(User::class, 'completed_by')->withoutGlobalScopes();
     }
 
     /**

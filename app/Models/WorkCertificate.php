@@ -33,12 +33,12 @@ class WorkCertificate extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function generator()
     {
-        return $this->belongsTo(User::class, 'generated_by');
+        return $this->belongsTo(User::class, 'generated_by')->withoutGlobalScopes();
     }
 
     public function getTypeLabelAttribute()

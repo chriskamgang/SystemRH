@@ -147,17 +147,17 @@ class Ticket extends Model
     // Relations
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     public function assignedToUser()
     {
-        return $this->belongsTo(User::class, 'assigned_to_user_id');
+        return $this->belongsTo(User::class, 'assigned_to_user_id')->withoutGlobalScopes();
     }
 
     public function assignedByUser()
     {
-        return $this->belongsTo(User::class, 'assigned_by');
+        return $this->belongsTo(User::class, 'assigned_by')->withoutGlobalScopes();
     }
 
     public function comments()

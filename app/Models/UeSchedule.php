@@ -37,12 +37,12 @@ class UeSchedule extends Model
 
     public function campus(): BelongsTo
     {
-        return $this->belongsTo(Campus::class);
+        return $this->belongsTo(Campus::class)->withoutGlobalScopes();
     }
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScopes();
     }
 
     // Scopes

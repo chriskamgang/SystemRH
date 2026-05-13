@@ -41,7 +41,7 @@ class JobApplication extends Model
 
     public function reviewer()
     {
-        return $this->belongsTo(User::class, 'reviewed_by');
+        return $this->belongsTo(User::class, 'reviewed_by')->withoutGlobalScopes();
     }
 
     public function getStatusLabelAttribute(): string

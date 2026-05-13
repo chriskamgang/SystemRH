@@ -52,7 +52,7 @@ class ManualPayrollAdjustment extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withoutGlobalScopes();
     }
 
     /**
@@ -60,7 +60,7 @@ class ManualPayrollAdjustment extends Model
      */
     public function appliedBy()
     {
-        return $this->belongsTo(User::class, 'applied_by');
+        return $this->belongsTo(User::class, 'applied_by')->withoutGlobalScopes();
     }
 
     /**
