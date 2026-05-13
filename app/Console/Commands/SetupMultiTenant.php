@@ -22,12 +22,13 @@ class SetupMultiTenant extends Command
         'attendances', 'tickets', 'ticket_services', 'ticket_categories',
         'leave_requests', 'justification_requests', 'work_certificates',
         'salary_advance_requests', 'payroll_records', 'vacataire_payments',
-        'unites_enseignement', 'presence_incidents', 'tardiness', 'absences',
+        'unites_enseignement', 'presence_incidents', 'tardinesses', 'absences',
         'notifications', 'settings', 'loans', 'manual_deductions',
         'manual_payroll_adjustments', 'manual_attendances', 'security_violations',
         'wallets', 'tasks', 'complaints', 'employee_documents', 'job_positions',
         'moratorium_requests', 'evaluation_campaigns', 'job_postings',
         'training_programs', 'conversations', 'levels', 'specialties',
+        'presence_checks', 'user_locations', 'break_logs', 'academic_results',
         'onboarding_templates',
     ];
 

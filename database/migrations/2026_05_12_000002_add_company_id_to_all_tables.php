@@ -28,7 +28,7 @@ return new class extends Migration
         'vacataire_payments',
         'unites_enseignement',
         'presence_incidents',
-        'tardiness',
+        'tardinesses',
         'absences',
         'notifications',
         'settings',
