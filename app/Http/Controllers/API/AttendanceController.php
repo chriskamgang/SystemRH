@@ -57,20 +57,19 @@ class AttendanceController extends Controller
      */
     private function findActiveCheckIn($user, $shift)
     {
-        $todayCheckIns = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
+        // Charger tous les pointages du jour/shift en une seule requête
+        $todayAttendances = Attendance::where('user_id', $user->id)
             ->where('shift', $shift)
             ->whereDate('timestamp', today())
             ->orderBy('timestamp', 'desc')
             ->get();
 
-        foreach ($todayCheckIns as $ci) {
-            $hasCheckOut = Attendance::where('user_id', $user->id)
-                ->where('shift', $shift)
-                ->where('type', 'check-out')
+        $checkOuts = $todayAttendances->where('type', 'check-out');
+
+        foreach ($todayAttendances->where('type', 'check-in') as $ci) {
+            $hasCheckOut = $checkOuts
                 ->where('timestamp', '>', $ci->timestamp)
-                ->whereDate('timestamp', today())
-                ->exists();
+                ->isNotEmpty();
 
             if (!$hasCheckOut) {
                 return $ci;
@@ -877,8 +876,11 @@ class AttendanceController extends Controller
             $query->where('type', $request->type);
         }
 
-        // Récupérer toutes les présences (sans pagination pour l'app mobile)
-        $attendances = $query->orderBy('timestamp', 'desc')->get();
+        // Limiter les résultats pour la performance (derniers 60 jours par défaut)
+        if (!$request->start_date && !$request->end_date) {
+            $query->where('timestamp', '>=', now()->subDays(60));
+        }
+        $attendances = $query->orderBy('timestamp', 'desc')->limit(200)->get();
 
         return response()->json([
             'success' => true,
@@ -934,44 +936,30 @@ class AttendanceController extends Controller
         $startDate = $request->start_date ?? now()->startOfMonth()->toDateString();
         $endDate = $request->end_date ?? now()->endOfMonth()->toDateString();
 
-        // Total de check-ins
-        $totalCheckIns = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
+        // Charger TOUS les pointages de la période en une seule requête
+        $allAttendances = Attendance::where('user_id', $user->id)
             ->whereBetween('timestamp', [$startDate, $endDate])
-            ->count();
+            ->with('campus')
+            ->orderBy('timestamp', 'asc')
+            ->get();
 
-        // Total de retards
-        $totalLate = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
-            ->where('is_late', true)
-            ->whereBetween('timestamp', [$startDate, $endDate])
-            ->count();
+        $checkIns = $allAttendances->where('type', 'check-in');
+        $checkOuts = $allAttendances->where('type', 'check-out');
 
-        // Jours travaillés (jours uniques avec au moins un check-in)
-        $daysWorked = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
-            ->whereBetween('timestamp', [$startDate, $endDate])
-            ->select(DB::raw('DATE(timestamp) as date'))
-            ->distinct()
-            ->count();
+        $totalCheckIns = $checkIns->count();
+        $totalLate = $checkIns->where('is_late', true)->count();
+        $daysWorked = $checkIns->map(fn($a) => $a->timestamp->format('Y-m-d'))->unique()->count();
 
         // Total d'heures (somme des durées check-in -> check-out)
         $totalMinutes = 0;
-        $checkIns = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
-            ->whereBetween('timestamp', [$startDate, $endDate])
-            ->get();
-
         foreach ($checkIns as $checkIn) {
-            $checkOut = Attendance::where('user_id', $user->id)
+            $checkOut = $checkOuts
                 ->where('campus_id', $checkIn->campus_id)
-                ->where('type', 'check-out')
                 ->where('timestamp', '>', $checkIn->timestamp)
-                ->whereDate('timestamp', $checkIn->timestamp->toDateString())
+                ->filter(fn($co) => $co->timestamp->format('Y-m-d') === $checkIn->timestamp->format('Y-m-d'))
                 ->first();
 
             if ($checkOut) {
-                // Plafonner et soustraire la pause
                 $effIn = $checkIn->timestamp->copy();
                 $effOut = $checkOut->timestamp->copy();
                 $wStart = $effIn->copy()->setTime(8, 0, 0);
@@ -986,17 +974,12 @@ class AttendanceController extends Controller
             }
         }
 
-        // Retards par campus
-        $latenessByCampus = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
-            ->where('is_late', true)
-            ->whereBetween('timestamp', [$startDate, $endDate])
-            ->with('campus')
-            ->get()
+        // Retards par campus (déjà en mémoire)
+        $latenessByCampus = $checkIns->where('is_late', true)
             ->groupBy('campus_id')
             ->map(function ($items) {
                 return [
-                    'campus' => $items->first()->campus->name,
+                    'campus' => $items->first()->campus->name ?? 'Inconnu',
                     'count' => $items->count(),
                     'total_late_minutes' => $items->sum('late_minutes'),
                 ];
@@ -1027,18 +1010,19 @@ class AttendanceController extends Controller
     {
         $user = $request->user();
 
-        $activeCheckIns = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
+        // Charger tous les pointages du jour en une seule requête
+        $todayAttendances = Attendance::where('user_id', $user->id)
             ->whereDate('timestamp', today())
-            ->get()
-            ->filter(function ($checkIn) {
-                // Vérifier s'il n'y a pas de check-out correspondant
-                return !Attendance::where('user_id', $checkIn->user_id)
+            ->get();
+
+        $todayCheckOuts = $todayAttendances->where('type', 'check-out');
+
+        $activeCheckIns = $todayAttendances->where('type', 'check-in')
+            ->filter(function ($checkIn) use ($todayCheckOuts) {
+                return !$todayCheckOuts
                     ->where('campus_id', $checkIn->campus_id)
-                    ->where('type', 'check-out')
                     ->where('timestamp', '>', $checkIn->timestamp)
-                    ->whereDate('timestamp', $checkIn->timestamp->toDateString())
-                    ->exists();
+                    ->isNotEmpty();
             });
 
         return response()->json([

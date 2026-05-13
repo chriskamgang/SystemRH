@@ -59,7 +59,7 @@ class Attendance extends Model
 
     public function tardiness()
     {
-        return $this->hasOne(Tardiness::class);
+        return $this->hasOne(Tardiness::class)->withoutGlobalScopes();
     }
 
     public function uniteEnseignement()

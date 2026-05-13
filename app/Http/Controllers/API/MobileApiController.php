@@ -378,9 +378,21 @@ class MobileApiController extends Controller
 
             $history = [];
 
-            // Generer la liste des mois depuis l'embauche (max 24 mois)
-            $startMonth = max($hireDate->copy()->startOfMonth(), $now->copy()->subMonths(23)->startOfMonth());
+            // Generer la liste des mois depuis l'embauche (max 12 mois pour perf)
+            $startMonth = max($hireDate->copy()->startOfMonth(), $now->copy()->subMonths(11)->startOfMonth());
             $current = $now->copy()->startOfMonth();
+
+            // Pre-charger TOUTES les deductions manuelles en une seule requete
+            $allDeductions = ManualDeduction::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->where(function ($q) use ($startMonth, $now) {
+                    $q->whereRaw("(year * 100 + month) >= ?", [$startMonth->year * 100 + $startMonth->month])
+                      ->whereRaw("(year * 100 + month) <= ?", [$now->year * 100 + $now->month]);
+                })
+                ->selectRaw('month, year, SUM(amount) as total')
+                ->groupBy('month', 'year')
+                ->get()
+                ->keyBy(fn ($d) => $d->year . '-' . $d->month);
 
             while ($current->gte($startMonth)) {
                 $month = $current->month;
@@ -397,11 +409,10 @@ class MobileApiController extends Controller
                         $grossSalary = $payroll['gross_salary'] ?? $user->monthly_salary ?? 0;
                     }
 
-                    $manualDeductionsTotal = ManualDeduction::where('user_id', $user->id)
-                        ->where('month', $month)
-                        ->where('year', $year)
-                        ->where('status', 'active')
-                        ->sum('amount');
+                    $deductionKey = $year . '-' . $month;
+                    $manualDeductionsTotal = isset($allDeductions[$deductionKey])
+                        ? $allDeductions[$deductionKey]->total
+                        : 0;
 
                     if ($isVacataire) {
                         $netSalary = max(0, $netSalary - $manualDeductionsTotal);

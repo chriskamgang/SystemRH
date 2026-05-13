@@ -175,45 +175,39 @@ class UserController extends Controller
             ->where('check_time', '>=', now()->subDay())
             ->count();
 
-        // Check-in actif aujourd'hui
-        $activeCheckIns = $user->attendances()
-            ->where('type', 'check-in')
+        // Charger tous les pointages du jour en une seule requête
+        $todayAttendances = $user->attendances()
             ->whereDate('timestamp', today())
-            ->get()
-            ->filter(function ($checkIn) use ($user) {
-                return !$user->attendances()
-                    ->where('campus_id', $checkIn->campus_id)
-                    ->where('type', 'check-out')
-                    ->where('timestamp', '>', $checkIn->timestamp)
-                    ->whereDate('timestamp', today())
-                    ->exists();
-            });
+            ->with('campus')
+            ->orderBy('timestamp', 'asc')
+            ->get();
+
+        $todayCheckIns = $todayAttendances->where('type', 'check-in');
+        $todayCheckOuts = $todayAttendances->where('type', 'check-out');
+
+        // Check-in actif : check-ins sans check-out correspondant
+        $activeCheckIns = $todayCheckIns->filter(function ($checkIn) use ($todayCheckOuts) {
+            return !$todayCheckOuts
+                ->where('campus_id', $checkIn->campus_id)
+                ->where('timestamp', '>', $checkIn->timestamp)
+                ->isNotEmpty();
+        });
 
         $hasActiveCheckIn = $activeCheckIns->isNotEmpty();
 
-        // Stats du mois en cours
+        // Stats du mois - une seule requête
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
+        $monthCheckIns = $user->attendances()
+            ->where('type', 'check-in')
+            ->whereBetween('timestamp', [$startOfMonth, $endOfMonth])
+            ->get(['timestamp', 'is_late']);
+
         $monthStats = [
-            'total_check_ins' => $user->attendances()
-                ->where('type', 'check-in')
-                ->whereBetween('timestamp', [$startOfMonth, $endOfMonth])
-                ->count(),
-            'total_late' => $user->attendances()
-                ->where('type', 'check-in')
-                ->where('is_late', true)
-                ->whereBetween('timestamp', [$startOfMonth, $endOfMonth])
-                ->count(),
-            'days_worked' => $user->attendances()
-                ->where('type', 'check-in')
-                ->whereBetween('timestamp', [$startOfMonth, $endOfMonth])
-                ->get()
-                ->map(function ($attendance) {
-                    return $attendance->timestamp->format('Y-m-d');
-                })
-                ->unique()
-                ->count(),
+            'total_check_ins' => $monthCheckIns->count(),
+            'total_late' => $monthCheckIns->where('is_late', true)->count(),
+            'days_worked' => $monthCheckIns->map(fn($a) => $a->timestamp->format('Y-m-d'))->unique()->count(),
         ];
 
         // Dernier check-in
