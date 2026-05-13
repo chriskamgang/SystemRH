@@ -267,25 +267,23 @@ class AttendanceController extends Controller
         $now = now();
         $shift = $this->detectShift($now);
 
-        // Vérifier s'il y a un check-in actif sur N'IMPORTE QUEL campus
-        // L'employé doit d'abord faire check-out avant de changer de campus
-        $allTodayCheckIns = Attendance::where('user_id', $user->id)
-            ->where('type', 'check-in')
-            ->where('shift', $shift)
+        // Vérifier s'il y a un check-in actif sur N'IMPORTE QUEL campus et N'IMPORTE QUEL shift
+        // L'employé doit d'abord faire check-out avant de changer de campus ou de shift
+        $allTodayAttendances = Attendance::where('user_id', $user->id)
             ->whereDate('timestamp', today())
             ->get();
 
-        foreach ($allTodayCheckIns as $checkIn) {
-            $hasCheckOut = Attendance::where('user_id', $user->id)
+        $allTodayCheckOuts = $allTodayAttendances->where('type', 'check-out');
+
+        foreach ($allTodayAttendances->where('type', 'check-in') as $checkIn) {
+            $hasCheckOut = $allTodayCheckOuts
                 ->where('campus_id', $checkIn->campus_id)
-                ->where('shift', $shift)
-                ->where('type', 'check-out')
                 ->where('timestamp', '>', $checkIn->timestamp)
-                ->whereDate('timestamp', today())
-                ->exists();
+                ->isNotEmpty();
 
             if (!$hasCheckOut) {
-                $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+                $checkInShift = $checkIn->shift ?? 'morning';
+                $shiftLabel = $checkInShift === 'morning' ? 'matin' : 'soir';
                 $activeCampusName = $checkIn->campus ? $checkIn->campus->name : 'un autre campus';
 
                 if ($checkIn->campus_id === $campus->id) {
@@ -298,7 +296,7 @@ class AttendanceController extends Controller
                     'message' => $msg,
                     'existing_checkin' => $checkIn->load('campus'),
                     'active_campus' => $activeCampusName,
-                    'shift' => $shift,
+                    'shift' => $checkInShift,
                 ], 400);
             }
         }
