@@ -1,13 +1,69 @@
-@extends('admin.rapports.pdf.layout')
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Salaires par Banque - {{ \Carbon\Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY') }}</title>
+    <style>
+        @page {
+            margin-top: 120px;
+            margin-bottom: 50px;
+            margin-left: 30px;
+            margin-right: 30px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 9px;
+            line-height: 1.3;
+            color: #333;
+        }
+        .meta-info {
+            background: #f3f4f6;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+        .meta-info p { margin: 2px 0; font-size: 8px; }
+        .stats-grid { display: table; width: 100%; margin-bottom: 10px; }
+        .stat-box {
+            display: table-cell;
+            width: 50%;
+            padding: 8px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            text-align: center;
+        }
+        .stat-box:first-child { border-right: none; }
+        .stat-label { font-size: 7px; color: #6b7280; margin-bottom: 2px; }
+        .stat-value { font-size: 14px; font-weight: bold; color: #1e40af; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        thead { background: #1e40af; color: white; }
+        th { padding: 5px 4px; text-align: left; font-size: 8px; font-weight: bold; }
+        td { padding: 4px; border-bottom: 1px solid #e5e7eb; font-size: 8px; }
+        tbody tr:nth-child(even) { background: #f9fafb; }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 7px;
+            color: #9ca3af;
+            padding: 8px;
+        }
+        .page-number:before { content: "Page " counter(page); }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .text-green { color: #059669; }
+        .text-red { color: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="meta-info">
+        <p><strong>Salaires par Banque</strong> - {{ \Carbon\Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY') }} | Jours ouvrables : {{ number_format($workingDays, 1) }} | Employes : {{ $totalEmployees }}@if($selectedBank) | Banque : {{ $selectedBank }}@endif | Edition : {{ date('d/m/Y H:i') }}</p>
+    </div>
 
-@section('title', 'Salaires par Banque')
-@section('subtitle', \Carbon\Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY'))
-
-@section('meta-info')
-    <p><strong>Periode :</strong> {{ \Carbon\Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY') }} | <strong>Jours ouvrables :</strong> {{ number_format($workingDays, 1) }} | <strong>Employes :</strong> {{ $totalEmployees }}@if($selectedBank) | <strong>Banque :</strong> {{ $selectedBank }}@endif</p>
-@endsection
-
-@section('content')
     <!-- Stats compactes -->
     <div class="stats-grid">
         <div class="stat-box">
@@ -21,8 +77,7 @@
     </div>
 
     @if($totalBanks > 1)
-    <!-- Recapitulatif par banque (seulement si plusieurs banques) -->
-    <table style="margin-bottom: 10px;">
+    <table>
         <thead>
             <tr>
                 <th>#</th>
@@ -47,22 +102,21 @@
         </tbody>
         <tfoot>
             <tr style="background: #1e40af; color: white; font-weight: bold;">
-                <td colspan="2" style="padding: 6px 5px;">TOTAL</td>
-                <td class="text-center" style="padding: 6px 5px;">{{ $totalEmployees }}</td>
-                <td class="text-right" style="padding: 6px 5px;">{{ number_format($totalGrossSalary, 0, ',', ' ') }}</td>
-                <td class="text-right" style="padding: 6px 5px;">{{ number_format($totalGrossSalary - $totalNetSalary, 0, ',', ' ') }}</td>
-                <td class="text-right" style="padding: 6px 5px;">{{ number_format($totalNetSalary, 0, ',', ' ') }}</td>
+                <td colspan="2" style="padding: 5px 4px;">TOTAL</td>
+                <td class="text-center" style="padding: 5px 4px;">{{ $totalEmployees }}</td>
+                <td class="text-right" style="padding: 5px 4px;">{{ number_format($totalGrossSalary, 0, ',', ' ') }}</td>
+                <td class="text-right" style="padding: 5px 4px;">{{ number_format($totalGrossSalary - $totalNetSalary, 0, ',', ' ') }}</td>
+                <td class="text-right" style="padding: 5px 4px;">{{ number_format($totalNetSalary, 0, ',', ' ') }}</td>
             </tr>
         </tfoot>
     </table>
     @endif
 
-    <!-- Detail par banque -->
     @foreach($bankGroups as $group)
-    <div style="margin-top: 8px;">
-        <div style="background: #eff6ff; padding: 5px 8px; border-left: 3px solid #2563eb; margin-bottom: 3px;">
-            <strong style="font-size: 10px; color: #1e40af;">{{ $group['bank_name'] }}</strong>
-            <span style="font-size: 8px; color: #6b7280; margin-left: 8px;">{{ $group['count'] }} employe(s) | Total: {{ number_format($group['total_net'], 0, ',', ' ') }} FCFA</span>
+    <div style="margin-top: 6px;">
+        <div style="background: #eff6ff; padding: 4px 8px; border-left: 3px solid #2563eb; margin-bottom: 2px;">
+            <strong style="font-size: 9px; color: #1e40af;">{{ $group['bank_name'] }}</strong>
+            <span style="font-size: 7px; color: #6b7280; margin-left: 6px;">{{ $group['count'] }} employe(s) | Total: {{ number_format($group['total_net'], 0, ',', ' ') }} FCFA</span>
         </div>
         <table>
             <thead>
@@ -72,9 +126,9 @@
                     <th>Nom & Prenom</th>
                     <th>Type</th>
                     <th>N Compte</th>
-                    <th class="text-right">Salaire Brut</th>
+                    <th class="text-right">Sal. Brut</th>
                     <th class="text-right">Deductions</th>
-                    <th class="text-right">Salaire Net</th>
+                    <th class="text-right">Sal. Net</th>
                 </tr>
             </thead>
             <tbody>
@@ -89,7 +143,7 @@
                         @elseif($employee->employee_type == 'semi_permanent')
                             Semi-p.
                         @else
-                            {{ ucfirst(substr($employee->employee_type, 0, 8)) }}
+                            {{ ucfirst(substr($employee->employee_type, 0, 6)) }}
                         @endif
                     </td>
                     <td>{{ $employee->numero_compte ?: '-' }}</td>
@@ -101,29 +155,29 @@
             </tbody>
             <tfoot>
                 <tr style="background: #f3f4f6; font-weight: bold;">
-                    <td colspan="5" class="text-right" style="padding: 5px;">Sous-total</td>
-                    <td class="text-right" style="padding: 5px;">{{ number_format($group['total_gross'], 0, ',', ' ') }}</td>
-                    <td class="text-right text-red" style="padding: 5px;">{{ number_format($group['total_deductions'], 0, ',', ' ') }}</td>
-                    <td class="text-right text-green" style="padding: 5px;">{{ number_format($group['total_net'], 0, ',', ' ') }}</td>
+                    <td colspan="5" class="text-right" style="padding: 4px;">Sous-total</td>
+                    <td class="text-right" style="padding: 4px;">{{ number_format($group['total_gross'], 0, ',', ' ') }}</td>
+                    <td class="text-right text-red" style="padding: 4px;">{{ number_format($group['total_deductions'], 0, ',', ' ') }}</td>
+                    <td class="text-right text-green" style="padding: 4px;">{{ number_format($group['total_net'], 0, ',', ' ') }}</td>
                 </tr>
             </tfoot>
         </table>
     </div>
     @endforeach
 
-    <!-- Signatures -->
-    <div style="margin-top: 25px; display: table; width: 100%;">
-        <div style="display: table-cell; width: 50%; text-align: center; padding: 15px;">
-            <p style="font-size: 9px; font-weight: bold; margin-bottom: 35px;">Prepare par :</p>
-            <p style="border-top: 1px solid #333; display: inline-block; padding-top: 5px; font-size: 8px;">Signature & Cachet</p>
+    <div style="margin-top: 20px; display: table; width: 100%;">
+        <div style="display: table-cell; width: 50%; text-align: center; padding: 10px;">
+            <p style="font-size: 8px; font-weight: bold; margin-bottom: 30px;">Prepare par :</p>
+            <p style="border-top: 1px solid #333; display: inline-block; padding-top: 4px; font-size: 7px;">Signature & Cachet</p>
         </div>
-        <div style="display: table-cell; width: 50%; text-align: center; padding: 15px;">
-            <p style="font-size: 9px; font-weight: bold; margin-bottom: 35px;">Verifie et approuve par :</p>
-            <p style="border-top: 1px solid #333; display: inline-block; padding-top: 5px; font-size: 8px;">Signature & Cachet</p>
+        <div style="display: table-cell; width: 50%; text-align: center; padding: 10px;">
+            <p style="font-size: 8px; font-weight: bold; margin-bottom: 30px;">Verifie et approuve par :</p>
+            <p style="border-top: 1px solid #333; display: inline-block; padding-top: 4px; font-size: 7px;">Signature & Cachet</p>
         </div>
     </div>
 
-    <p style="font-size: 7px; color: #9ca3af; margin-top: 5px;">
-        * Tous les montants sont en FCFA. Document genere automatiquement - IUEs/INSAM.
-    </p>
-@endsection
+    <div class="footer">
+        <p class="page-number"></p>
+    </div>
+</body>
+</html>
