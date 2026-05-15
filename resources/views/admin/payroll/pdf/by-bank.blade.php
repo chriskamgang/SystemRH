@@ -124,10 +124,12 @@
                     <th>#</th>
                     <th>Matricule</th>
                     <th>Nom & Prenom</th>
-                    <th>Type</th>
                     <th>N Compte</th>
+                    <th class="text-center">Jrs Trav.</th>
+                    <th class="text-center">Heures</th>
+                    <th class="text-center">Retards</th>
                     <th class="text-right">Sal. Brut</th>
-                    <th class="text-right">Deductions</th>
+                    <th class="text-right">Ded.</th>
                     <th class="text-right">Sal. Net</th>
                 </tr>
             </thead>
@@ -137,16 +139,10 @@
                     <td>{{ $empIndex + 1 }}</td>
                     <td>{{ $employee->employee_id }}</td>
                     <td><strong>{{ $employee->full_name }}</strong></td>
-                    <td>
-                        @if($employee->employee_type == 'enseignant_titulaire')
-                            Perm.
-                        @elseif($employee->employee_type == 'semi_permanent')
-                            Semi-p.
-                        @else
-                            {{ ucfirst(substr($employee->employee_type, 0, 6)) }}
-                        @endif
-                    </td>
                     <td>{{ $employee->numero_compte ?: '-' }}</td>
+                    <td class="text-center">{{ number_format($employee->days_worked, 1) }}/{{ number_format($employee->working_days ?? 0, 1) }}</td>
+                    <td class="text-center">{{ number_format($employee->total_hours_worked ?? 0, 1) }}h</td>
+                    <td class="text-center {{ ($employee->total_late_minutes ?? 0) > 0 ? 'text-orange' : '' }}">{{ $employee->total_late_minutes ?? 0 }}min</td>
                     <td class="text-right">{{ number_format($employee->gross_salary, 0, ',', ' ') }}</td>
                     <td class="text-right text-red">{{ number_format($employee->total_deductions, 0, ',', ' ') }}</td>
                     <td class="text-right text-green font-bold">{{ number_format($employee->net_salary, 0, ',', ' ') }}</td>
@@ -155,7 +151,7 @@
             </tbody>
             <tfoot>
                 <tr style="background: #f3f4f6; font-weight: bold;">
-                    <td colspan="5" class="text-right" style="padding: 4px;">Sous-total</td>
+                    <td colspan="7" class="text-right" style="padding: 4px;">Sous-total</td>
                     <td class="text-right" style="padding: 4px;">{{ number_format($group['total_gross'], 0, ',', ' ') }}</td>
                     <td class="text-right text-red" style="padding: 4px;">{{ number_format($group['total_deductions'], 0, ',', ' ') }}</td>
                     <td class="text-right text-green" style="padding: 4px;">{{ number_format($group['total_net'], 0, ',', ' ') }}</td>

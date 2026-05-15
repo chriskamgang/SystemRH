@@ -192,15 +192,18 @@
                                 <table class="min-w-full">
                                     <thead class="bg-gray-100">
                                         <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">#</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Employe</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Type</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">N Compte</th>
-                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500">Salaire Brut</th>
-                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500">Deductions</th>
-                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500">Salaire Net</th>
-                                            <th class="px-4 py-2 text-center text-xs font-medium text-gray-500">Statut</th>
-                                            <th class="px-4 py-2 text-center text-xs font-medium text-gray-500">Actions</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">#</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Employe</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Type</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">N Compte</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Jrs Trav.</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Heures</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Retards</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Sal. Brut</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Deductions</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Sal. Net</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Statut</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-200">
@@ -220,10 +223,23 @@
                                                     <span class="px-2 py-0.5 bg-gray-100 text-gray-800 rounded text-xs">{{ ucfirst($employee->employee_type) }}</span>
                                                 @endif
                                             </td>
-                                            <td class="px-4 py-2 text-sm text-gray-700 font-mono">{{ $employee->numero_compte ?: '-' }}</td>
-                                            <td class="px-4 py-2 text-right text-sm">{{ number_format($employee->gross_salary, 0, ',', ' ') }}</td>
-                                            <td class="px-4 py-2 text-right text-sm text-red-600">{{ number_format($employee->total_deductions, 0, ',', ' ') }}</td>
-                                            <td class="px-4 py-2 text-right text-sm font-bold text-green-600">{{ number_format($employee->net_salary, 0, ',', ' ') }}</td>
+                                            <td class="px-3 py-2 text-sm text-gray-700 font-mono">{{ $employee->numero_compte ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-center text-sm {{ $employee->days_worked > 0 ? 'text-blue-700 font-semibold' : 'text-gray-400' }}">
+                                                {{ number_format($employee->days_worked, 1) }}/{{ number_format($employee->working_days ?? 0, 1) }}
+                                            </td>
+                                            <td class="px-3 py-2 text-center text-sm {{ $employee->total_hours_worked > 0 ? 'text-blue-600' : 'text-gray-400' }}">
+                                                {{ number_format($employee->total_hours_worked ?? 0, 1) }}h
+                                            </td>
+                                            <td class="px-3 py-2 text-center text-sm">
+                                                @if(($employee->total_late_minutes ?? 0) > 0)
+                                                    <span class="text-orange-600 font-semibold">{{ $employee->total_late_minutes }}min</span>
+                                                @else
+                                                    <span class="text-gray-400">0</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-2 text-right text-sm">{{ number_format($employee->gross_salary, 0, ',', ' ') }}</td>
+                                            <td class="px-3 py-2 text-right text-sm text-red-600">{{ number_format($employee->total_deductions, 0, ',', ' ') }}</td>
+                                            <td class="px-3 py-2 text-right text-sm font-bold text-green-600">{{ number_format($employee->net_salary, 0, ',', ' ') }}</td>
                                             <td class="px-4 py-2 text-center">
                                                 @if($employee->is_paid)
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
