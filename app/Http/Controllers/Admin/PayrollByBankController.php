@@ -75,7 +75,7 @@ class PayrollByBankController extends Controller
                 $q->whereNull('banque')->orWhere('banque', '');
             });
         } else {
-            $query->where('banque', $banque);
+            $query->whereRaw('UPPER(TRIM(banque)) = ?', [mb_strtoupper(trim($banque))]);
         }
 
         $employees = $query->get();
@@ -159,7 +159,7 @@ class PayrollByBankController extends Controller
                 $q->whereNull('banque')->orWhere('banque', '');
             });
         } else {
-            $query->where('banque', $banque);
+            $query->whereRaw('UPPER(TRIM(banque)) = ?', [mb_strtoupper(trim($banque))]);
         }
 
         $userIds = $query->pluck('id');
@@ -179,6 +179,64 @@ class PayrollByBankController extends Controller
             'success' => true,
             'message' => "Virement annulé pour {$bankLabel} : {$count} fiche(s) remise(s) en attente.",
             'count' => $count,
+        ]);
+    }
+
+    /**
+     * Update net salary for a specific employee (before or after marking as paid).
+     */
+    public function updateEmployeeSalary(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'year' => 'required|integer',
+            'month' => 'required|integer|min:1|max:12',
+            'net_salary' => 'required|numeric|min:0',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $user = User::findOrFail($request->user_id);
+        $year = $request->year;
+        $month = $request->month;
+        $workingDays = PayrollCalculator::calculateWorkingDays($year, $month);
+
+        // Calculer la paie de base
+        $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+
+        $newNet = (float) $request->net_salary;
+        $originalNet = $payroll['net_salary'] ?? 0;
+        $adjustment = $newNet - $originalNet;
+
+        // Créer ou mettre à jour le PayrollRecord avec le montant modifié
+        $record = PayrollRecord::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'year' => $year,
+                'month' => $month,
+            ],
+            [
+                'monthly_salary' => $payroll['monthly_salary'],
+                'working_days' => $workingDays,
+                'days_worked' => $payroll['days_worked'],
+                'days_not_worked' => $payroll['days_not_worked'],
+                'days_justified' => $payroll['days_justified'],
+                'total_late_minutes' => $payroll['total_late_minutes'],
+                'late_minutes_justified' => $payroll['late_minutes_justified'] ?? 0,
+                'late_penalty_amount' => $payroll['late_penalty_amount'],
+                'absence_deduction' => $payroll['absence_deduction'],
+                'gross_salary' => $payroll['gross_salary'],
+                'total_deductions' => max(0, ($payroll['gross_salary'] ?? 0) - $newNet),
+                'net_salary' => $newNet,
+                'status' => 'paid',
+                'approved_at' => now(),
+                'paid_at' => now(),
+                'approved_by' => auth()->id(),
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Salaire de {$user->full_name} mis à jour : " . number_format($newNet, 0, ',', ' ') . " FCFA",
         ]);
     }
 
@@ -253,7 +311,7 @@ class PayrollByBankController extends Controller
                     $q->whereNull('banque')->orWhere('banque', '');
                 });
             } else {
-                $query->where('banque', $banque);
+                $query->whereRaw('UPPER(TRIM(banque)) = ?', [mb_strtoupper(trim($banque))]);
             }
         }
 
@@ -291,18 +349,20 @@ class PayrollByBankController extends Controller
             return $employee;
         });
 
-        // Group by bank
+        // Group by bank (normaliser la casse pour regrouper ex: "Caisse centrale" = "CAISSE CENTRALE")
         $grouped = $employees->groupBy(function ($emp) {
-            return $emp->banque ?: '__none__';
+            return $emp->banque ? mb_strtoupper(trim($emp->banque)) : '__none__';
         })->sortKeys();
 
         return $grouped->map(function ($group, $bankKey) {
             $paidCount = $group->where('is_paid', true)->count();
             $allPaid = $paidCount === $group->count();
+            // Utiliser le nom original du premier employé mais en majuscules
+            $displayName = $bankKey === '__none__' ? 'Non assignee' : $bankKey;
 
             return [
                 'bank_key' => $bankKey,
-                'bank_name' => $bankKey === '__none__' ? 'Non assignee' : $bankKey,
+                'bank_name' => $displayName,
                 'is_unassigned' => $bankKey === '__none__',
                 'employees' => $group->sortByDesc('net_salary')->values(),
                 'total_gross' => $group->sum('gross_salary'),

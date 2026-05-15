@@ -200,6 +200,7 @@
                                             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500">Deductions</th>
                                             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500">Salaire Net</th>
                                             <th class="px-4 py-2 text-center text-xs font-medium text-gray-500">Statut</th>
+                                            <th class="px-4 py-2 text-center text-xs font-medium text-gray-500">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-200">
@@ -233,6 +234,12 @@
                                                         En attente
                                                     </span>
                                                 @endif
+                                            </td>
+                                            <td class="px-4 py-2 text-center">
+                                                <button onclick="openEditSalary({{ $employee->id }}, '{{ addslashes($employee->full_name) }}', {{ round($employee->net_salary) }}, {{ round($employee->gross_salary) }})"
+                                                    class="text-blue-600 hover:text-blue-800 text-sm" title="Modifier le salaire">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -325,9 +332,49 @@
     </div>
 </div>
 
+<!-- Modal Modifier Salaire -->
+<div id="editSalaryModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+                <i class="fas fa-edit text-2xl text-blue-600"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 text-center mb-4">Modifier le salaire</h3>
+
+            <div class="bg-gray-50 p-4 rounded text-sm space-y-1 mb-4">
+                <p><strong>Employe :</strong> <span id="edit_employee_name"></span></p>
+                <p><strong>Salaire brut :</strong> <span id="edit_gross_salary"></span> FCFA</p>
+                <p><strong>Salaire net calcule :</strong> <span id="edit_original_net" class="text-gray-500"></span> FCFA</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nouveau salaire net a virer (FCFA) <span class="text-red-500">*</span></label>
+                <input type="number" id="edit_net_salary" min="0" step="1"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-bold">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Note (optionnel)</label>
+                <input type="text" id="edit_note" placeholder="Raison de la modification..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div class="flex justify-center gap-3">
+                <button onclick="closeEditSalaryModal()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition">
+                    Annuler
+                </button>
+                <button id="confirmEditBtn" onclick="submitEditSalary()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                    <i class="fas fa-save mr-2"></i> Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 let currentBankKey = null;
+let currentEditUserId = null;
 
 function toggleBankDetail(id) {
     document.getElementById(id).classList.toggle('hidden');
@@ -429,10 +476,72 @@ function submitCancelPayment() {
     });
 }
 
+// Edit salary
+function openEditSalary(userId, name, netSalary, grossSalary) {
+    currentEditUserId = userId;
+    document.getElementById('edit_employee_name').textContent = name;
+    document.getElementById('edit_gross_salary').textContent = Math.round(grossSalary).toLocaleString('fr-FR');
+    document.getElementById('edit_original_net').textContent = Math.round(netSalary).toLocaleString('fr-FR');
+    document.getElementById('edit_net_salary').value = Math.round(netSalary);
+    document.getElementById('edit_note').value = '';
+    document.getElementById('editSalaryModal').classList.remove('hidden');
+}
+
+function closeEditSalaryModal() {
+    document.getElementById('editSalaryModal').classList.add('hidden');
+}
+
+function submitEditSalary() {
+    const btn = document.getElementById('confirmEditBtn');
+    const netSalary = document.getElementById('edit_net_salary').value;
+    const note = document.getElementById('edit_note').value;
+
+    if (!netSalary || netSalary < 0) {
+        alert('Veuillez saisir un montant valide.');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enregistrement...';
+
+    fetch('{{ route("admin.payroll.by-bank.update-salary") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            user_id: currentEditUserId,
+            year: {{ $year }},
+            month: {{ $month }},
+            net_salary: parseFloat(netSalary),
+            note: note
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeEditSalaryModal();
+            location.reload();
+        } else {
+            alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save mr-2"></i> Enregistrer';
+        }
+    })
+    .catch(() => {
+        alert('Erreur de connexion');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-2"></i> Enregistrer';
+    });
+}
+
 // Close modals on outside click
 window.onclick = function(event) {
     if (event.target === document.getElementById('markPaidModal')) closeMarkPaidModal();
     if (event.target === document.getElementById('cancelPaymentModal')) closeCancelModal();
+    if (event.target === document.getElementById('editSalaryModal')) closeEditSalaryModal();
 }
 </script>
 @endpush

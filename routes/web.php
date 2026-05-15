@@ -241,6 +241,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/by-bank/export-pdf', [App\Http\Controllers\Admin\PayrollByBankController::class, 'exportPdf'])->name('by-bank.export-pdf');
         Route::post('/by-bank/mark-paid', [App\Http\Controllers\Admin\PayrollByBankController::class, 'markBankAsPaid'])->name('by-bank.mark-paid');
         Route::post('/by-bank/cancel-payment', [App\Http\Controllers\Admin\PayrollByBankController::class, 'cancelBankPayment'])->name('by-bank.cancel-payment');
+        Route::post('/by-bank/update-salary', [App\Http\Controllers\Admin\PayrollByBankController::class, 'updateEmployeeSalary'])->name('by-bank.update-salary');
     });
 
     // Calculateur Générique
