@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ManualDeduction;
+use App\Models\PayrollRecord;
 use App\Helpers\PayrollCalculator;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -102,8 +103,29 @@ class MobileApiController extends Controller
                 ]);
             }
 
+            // Vérifier s'il existe un PayrollRecord payé (validé via virement bancaire)
+            $paidRecord = PayrollRecord::where('user_id', $user->id)
+                ->where('year', $year)
+                ->where('month', $month)
+                ->where('status', 'paid')
+                ->first();
+
             // Calcul standard pour permanents et semi-permanents
             $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+
+            // Si un PayrollRecord payé existe, utiliser ses montants officiels
+            if ($paidRecord) {
+                $payroll['gross_salary'] = (float) $paidRecord->gross_salary;
+                $payroll['net_salary'] = (float) $paidRecord->net_salary;
+                $payroll['total_deductions'] = (float) $paidRecord->total_deductions;
+                $payroll['late_penalty_amount'] = (float) $paidRecord->late_penalty_amount;
+                $payroll['absence_deduction'] = (float) $paidRecord->absence_deduction;
+                $payroll['days_worked'] = (float) $paidRecord->days_worked;
+                $payroll['days_not_worked'] = (float) $paidRecord->days_not_worked;
+                $payroll['days_justified'] = (float) $paidRecord->days_justified;
+                $payroll['total_late_minutes'] = (int) $paidRecord->total_late_minutes;
+                $payroll['monthly_salary'] = (float) $paidRecord->monthly_salary;
+            }
 
             // Récupérer tous les prêts actifs (même ceux dont la déduction n'a pas encore commencé)
             $activeLoans = \App\Models\Loan::where('user_id', $user->id)
@@ -140,6 +162,8 @@ class MobileApiController extends Controller
                         'month_name' => Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY'),
                     ],
                     'is_vacataire' => false,
+                    'payment_status' => $paidRecord ? 'paid' : 'pending',
+                    'paid_at' => $paidRecord?->paid_at?->format('d/m/Y'),
                     'salary' => [
                         'monthly_salary' => $payroll['monthly_salary'] ?? 0,
                         'gross_salary' => $payroll['gross_salary'] ?? 0,
@@ -382,6 +406,16 @@ class MobileApiController extends Controller
             $startMonth = max($hireDate->copy()->startOfMonth(), $now->copy()->subMonths(11)->startOfMonth());
             $current = $now->copy()->startOfMonth();
 
+            // Pre-charger les PayrollRecords payes pour cet employe
+            $paidRecords = PayrollRecord::where('user_id', $user->id)
+                ->where('status', 'paid')
+                ->where(function ($q) use ($startMonth, $now) {
+                    $q->whereRaw("(year * 100 + month) >= ?", [$startMonth->year * 100 + $startMonth->month])
+                      ->whereRaw("(year * 100 + month) <= ?", [$now->year * 100 + $now->month]);
+                })
+                ->get()
+                ->keyBy(fn ($r) => $r->year . '-' . $r->month);
+
             // Pre-charger TOUTES les deductions manuelles en une seule requete
             $allDeductions = ManualDeduction::where('user_id', $user->id)
                 ->where('status', 'active')
@@ -397,35 +431,54 @@ class MobileApiController extends Controller
             while ($current->gte($startMonth)) {
                 $month = $current->month;
                 $year = $current->year;
+                $key = $year . '-' . $month;
 
                 try {
-                    if ($isVacataire) {
-                        $payroll = PayrollCalculator::calculateVacatairePayroll($user, $year, $month);
-                        $netSalary = $payroll['net_amount'] ?? 0;
-                        $grossSalary = $payroll['gross_amount'] ?? 0;
+                    $paidRecord = $paidRecords->get($key);
+
+                    if ($paidRecord && !$isVacataire) {
+                        // Utiliser le PayrollRecord officiel (valide par l'admin via virements)
+                        $history[] = [
+                            'month' => $month,
+                            'year' => $year,
+                            'period' => $current->locale('fr')->isoFormat('MMMM YYYY'),
+                            'gross_salary' => round((float) $paidRecord->gross_salary),
+                            'net_salary' => round((float) $paidRecord->net_salary),
+                            'deductions' => round((float) $paidRecord->total_deductions),
+                            'status' => 'paid',
+                            'paid_at' => $paidRecord->paid_at?->format('d/m/Y'),
+                        ];
                     } else {
-                        $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
-                        $netSalary = $payroll['net_salary'] ?? 0;
-                        $grossSalary = $payroll['gross_salary'] ?? $user->monthly_salary ?? 0;
+                        // Calcul a la volee (pas encore valide ou vacataire)
+                        if ($isVacataire) {
+                            $payroll = PayrollCalculator::calculateVacatairePayroll($user, $year, $month);
+                            $netSalary = $payroll['net_amount'] ?? 0;
+                            $grossSalary = $payroll['gross_amount'] ?? 0;
+                        } else {
+                            $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+                            $netSalary = $payroll['net_salary'] ?? 0;
+                            $grossSalary = $payroll['gross_salary'] ?? $user->monthly_salary ?? 0;
+                        }
+
+                        $manualDeductionsTotal = isset($allDeductions[$key])
+                            ? $allDeductions[$key]->total
+                            : 0;
+
+                        if ($isVacataire) {
+                            $netSalary = max(0, $netSalary - $manualDeductionsTotal);
+                        }
+
+                        $history[] = [
+                            'month' => $month,
+                            'year' => $year,
+                            'period' => $current->locale('fr')->isoFormat('MMMM YYYY'),
+                            'gross_salary' => round($grossSalary),
+                            'net_salary' => round($netSalary),
+                            'deductions' => round($manualDeductionsTotal),
+                            'status' => 'pending',
+                            'paid_at' => null,
+                        ];
                     }
-
-                    $deductionKey = $year . '-' . $month;
-                    $manualDeductionsTotal = isset($allDeductions[$deductionKey])
-                        ? $allDeductions[$deductionKey]->total
-                        : 0;
-
-                    if ($isVacataire) {
-                        $netSalary = max(0, $netSalary - $manualDeductionsTotal);
-                    }
-
-                    $history[] = [
-                        'month' => $month,
-                        'year' => $year,
-                        'period' => $current->locale('fr')->isoFormat('MMMM YYYY'),
-                        'gross_salary' => round($grossSalary),
-                        'net_salary' => round($netSalary),
-                        'deductions' => round($manualDeductionsTotal),
-                    ];
                 } catch (\Exception $e) {
                     // Mois sans donnees
                 }
@@ -457,6 +510,15 @@ class MobileApiController extends Controller
             $isVacataire = $user->employee_type === 'enseignant_vacataire';
             $periodName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY');
 
+            // Vérifier s'il existe un PayrollRecord payé
+            $paidRecord = !$isVacataire
+                ? PayrollRecord::where('user_id', $user->id)
+                    ->where('year', $year)
+                    ->where('month', $month)
+                    ->where('status', 'paid')
+                    ->first()
+                : null;
+
             // Calculer la paie
             if ($isVacataire) {
                 $payroll = PayrollCalculator::calculateVacatairePayroll($user, $year, $month);
@@ -464,6 +526,19 @@ class MobileApiController extends Controller
             } else {
                 $payroll = PayrollCalculator::calculatePayroll($user, $year, $month);
                 $netSalary = $payroll['net_salary'] ?? 0;
+            }
+
+            // Si un PayrollRecord payé existe, utiliser ses montants officiels
+            if ($paidRecord) {
+                $payroll['gross_salary'] = (float) $paidRecord->gross_salary;
+                $payroll['net_salary'] = (float) $paidRecord->net_salary;
+                $payroll['total_deductions'] = (float) $paidRecord->total_deductions;
+                $payroll['late_penalty_amount'] = (float) $paidRecord->late_penalty_amount;
+                $payroll['absence_deduction'] = (float) $paidRecord->absence_deduction;
+                $payroll['days_worked'] = (float) $paidRecord->days_worked;
+                $payroll['days_not_worked'] = (float) $paidRecord->days_not_worked;
+                $payroll['monthly_salary'] = (float) $paidRecord->monthly_salary;
+                $netSalary = (float) $paidRecord->net_salary;
             }
 
             // Déductions manuelles

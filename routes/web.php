@@ -235,6 +235,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/justify', [App\Http\Controllers\Admin\PayrollReportController::class, 'justify'])->name('justify');
         Route::post('/apply-deduction', [App\Http\Controllers\Admin\PayrollReportController::class, 'applyDeduction'])->name('apply-deduction');
         Route::get('/report/export', [App\Http\Controllers\Admin\PayrollReportController::class, 'export'])->name('report.export');
+
+        // Salaires par banque
+        Route::get('/by-bank', [App\Http\Controllers\Admin\PayrollByBankController::class, 'index'])->name('by-bank.index');
+        Route::get('/by-bank/export-pdf', [App\Http\Controllers\Admin\PayrollByBankController::class, 'exportPdf'])->name('by-bank.export-pdf');
+        Route::post('/by-bank/mark-paid', [App\Http\Controllers\Admin\PayrollByBankController::class, 'markBankAsPaid'])->name('by-bank.mark-paid');
+        Route::post('/by-bank/cancel-payment', [App\Http\Controllers\Admin\PayrollByBankController::class, 'cancelBankPayment'])->name('by-bank.cancel-payment');
     });
 
     // Calculateur Générique

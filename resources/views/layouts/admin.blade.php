@@ -453,9 +453,14 @@
                 @endif
 
                 @if($can('reports'))
-                <a href="{{ route('admin.payroll.report') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.payroll.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                <a href="{{ route('admin.payroll.report') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.payroll.report*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-dollar-sign w-5"></i>
                     <span class="ml-3">Rapport Paie</span>
+                </a>
+
+                <a href="{{ route('admin.payroll.by-bank.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.payroll.by-bank.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-university w-5"></i>
+                    <span class="ml-3">Salaires / Banque</span>
                 </a>
 
                 <a href="{{ route('admin.generic-calculator.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.generic-calculator.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
