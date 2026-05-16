@@ -403,7 +403,7 @@ class PayrollByBankController extends Controller
             'bankHeaderPaths'
         ));
 
-        $pdf->setPaper('A4', 'landscape');
+        $pdf->setPaper('A4', 'portrait');
 
         $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM');
         $suffix = $selectedBank ? '-' . \Illuminate\Support\Str::slug($selectedBank) : '';
