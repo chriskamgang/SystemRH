@@ -318,7 +318,7 @@ class PayrollByBankController extends Controller
         $path = "public/bank-templates/{$bankSlug}.docx";
 
         if (Storage::exists($path)) {
-            return storage_path("app/{$path}");
+            return Storage::path($path);
         }
 
         return null;
