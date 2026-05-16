@@ -253,13 +253,24 @@ class PayrollByBankController extends Controller
      */
     public function uploadBankHeader(Request $request)
     {
+        \Log::info('Upload bank template', [
+            'bank_name' => $request->bank_name,
+            'has_file' => $request->hasFile('header_image'),
+            'file_name' => $request->file('header_image')?->getClientOriginalName(),
+        ]);
+
         $request->validate([
             'bank_name' => 'required|string|max:100',
-            'header_image' => 'required|file|mimes:docx|max:5120',
+            'header_image' => 'required|file|max:5120',
         ]);
 
         $bankSlug = \Illuminate\Support\Str::slug($request->bank_name);
-        $request->file('header_image')->storeAs('public/bank-templates', "{$bankSlug}.docx");
+        $file = $request->file('header_image');
+
+        // Accept DOCX only, store as .docx
+        $file->storeAs('public/bank-templates', "{$bankSlug}.docx");
+
+        \Log::info('Template saved', ['path' => "public/bank-templates/{$bankSlug}.docx"]);
 
         return response()->json([
             'success' => true,

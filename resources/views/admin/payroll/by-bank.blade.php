@@ -642,20 +642,21 @@ function submitHeaderUpload() {
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
         body: formData
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            closeHeaderUploadModal();
-            location.reload();
-        } else {
-            alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+    .then(r => {
+        if (!r.ok) {
+            return r.text().then(text => {
+                try { return JSON.parse(text); } catch(e) { throw new Error('Erreur serveur ' + r.status + ': ' + text.substring(0, 200)); }
+            }).then(data => { throw new Error(data.message || JSON.stringify(data.errors || data)); });
         }
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-upload mr-2"></i> Uploader';
+        return r.json();
     })
-    .catch(() => {
-        alert('Erreur de connexion');
+    .then(data => {
+        alert(data.message);
+        closeHeaderUploadModal();
+        location.reload();
+    })
+    .catch(err => {
+        alert('Erreur: ' + err.message);
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-upload mr-2"></i> Uploader';
     });
