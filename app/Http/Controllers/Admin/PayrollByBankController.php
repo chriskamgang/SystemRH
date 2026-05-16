@@ -423,11 +423,18 @@ class PayrollByBankController extends Controller
     {
         $outputDir = dirname($docxPath);
 
-        $command = 'libreoffice --headless --convert-to pdf --outdir '
+        // LibreOffice needs a writable HOME directory
+        $env = 'HOME=/tmp';
+
+        $command = $env . ' libreoffice --headless --norestore --convert-to pdf --outdir '
             . escapeshellarg($outputDir) . ' '
             . escapeshellarg($docxPath) . ' 2>&1';
 
+        \Log::info('LibreOffice command', ['command' => $command]);
+
         exec($command, $output, $returnCode);
+
+        \Log::info('LibreOffice result', ['output' => implode("\n", $output), 'code' => $returnCode]);
 
         if ($returnCode !== 0) {
             \Log::warning('LibreOffice conversion failed', ['output' => implode("\n", $output), 'code' => $returnCode]);
@@ -439,6 +446,14 @@ class PayrollByBankController extends Controller
             return $pdfPath;
         }
 
+        // Sometimes LibreOffice names the output differently with temp files
+        $files = glob($outputDir . '/*.pdf');
+        if (!empty($files)) {
+            \Log::info('Found PDF with different name', ['files' => $files]);
+            return $files[0];
+        }
+
+        \Log::warning('PDF file not found after conversion', ['expected' => $pdfPath]);
         return null;
     }
 
