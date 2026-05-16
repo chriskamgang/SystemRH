@@ -356,111 +356,188 @@ class PayrollByBankController extends Controller
     }
 
     /**
-     * Generate DOCX from bank template with employee data inserted.
+     * Generate DOCX from bank template by injecting table XML directly into the ZIP.
+     * This preserves all original formatting, images, headers, backgrounds.
      */
     private function exportFromDocxTemplate(string $templatePath, array $group, int $year, int $month, float $workingDays)
     {
-        $phpWord = \PhpOffice\PhpWord\IOFactory::load($templatePath);
-
-        // Get the first section
-        $sections = $phpWord->getSections();
-        $section = $sections[0];
-
-        // Add period info
         $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY');
-        $section->addTextBreak(1);
-        $section->addText(
-            "Periode : {$monthName} | Jours ouvrables : " . number_format($workingDays, 1) .
-            " | Employes : {$group['count']} | Edition : " . date('d/m/Y H:i'),
-            ['size' => 9, 'bold' => true],
-            ['spaceAfter' => 100]
-        );
+        $bankSlug = \Illuminate\Support\Str::slug($group['bank_name']);
 
-        // Create the employee table
-        $tableStyle = [
-            'borderSize' => 6,
-            'borderColor' => '999999',
-            'cellMargin' => 40,
-        ];
-        $phpWord->addTableStyle('SalaryTable', $tableStyle);
-        $table = $section->addTable('SalaryTable');
+        // Copy template to temp file
+        $tmpFile = tempnam(sys_get_temp_dir(), 'payroll_') . '.docx';
+        copy($templatePath, $tmpFile);
 
-        // Header row
-        $headerStyle = ['bold' => true, 'size' => 8, 'color' => 'FFFFFF'];
-        $headerCellStyle = ['bgColor' => '1e40af', 'valign' => 'center'];
+        // Build the table XML
+        $tableXml = $this->buildSalaryTableXml($group, $monthName, $workingDays);
 
-        $table->addRow();
-        $table->addCell(400, $headerCellStyle)->addText('#', $headerStyle);
-        $table->addCell(1200, $headerCellStyle)->addText('Matricule', $headerStyle);
-        $table->addCell(2800, $headerCellStyle)->addText('Nom & Prenom', $headerStyle);
-        $table->addCell(1800, $headerCellStyle)->addText('N Compte', $headerStyle);
-        $table->addCell(900, $headerCellStyle)->addText('Jrs Trav.', $headerStyle);
-        $table->addCell(800, $headerCellStyle)->addText('Heures', $headerStyle);
-        $table->addCell(800, $headerCellStyle)->addText('Retards', $headerStyle);
-        $table->addCell(1100, $headerCellStyle)->addText('Sal. Brut', $headerStyle);
-        $table->addCell(800, $headerCellStyle)->addText('Ded.', $headerStyle);
-        $table->addCell(1100, $headerCellStyle)->addText('Sal. Net', $headerStyle);
-
-        // Data rows
-        $textStyle = ['size' => 8];
-        $boldStyle = ['size' => 8, 'bold' => true];
-        $redStyle = ['size' => 8, 'color' => 'dc2626'];
-        $greenStyle = ['size' => 8, 'bold' => true, 'color' => '059669'];
-
-        foreach ($group['employees'] as $empIndex => $employee) {
-            $evenBg = ($empIndex % 2 === 1) ? ['bgColor' => 'f3f4f6'] : [];
-
-            $table->addRow();
-            $table->addCell(400, $evenBg)->addText($empIndex + 1, $textStyle);
-            $table->addCell(1200, $evenBg)->addText($employee->employee_id, $textStyle);
-            $table->addCell(2800, $evenBg)->addText($employee->full_name, $boldStyle);
-            $table->addCell(1800, $evenBg)->addText($employee->numero_compte ?: '-', $textStyle);
-            $table->addCell(900, $evenBg)->addText(number_format($employee->days_worked, 1) . '/' . number_format($employee->working_days ?? 0, 1), $textStyle);
-            $table->addCell(800, $evenBg)->addText(number_format($employee->total_hours_worked ?? 0, 1) . 'h', $textStyle);
-            $table->addCell(800, $evenBg)->addText(($employee->total_late_minutes ?? 0) . 'min', $textStyle);
-            $table->addCell(1100, $evenBg)->addText(number_format($employee->gross_salary, 0, ',', ' '), $textStyle);
-            $table->addCell(800, $evenBg)->addText(number_format($employee->total_deductions, 0, ',', ' '), $redStyle);
-            $table->addCell(1100, $evenBg)->addText(number_format($employee->net_salary, 0, ',', ' '), $greenStyle);
+        // Open the DOCX (ZIP) and inject table into document.xml
+        $zip = new \ZipArchive();
+        if ($zip->open($tmpFile) !== true) {
+            return $this->exportFallbackPdf(collect([$group]), $year, $month, $workingDays, $group['bank_name']);
         }
 
-        // Total row
-        $totalCellStyle = ['bgColor' => '1e40af'];
-        $totalTextStyle = ['size' => 8, 'bold' => true, 'color' => 'FFFFFF'];
-        $table->addRow();
-        $mergedCell = $table->addCell(8700, array_merge($totalCellStyle, ['gridSpan' => 7]));
-        $mergedCell->addText('TOTAL', $totalTextStyle, ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::END]);
-        $table->addCell(1100, $totalCellStyle)->addText(number_format($group['total_gross'], 0, ',', ' '), $totalTextStyle);
-        $table->addCell(800, $totalCellStyle)->addText(number_format($group['total_deductions'], 0, ',', ' '), $totalTextStyle);
-        $table->addCell(1100, $totalCellStyle)->addText(number_format($group['total_net'], 0, ',', ' '), $totalTextStyle);
+        $documentXml = $zip->getFromName('word/document.xml');
+        if (!$documentXml) {
+            $zip->close();
+            return $this->exportFallbackPdf(collect([$group]), $year, $month, $workingDays, $group['bank_name']);
+        }
 
-        // Signatures
-        $section->addTextBreak(2);
-        $sigTable = $section->addTable();
-        $sigTable->addRow();
-        $leftCell = $sigTable->addCell(5000);
-        $leftCell->addText('Prepare par :', ['size' => 8, 'bold' => true], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
-        $leftCell->addTextBreak(2);
-        $leftCell->addText('____________________', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
-        $leftCell->addText('Signature & Cachet', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        // Insert table XML before the last </w:body> closing tag
+        // Find the sectPr (section properties) and insert before it
+        $insertPos = strrpos($documentXml, '<w:sectPr');
+        if ($insertPos === false) {
+            // Fallback: insert before </w:body>
+            $insertPos = strrpos($documentXml, '</w:body>');
+        }
 
-        $rightCell = $sigTable->addCell(5000);
-        $rightCell->addText('Verifie et approuve par :', ['size' => 8, 'bold' => true], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
-        $rightCell->addTextBreak(2);
-        $rightCell->addText('____________________', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
-        $rightCell->addText('Signature & Cachet', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        if ($insertPos !== false) {
+            $documentXml = substr($documentXml, 0, $insertPos) . $tableXml . substr($documentXml, $insertPos);
+        }
 
-        // Save as DOCX and return
-        $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM');
-        $bankSlug = \Illuminate\Support\Str::slug($group['bank_name']);
-        $filename = "salaires-{$bankSlug}-{$monthName}-{$year}.docx";
+        $zip->addFromString('word/document.xml', $documentXml);
+        $zip->close();
 
-        $tmpFile = tempnam(sys_get_temp_dir(), 'payroll_') . '.docx';
-        $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
-        $writer->save($tmpFile);
+        $filename = "salaires-{$bankSlug}-" . Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM') . "-{$year}.docx";
 
         return response()->download($tmpFile, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Build Word XML for the salary table.
+     */
+    private function buildSalaryTableXml(array $group, string $monthName, float $workingDays): string
+    {
+        $w = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+        // Period info paragraph
+        $xml = '<w:p xmlns:w="' . $w . '"><w:pPr><w:spacing w:after="100"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr>';
+        $xml .= '<w:t xml:space="preserve">Periode : ' . htmlspecialchars($monthName) . ' | Jours ouvrables : ' . number_format($workingDays, 1) . ' | Employes : ' . $group['count'] . ' | Edition : ' . date('d/m/Y H:i') . '</w:t>';
+        $xml .= '</w:r></w:p>';
+
+        // Table
+        $xml .= '<w:tbl xmlns:w="' . $w . '">';
+
+        // Table properties
+        $xml .= '<w:tblPr>';
+        $xml .= '<w:tblStyle w:val="TableGrid"/>';
+        $xml .= '<w:tblW w:w="5000" w:type="pct"/>';
+        $xml .= '<w:tblBorders>';
+        $xml .= '<w:top w:val="single" w:sz="4" w:color="999999"/>';
+        $xml .= '<w:left w:val="single" w:sz="4" w:color="999999"/>';
+        $xml .= '<w:bottom w:val="single" w:sz="4" w:color="999999"/>';
+        $xml .= '<w:right w:val="single" w:sz="4" w:color="999999"/>';
+        $xml .= '<w:insideH w:val="single" w:sz="4" w:color="999999"/>';
+        $xml .= '<w:insideV w:val="single" w:sz="4" w:color="999999"/>';
+        $xml .= '</w:tblBorders>';
+        $xml .= '<w:tblCellMar><w:top w:w="30" w:type="dxa"/><w:left w:w="60" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tblCellMar>';
+        $xml .= '</w:tblPr>';
+
+        // Column widths (total ~10000 dxa for A4)
+        $cols = [400, 1100, 2400, 1400, 800, 700, 700, 900, 700, 900];
+        $xml .= '<w:tblGrid>';
+        foreach ($cols as $c) {
+            $xml .= '<w:gridCol w:w="' . $c . '"/>';
+        }
+        $xml .= '</w:tblGrid>';
+
+        // Header row
+        $headers = ['#', 'Matricule', 'Nom & Prenom', 'N Compte', 'Jrs Trav.', 'Heures', 'Retards', 'Sal. Brut', 'Ded.', 'Sal. Net'];
+        $xml .= '<w:tr>';
+        foreach ($headers as $i => $h) {
+            $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $cols[$i] . '" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+            $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr>';
+            $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+            $xml .= '<w:t>' . htmlspecialchars($h) . '</w:t></w:r></w:p></w:tc>';
+        }
+        $xml .= '</w:tr>';
+
+        // Data rows
+        foreach ($group['employees'] as $empIndex => $employee) {
+            $fill = ($empIndex % 2 === 1) ? 'f3f4f6' : 'FFFFFF';
+            $cells = [
+                $empIndex + 1,
+                $employee->employee_id,
+                $employee->full_name,
+                $employee->numero_compte ?: '-',
+                number_format($employee->days_worked, 1) . '/' . number_format($employee->working_days ?? 0, 1),
+                number_format($employee->total_hours_worked ?? 0, 1) . 'h',
+                ($employee->total_late_minutes ?? 0) . 'min',
+                number_format($employee->gross_salary, 0, ',', ' '),
+                number_format($employee->total_deductions, 0, ',', ' '),
+                number_format($employee->net_salary, 0, ',', ' '),
+            ];
+
+            $xml .= '<w:tr>';
+            foreach ($cells as $ci => $val) {
+                $color = '333333';
+                $bold = '';
+                if ($ci === 8) $color = 'dc2626'; // Deductions in red
+                if ($ci === 9) { $color = '059669'; $bold = '<w:b/>'; } // Net in green bold
+                if ($ci === 2) $bold = '<w:b/>'; // Name bold
+
+                $align = ($ci >= 4) ? 'center' : 'left';
+                if ($ci >= 7) $align = 'right';
+
+                $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $cols[$ci] . '" w:type="dxa"/><w:shd w:val="clear" w:fill="' . $fill . '"/></w:tcPr>';
+                $xml .= '<w:p><w:pPr><w:jc w:val="' . $align . '"/></w:pPr>';
+                $xml .= '<w:r><w:rPr>' . $bold . '<w:color w:val="' . $color . '"/><w:sz w:val="16"/></w:rPr>';
+                $xml .= '<w:t xml:space="preserve">' . htmlspecialchars((string) $val) . '</w:t></w:r></w:p></w:tc>';
+            }
+            $xml .= '</w:tr>';
+        }
+
+        // Total row
+        $xml .= '<w:tr>';
+        // Merged cell for "TOTAL" label (7 columns)
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="7500" w:type="dxa"/><w:gridSpan w:val="7"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:t>TOTAL</w:t></w:r></w:p></w:tc>';
+        // Gross
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:t>' . number_format($group['total_gross'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
+        // Deductions
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="700" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:t>' . number_format($group['total_deductions'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
+        // Net
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:t>' . number_format($group['total_net'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
+        $xml .= '</w:tr>';
+
+        $xml .= '</w:tbl>';
+
+        // Signatures
+        $xml .= '<w:p xmlns:w="' . $w . '"><w:pPr><w:spacing w:before="400"/></w:pPr></w:p>';
+        $xml .= '<w:tbl xmlns:w="' . $w . '"><w:tblPr><w:tblW w:w="5000" w:type="pct"/></w:tblPr>';
+        $xml .= '<w:tblGrid><w:gridCol w:w="5000"/><w:gridCol w:w="5000"/></w:tblGrid>';
+        $xml .= '<w:tr>';
+        // Left signature
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/><w:tcBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="16"/></w:rPr><w:t>Prepare par :</w:t></w:r></w:p>';
+        $xml .= '<w:p/><w:p/>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>____________________</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>Signature &amp; Cachet</w:t></w:r></w:p>';
+        $xml .= '</w:tc>';
+        // Right signature
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/><w:tcBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="16"/></w:rPr><w:t>Verifie et approuve par :</w:t></w:r></w:p>';
+        $xml .= '<w:p/><w:p/>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>____________________</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>Signature &amp; Cachet</w:t></w:r></w:p>';
+        $xml .= '</w:tc>';
+        $xml .= '</w:tr></w:tbl>';
+
+        return $xml;
     }
 
     /**
