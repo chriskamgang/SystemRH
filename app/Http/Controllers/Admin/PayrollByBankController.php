@@ -8,6 +8,7 @@ use App\Models\Campus;
 use App\Models\PayrollRecord;
 use App\Helpers\PayrollCalculator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -34,6 +35,14 @@ class PayrollByBankController extends Controller
         $totalBanks = $bankGroups->count();
         $totalPaid = $bankGroups->sum(fn($g) => $g['paid_count']);
 
+        // Check which banks have headers uploaded
+        $bankHeaders = [];
+        foreach ($bankGroups as $group) {
+            $bankSlug = \Illuminate\Support\Str::slug($group['bank_name']);
+            $bankHeaders[$group['bank_name']] = Storage::exists("public/bank-headers/{$bankSlug}.jpg")
+                || Storage::exists("public/bank-headers/{$bankSlug}.png");
+        }
+
         return view('admin.payroll.by-bank', compact(
             'bankGroups',
             'campuses',
@@ -44,7 +53,8 @@ class PayrollByBankController extends Controller
             'totalNetSalary',
             'totalGrossSalary',
             'totalBanks',
-            'totalPaid'
+            'totalPaid',
+            'bankHeaders'
         ));
     }
 
@@ -241,6 +251,72 @@ class PayrollByBankController extends Controller
     }
 
     /**
+     * Upload a letterhead image for a specific bank.
+     */
+    public function uploadBankHeader(Request $request)
+    {
+        $request->validate([
+            'bank_name' => 'required|string|max:100',
+            'header_image' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        $bankSlug = \Illuminate\Support\Str::slug($request->bank_name);
+        $filename = "bank-headers/{$bankSlug}.jpg";
+
+        // Convert to JPG if needed and store
+        $image = $request->file('header_image');
+        $image->storeAs('public/bank-headers', "{$bankSlug}.jpg");
+
+        return response()->json([
+            'success' => true,
+            'message' => "En-tete uploade pour {$request->bank_name}.",
+        ]);
+    }
+
+    /**
+     * Delete a bank's letterhead image.
+     */
+    public function deleteBankHeader(Request $request)
+    {
+        $request->validate([
+            'bank_name' => 'required|string',
+        ]);
+
+        $bankSlug = \Illuminate\Support\Str::slug($request->bank_name);
+        $path = "public/bank-headers/{$bankSlug}.jpg";
+
+        if (Storage::exists($path)) {
+            Storage::delete($path);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "En-tete supprime pour {$request->bank_name}.",
+        ]);
+    }
+
+    /**
+     * Get the header image path for a bank (or null).
+     */
+    private function getBankHeaderPath(string $bankName): ?string
+    {
+        $bankSlug = \Illuminate\Support\Str::slug($bankName);
+        $path = "public/bank-headers/{$bankSlug}.jpg";
+
+        if (Storage::exists($path)) {
+            return storage_path("app/{$path}");
+        }
+
+        // Try PNG
+        $pathPng = "public/bank-headers/{$bankSlug}.png";
+        if (Storage::exists($pathPng)) {
+            return storage_path("app/{$pathPng}");
+        }
+
+        return null;
+    }
+
+    /**
      * Export PDF grouped by bank.
      */
     public function exportPdf(Request $request)
@@ -262,6 +338,15 @@ class PayrollByBankController extends Controller
         $totalGrossSalary = $bankGroups->sum('total_gross');
         $totalBanks = $bankGroups->count();
 
+        // Resolve header image paths per bank
+        $bankHeaderPaths = [];
+        foreach ($bankGroups as $group) {
+            $headerPath = $this->getBankHeaderPath($group['bank_name']);
+            if ($headerPath) {
+                $bankHeaderPaths[$group['bank_name']] = $headerPath;
+            }
+        }
+
         $pdf = Pdf::loadView('admin.payroll.pdf.by-bank', compact(
             'bankGroups',
             'year',
@@ -271,7 +356,8 @@ class PayrollByBankController extends Controller
             'totalNetSalary',
             'totalGrossSalary',
             'totalBanks',
-            'selectedBank'
+            'selectedBank',
+            'bankHeaderPaths'
         ));
 
         $pdf->setPaper('A4', 'landscape');

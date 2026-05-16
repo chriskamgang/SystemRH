@@ -163,6 +163,11 @@
                             <a href="{{ route('admin.payroll.by-bank.export-pdf', array_merge(request()->query(), ['banque' => $group['bank_name']])) }}" class="text-red-600 hover:text-red-800 text-sm" title="PDF cette banque">
                                 <i class="fas fa-file-pdf"></i>
                             </a>
+                            <button onclick="openHeaderUpload('{{ addslashes($group['bank_name']) }}')"
+                                class="{{ ($bankHeaders[$group['bank_name']] ?? false) ? 'text-green-600 hover:text-green-800' : 'text-gray-400 hover:text-gray-600' }} text-sm"
+                                title="{{ ($bankHeaders[$group['bank_name']] ?? false) ? 'En-tete uploade - cliquer pour modifier' : 'Uploader en-tete PDF' }}">
+                                <i class="fas fa-image"></i>
+                            </button>
                             @endif
                             @if(!$group['all_paid'])
                                 <button onclick="confirmMarkPaid('{{ $group['bank_key'] }}', '{{ addslashes($group['bank_name']) }}', {{ $group['count'] }}, '{{ number_format($group['total_net'], 0, ',', ' ') }}')"
@@ -387,10 +392,50 @@
     </div>
 </div>
 
+<!-- Modal Upload En-tete Banque -->
+<div id="headerUploadModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-12 h-12 mx-auto bg-purple-100 rounded-full mb-4">
+                <i class="fas fa-image text-2xl text-purple-600"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 text-center mb-4">En-tete PDF - <span id="header_bank_name_display"></span></h3>
+
+            <div id="header_preview_area" class="hidden mb-4">
+                <p class="text-sm text-gray-600 mb-2">En-tete actuel :</p>
+                <img id="header_preview_img" src="" class="w-full border rounded" alt="En-tete">
+                <button onclick="submitDeleteHeader()" class="mt-2 text-sm text-red-600 hover:text-red-800">
+                    <i class="fas fa-trash mr-1"></i> Supprimer cet en-tete
+                </button>
+            </div>
+
+            <form id="headerUploadForm" enctype="multipart/form-data">
+                <input type="hidden" id="header_bank_name" name="bank_name">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Image de l'en-tete (JPG/PNG, max 2Mo)</label>
+                    <input type="file" id="header_image" name="header_image" accept="image/jpeg,image/png"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <p class="text-xs text-gray-500 mt-1">L'image apparaitra en haut du PDF pour cette banque.</p>
+                </div>
+            </form>
+
+            <div class="flex justify-center gap-3">
+                <button onclick="closeHeaderUploadModal()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition">
+                    Fermer
+                </button>
+                <button id="confirmUploadBtn" onclick="submitHeaderUpload()" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">
+                    <i class="fas fa-upload mr-2"></i> Uploader
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 let currentBankKey = null;
 let currentEditUserId = null;
+let currentHeaderBank = null;
 
 function toggleBankDetail(id) {
     document.getElementById(id).classList.toggle('hidden');
@@ -553,11 +598,99 @@ function submitEditSalary() {
     });
 }
 
+// Header upload
+function openHeaderUpload(bankName) {
+    currentHeaderBank = bankName;
+    document.getElementById('header_bank_name').value = bankName;
+    document.getElementById('header_bank_name_display').textContent = bankName;
+    document.getElementById('header_image').value = '';
+
+    // Check if header exists (slug-based URL)
+    const slug = bankName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const imgUrl = '/storage/bank-headers/' + slug + '.jpg?t=' + Date.now();
+    const img = new Image();
+    img.onload = function() {
+        document.getElementById('header_preview_img').src = imgUrl;
+        document.getElementById('header_preview_area').classList.remove('hidden');
+    };
+    img.onerror = function() {
+        document.getElementById('header_preview_area').classList.add('hidden');
+    };
+    img.src = imgUrl;
+
+    document.getElementById('headerUploadModal').classList.remove('hidden');
+}
+
+function closeHeaderUploadModal() {
+    document.getElementById('headerUploadModal').classList.add('hidden');
+}
+
+function submitHeaderUpload() {
+    const fileInput = document.getElementById('header_image');
+    if (!fileInput.files.length) {
+        alert('Veuillez selectionner une image.');
+        return;
+    }
+
+    const btn = document.getElementById('confirmUploadBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Upload...';
+
+    const formData = new FormData();
+    formData.append('bank_name', currentHeaderBank);
+    formData.append('header_image', fileInput.files[0]);
+
+    fetch('{{ route("admin.payroll.by-bank.upload-header") }}', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeHeaderUploadModal();
+            location.reload();
+        } else {
+            alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload mr-2"></i> Uploader';
+    })
+    .catch(() => {
+        alert('Erreur de connexion');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload mr-2"></i> Uploader';
+    });
+}
+
+function submitDeleteHeader() {
+    if (!confirm('Supprimer cet en-tete ?')) return;
+
+    fetch('{{ route("admin.payroll.by-bank.delete-header") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ bank_name: currentHeaderBank })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeHeaderUploadModal();
+            location.reload();
+        }
+    });
+}
+
 // Close modals on outside click
 window.onclick = function(event) {
     if (event.target === document.getElementById('markPaidModal')) closeMarkPaidModal();
     if (event.target === document.getElementById('cancelPaymentModal')) closeCancelModal();
     if (event.target === document.getElementById('editSalaryModal')) closeEditSalaryModal();
+    if (event.target === document.getElementById('headerUploadModal')) closeHeaderUploadModal();
 }
 </script>
 @endpush
