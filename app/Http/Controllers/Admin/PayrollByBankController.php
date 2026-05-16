@@ -464,45 +464,53 @@ class PayrollByBankController extends Controller
     {
         $w = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
+        // Font sizes (half-points): 12 = 6pt, 13 = 6.5pt, 14 = 7pt
+        $dataSize = '13';
+        $headerSize = '13';
+        $periodSize = '14';
+
         // Period info paragraph
-        $xml = '<w:p xmlns:w="' . $w . '"><w:pPr><w:spacing w:after="100"/></w:pPr>';
-        $xml .= '<w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr>';
+        $xml = '<w:p xmlns:w="' . $w . '"><w:pPr><w:spacing w:after="40" w:line="240" w:lineRule="auto"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:sz w:val="' . $periodSize . '"/></w:rPr>';
         $xml .= '<w:t xml:space="preserve">Periode : ' . htmlspecialchars($monthName) . ' | Jours ouvrables : ' . number_format($workingDays, 1) . ' | Employes : ' . $group['count'] . ' | Edition : ' . date('d/m/Y H:i') . '</w:t>';
         $xml .= '</w:r></w:p>';
 
         // Table
         $xml .= '<w:tbl xmlns:w="' . $w . '">';
 
-        // Table properties
+        // Table properties - minimal cell margins for compact layout
         $xml .= '<w:tblPr>';
         $xml .= '<w:tblStyle w:val="TableGrid"/>';
         $xml .= '<w:tblW w:w="5000" w:type="pct"/>';
         $xml .= '<w:tblBorders>';
-        $xml .= '<w:top w:val="single" w:sz="4" w:color="999999"/>';
-        $xml .= '<w:left w:val="single" w:sz="4" w:color="999999"/>';
-        $xml .= '<w:bottom w:val="single" w:sz="4" w:color="999999"/>';
-        $xml .= '<w:right w:val="single" w:sz="4" w:color="999999"/>';
-        $xml .= '<w:insideH w:val="single" w:sz="4" w:color="999999"/>';
-        $xml .= '<w:insideV w:val="single" w:sz="4" w:color="999999"/>';
+        $xml .= '<w:top w:val="single" w:sz="2" w:color="999999"/>';
+        $xml .= '<w:left w:val="single" w:sz="2" w:color="999999"/>';
+        $xml .= '<w:bottom w:val="single" w:sz="2" w:color="999999"/>';
+        $xml .= '<w:right w:val="single" w:sz="2" w:color="999999"/>';
+        $xml .= '<w:insideH w:val="single" w:sz="2" w:color="999999"/>';
+        $xml .= '<w:insideV w:val="single" w:sz="2" w:color="999999"/>';
         $xml .= '</w:tblBorders>';
-        $xml .= '<w:tblCellMar><w:top w:w="30" w:type="dxa"/><w:left w:w="60" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tblCellMar>';
+        $xml .= '<w:tblCellMar><w:top w:w="10" w:type="dxa"/><w:left w:w="30" w:type="dxa"/><w:bottom w:w="10" w:type="dxa"/><w:right w:w="30" w:type="dxa"/></w:tblCellMar>';
         $xml .= '</w:tblPr>';
 
         // Column widths (total ~10000 dxa for A4)
-        $cols = [400, 1100, 2400, 1400, 800, 700, 700, 900, 700, 900];
+        $cols = [350, 1000, 2200, 1400, 800, 650, 650, 1000, 700, 1000];
         $xml .= '<w:tblGrid>';
         foreach ($cols as $c) {
             $xml .= '<w:gridCol w:w="' . $c . '"/>';
         }
         $xml .= '</w:tblGrid>';
 
+        // Helper for compact row height
+        $rowHeight = '<w:trPr><w:trHeight w:val="200" w:hRule="atLeast"/></w:trPr>';
+
         // Header row
         $headers = ['#', 'Matricule', 'Nom & Prenom', 'N Compte', 'Jrs Trav.', 'Heures', 'Retards', 'Sal. Brut', 'Ded.', 'Sal. Net'];
-        $xml .= '<w:tr>';
+        $xml .= '<w:tr>' . $rowHeight;
         foreach ($headers as $i => $h) {
             $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $cols[$i] . '" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
-            $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr>';
-            $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+            $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>';
+            $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
             $xml .= '<w:t>' . htmlspecialchars($h) . '</w:t></w:r></w:p></w:tc>';
         }
         $xml .= '</w:tr>';
@@ -510,10 +518,17 @@ class PayrollByBankController extends Controller
         // Data rows
         foreach ($group['employees'] as $empIndex => $employee) {
             $fill = ($empIndex % 2 === 1) ? 'f3f4f6' : 'FFFFFF';
+
+            // Use last_name + first_name to avoid duplication
+            $displayName = trim($employee->last_name . ' ' . $employee->first_name);
+            if (empty($displayName)) {
+                $displayName = $employee->full_name;
+            }
+
             $cells = [
                 $empIndex + 1,
                 $employee->employee_id,
-                $employee->full_name,
+                $displayName,
                 $employee->numero_compte ?: '-',
                 number_format($employee->days_worked, 1) . '/' . number_format($employee->working_days ?? 0, 1),
                 number_format($employee->total_hours_worked ?? 0, 1) . 'h',
@@ -523,7 +538,7 @@ class PayrollByBankController extends Controller
                 number_format($employee->net_salary, 0, ',', ' '),
             ];
 
-            $xml .= '<w:tr>';
+            $xml .= '<w:tr>' . $rowHeight;
             foreach ($cells as $ci => $val) {
                 $color = '333333';
                 $bold = '';
@@ -535,57 +550,53 @@ class PayrollByBankController extends Controller
                 if ($ci >= 7) $align = 'right';
 
                 $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $cols[$ci] . '" w:type="dxa"/><w:shd w:val="clear" w:fill="' . $fill . '"/></w:tcPr>';
-                $xml .= '<w:p><w:pPr><w:jc w:val="' . $align . '"/></w:pPr>';
-                $xml .= '<w:r><w:rPr>' . $bold . '<w:color w:val="' . $color . '"/><w:sz w:val="16"/></w:rPr>';
+                $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="' . $align . '"/></w:pPr>';
+                $xml .= '<w:r><w:rPr>' . $bold . '<w:color w:val="' . $color . '"/><w:sz w:val="' . $dataSize . '"/></w:rPr>';
                 $xml .= '<w:t xml:space="preserve">' . htmlspecialchars((string) $val) . '</w:t></w:r></w:p></w:tc>';
             }
             $xml .= '</w:tr>';
         }
 
         // Total row
-        $xml .= '<w:tr>';
-        // Merged cell for "TOTAL" label (7 columns)
-        $xml .= '<w:tc><w:tcPr><w:tcW w:w="7500" w:type="dxa"/><w:gridSpan w:val="7"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
-        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:tr>' . $rowHeight;
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="7050" w:type="dxa"/><w:gridSpan w:val="7"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>TOTAL</w:t></w:r></w:p></w:tc>';
-        // Gross
-        $xml .= '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
-        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="1000" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>' . number_format($group['total_gross'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
-        // Deductions
         $xml .= '<w:tc><w:tcPr><w:tcW w:w="700" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
-        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>' . number_format($group['total_deductions'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
-        // Net
-        $xml .= '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="right"/></w:pPr>';
-        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="16"/></w:rPr>';
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="1000" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
+        $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>' . number_format($group['total_net'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
         $xml .= '</w:tr>';
 
         $xml .= '</w:tbl>';
 
-        // Signatures
-        $xml .= '<w:p xmlns:w="' . $w . '"><w:pPr><w:spacing w:before="400"/></w:pPr></w:p>';
+        // Signatures - compact
+        $xml .= '<w:p xmlns:w="' . $w . '"><w:pPr><w:spacing w:before="200" w:after="0"/></w:pPr></w:p>';
         $xml .= '<w:tbl xmlns:w="' . $w . '"><w:tblPr><w:tblW w:w="5000" w:type="pct"/></w:tblPr>';
         $xml .= '<w:tblGrid><w:gridCol w:w="5000"/><w:gridCol w:w="5000"/></w:tblGrid>';
         $xml .= '<w:tr>';
         // Left signature
         $xml .= '<w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/><w:tcBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders></w:tcPr>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="16"/></w:rPr><w:t>Prepare par :</w:t></w:r></w:p>';
-        $xml .= '<w:p/><w:p/>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>____________________</w:t></w:r></w:p>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>Signature &amp; Cachet</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="14"/></w:rPr><w:t>Prepare par :</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="12"/></w:rPr><w:t>____________________</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="12"/></w:rPr><w:t>Signature &amp; Cachet</w:t></w:r></w:p>';
         $xml .= '</w:tc>';
         // Right signature
         $xml .= '<w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/><w:tcBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders></w:tcPr>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="16"/></w:rPr><w:t>Verifie et approuve par :</w:t></w:r></w:p>';
-        $xml .= '<w:p/><w:p/>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>____________________</w:t></w:r></w:p>';
-        $xml .= '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="14"/></w:rPr><w:t>Signature &amp; Cachet</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="14"/></w:rPr><w:t>Verifie et approuve par :</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="12"/></w:rPr><w:t>____________________</w:t></w:r></w:p>';
+        $xml .= '<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="12"/></w:rPr><w:t>Signature &amp; Cachet</w:t></w:r></w:p>';
         $xml .= '</w:tc>';
         $xml .= '</w:tr></w:tbl>';
 
