@@ -335,7 +335,7 @@ class PayrollByBankController extends Controller
             $group = $bankGroups->first();
             $templatePath = $this->getBankTemplatePath($group['bank_name']);
 
-            if ($templatePath) {
+            if ($templatePath && file_exists($templatePath)) {
                 return $this->exportFromDocxTemplate($templatePath, $group, $year, $month, $workingDays);
             }
         }
