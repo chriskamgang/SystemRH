@@ -251,26 +251,69 @@ class PayrollByBankController extends Controller
     }
 
     /**
-     * Upload a letterhead image for a specific bank.
+     * Upload a letterhead image (or DOCX containing one) for a specific bank.
      */
     public function uploadBankHeader(Request $request)
     {
         $request->validate([
             'bank_name' => 'required|string|max:100',
-            'header_image' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+            'header_image' => 'required|file|max:5120',
         ]);
 
         $bankSlug = \Illuminate\Support\Str::slug($request->bank_name);
-        $filename = "bank-headers/{$bankSlug}.jpg";
+        $file = $request->file('header_image');
+        $extension = strtolower($file->getClientOriginalExtension());
 
-        // Convert to JPG if needed and store
-        $image = $request->file('header_image');
-        $image->storeAs('public/bank-headers', "{$bankSlug}.jpg");
+        if (in_array($extension, ['jpg', 'jpeg', 'png'])) {
+            // Direct image upload
+            $file->storeAs('public/bank-headers', "{$bankSlug}.jpg");
+        } elseif ($extension === 'docx') {
+            // Extract image from DOCX (which is a ZIP archive)
+            $imagePath = $this->extractImageFromDocx($file->getRealPath());
+            if (!$imagePath) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune image trouvee dans le fichier DOCX.',
+                ], 422);
+            }
+            Storage::put("public/bank-headers/{$bankSlug}.jpg", file_get_contents($imagePath));
+            @unlink($imagePath);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Format non supporte. Utilisez JPG, PNG ou DOCX.',
+            ], 422);
+        }
 
         return response()->json([
             'success' => true,
             'message' => "En-tete uploade pour {$request->bank_name}.",
         ]);
+    }
+
+    /**
+     * Extract the first image from a DOCX file (ZIP archive).
+     */
+    private function extractImageFromDocx(string $docxPath): ?string
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($docxPath) !== true) {
+            return null;
+        }
+
+        // Look for images in word/media/
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if (preg_match('#^word/media/image\d+\.(jpg|jpeg|png)$#i', $name)) {
+                $tmpFile = tempnam(sys_get_temp_dir(), 'docx_img_');
+                file_put_contents($tmpFile, $zip->getFromIndex($i));
+                $zip->close();
+                return $tmpFile;
+            }
+        }
+
+        $zip->close();
+        return null;
     }
 
     /**

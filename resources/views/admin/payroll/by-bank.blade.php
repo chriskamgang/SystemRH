@@ -412,10 +412,10 @@
             <form id="headerUploadForm" enctype="multipart/form-data">
                 <input type="hidden" id="header_bank_name" name="bank_name">
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Image de l'en-tete (JPG/PNG, max 2Mo)</label>
-                    <input type="file" id="header_image" name="header_image" accept="image/jpeg,image/png"
+                    <label class="block text-sm font-medium text-gray-700 mb-2">En-tete (JPG, PNG ou DOCX)</label>
+                    <input type="file" id="header_image" name="header_image" accept="image/jpeg,image/png,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <p class="text-xs text-gray-500 mt-1">L'image apparaitra en haut du PDF pour cette banque.</p>
+                    <p class="text-xs text-gray-500 mt-1">Uploadez directement le fichier DOCX ou une image. L'en-tete apparaitra en haut du PDF.</p>
                 </div>
             </form>
 
