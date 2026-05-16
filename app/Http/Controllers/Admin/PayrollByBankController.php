@@ -398,11 +398,48 @@ class PayrollByBankController extends Controller
         $zip->addFromString('word/document.xml', $documentXml);
         $zip->close();
 
-        $filename = "salaires-{$bankSlug}-" . Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM') . "-{$year}.docx";
+        $monthSlug = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM');
+        $filenameBase = "salaires-{$bankSlug}-{$monthSlug}-{$year}";
 
-        return response()->download($tmpFile, $filename, [
+        // Convert to PDF using LibreOffice if available
+        $pdfFile = $this->convertDocxToPdf($tmpFile);
+        if ($pdfFile) {
+            @unlink($tmpFile);
+            return response()->download($pdfFile, "{$filenameBase}.pdf", [
+                'Content-Type' => 'application/pdf',
+            ])->deleteFileAfterSend(true);
+        }
+
+        // Fallback: return DOCX if LibreOffice not available
+        return response()->download($tmpFile, "{$filenameBase}.docx", [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Convert a DOCX file to PDF using LibreOffice.
+     */
+    private function convertDocxToPdf(string $docxPath): ?string
+    {
+        $outputDir = dirname($docxPath);
+
+        $command = 'libreoffice --headless --convert-to pdf --outdir '
+            . escapeshellarg($outputDir) . ' '
+            . escapeshellarg($docxPath) . ' 2>&1';
+
+        exec($command, $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            \Log::warning('LibreOffice conversion failed', ['output' => implode("\n", $output), 'code' => $returnCode]);
+            return null;
+        }
+
+        $pdfPath = preg_replace('/\.docx$/i', '.pdf', $docxPath);
+        if (file_exists($pdfPath)) {
+            return $pdfPath;
+        }
+
+        return null;
     }
 
     /**
