@@ -35,12 +35,10 @@ class PayrollByBankController extends Controller
         $totalBanks = $bankGroups->count();
         $totalPaid = $bankGroups->sum(fn($g) => $g['paid_count']);
 
-        // Check which banks have headers uploaded
+        // Check which banks have DOCX templates uploaded
         $bankHeaders = [];
         foreach ($bankGroups as $group) {
-            $bankSlug = \Illuminate\Support\Str::slug($group['bank_name']);
-            $bankHeaders[$group['bank_name']] = Storage::exists("public/bank-headers/{$bankSlug}.jpg")
-                || Storage::exists("public/bank-headers/{$bankSlug}.png");
+            $bankHeaders[$group['bank_name']] = $this->hasBankTemplate($group['bank_name']);
         }
 
         return view('admin.payroll.by-bank', compact(
@@ -251,73 +249,26 @@ class PayrollByBankController extends Controller
     }
 
     /**
-     * Upload a letterhead image (or DOCX containing one) for a specific bank.
+     * Upload a DOCX template for a specific bank.
      */
     public function uploadBankHeader(Request $request)
     {
         $request->validate([
             'bank_name' => 'required|string|max:100',
-            'header_image' => 'required|file|max:5120',
+            'header_image' => 'required|file|mimes:docx|max:5120',
         ]);
 
         $bankSlug = \Illuminate\Support\Str::slug($request->bank_name);
-        $file = $request->file('header_image');
-        $extension = strtolower($file->getClientOriginalExtension());
-
-        if (in_array($extension, ['jpg', 'jpeg', 'png'])) {
-            // Direct image upload
-            $file->storeAs('public/bank-headers', "{$bankSlug}.jpg");
-        } elseif ($extension === 'docx') {
-            // Extract image from DOCX (which is a ZIP archive)
-            $imagePath = $this->extractImageFromDocx($file->getRealPath());
-            if (!$imagePath) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Aucune image trouvee dans le fichier DOCX.',
-                ], 422);
-            }
-            Storage::put("public/bank-headers/{$bankSlug}.jpg", file_get_contents($imagePath));
-            @unlink($imagePath);
-        } else {
-            return response()->json([
-                'success' => false,
-                'message' => 'Format non supporte. Utilisez JPG, PNG ou DOCX.',
-            ], 422);
-        }
+        $request->file('header_image')->storeAs('public/bank-templates', "{$bankSlug}.docx");
 
         return response()->json([
             'success' => true,
-            'message' => "En-tete uploade pour {$request->bank_name}.",
+            'message' => "Template DOCX uploade pour {$request->bank_name}.",
         ]);
     }
 
     /**
-     * Extract the first image from a DOCX file (ZIP archive).
-     */
-    private function extractImageFromDocx(string $docxPath): ?string
-    {
-        $zip = new \ZipArchive();
-        if ($zip->open($docxPath) !== true) {
-            return null;
-        }
-
-        // Look for images in word/media/
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = $zip->getNameIndex($i);
-            if (preg_match('#^word/media/image\d+\.(jpg|jpeg|png)$#i', $name)) {
-                $tmpFile = tempnam(sys_get_temp_dir(), 'docx_img_');
-                file_put_contents($tmpFile, $zip->getFromIndex($i));
-                $zip->close();
-                return $tmpFile;
-            }
-        }
-
-        $zip->close();
-        return null;
-    }
-
-    /**
-     * Delete a bank's letterhead image.
+     * Delete a bank's DOCX template.
      */
     public function deleteBankHeader(Request $request)
     {
@@ -326,7 +277,7 @@ class PayrollByBankController extends Controller
         ]);
 
         $bankSlug = \Illuminate\Support\Str::slug($request->bank_name);
-        $path = "public/bank-headers/{$bankSlug}.jpg";
+        $path = "public/bank-templates/{$bankSlug}.docx";
 
         if (Storage::exists($path)) {
             Storage::delete($path);
@@ -334,33 +285,36 @@ class PayrollByBankController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "En-tete supprime pour {$request->bank_name}.",
+            'message' => "Template supprime pour {$request->bank_name}.",
         ]);
     }
 
     /**
-     * Get the header image path for a bank (or null).
+     * Check if a DOCX template exists for a bank.
      */
-    private function getBankHeaderPath(string $bankName): ?string
+    private function hasBankTemplate(string $bankName): bool
     {
         $bankSlug = \Illuminate\Support\Str::slug($bankName);
-        $path = "public/bank-headers/{$bankSlug}.jpg";
+        return Storage::exists("public/bank-templates/{$bankSlug}.docx");
+    }
+
+    /**
+     * Get the DOCX template path for a bank.
+     */
+    private function getBankTemplatePath(string $bankName): ?string
+    {
+        $bankSlug = \Illuminate\Support\Str::slug($bankName);
+        $path = "public/bank-templates/{$bankSlug}.docx";
 
         if (Storage::exists($path)) {
             return storage_path("app/{$path}");
-        }
-
-        // Try PNG
-        $pathPng = "public/bank-headers/{$bankSlug}.png";
-        if (Storage::exists($pathPng)) {
-            return storage_path("app/{$pathPng}");
         }
 
         return null;
     }
 
     /**
-     * Export PDF grouped by bank.
+     * Export using the bank's DOCX template with employee data inserted.
      */
     public function exportPdf(Request $request)
     {
@@ -376,19 +330,137 @@ class PayrollByBankController extends Controller
             $bankGroups = $bankGroups->filter(fn($g) => $g['bank_name'] === $selectedBank)->values();
         }
 
+        // If a single bank with a DOCX template, use PhpWord
+        if ($bankGroups->count() === 1) {
+            $group = $bankGroups->first();
+            $templatePath = $this->getBankTemplatePath($group['bank_name']);
+
+            if ($templatePath) {
+                return $this->exportFromDocxTemplate($templatePath, $group, $year, $month, $workingDays);
+            }
+        }
+
+        // Fallback: DomPDF for banks without template or multi-bank export
+        return $this->exportFallbackPdf($bankGroups, $year, $month, $workingDays, $selectedBank);
+    }
+
+    /**
+     * Generate DOCX from bank template with employee data inserted.
+     */
+    private function exportFromDocxTemplate(string $templatePath, array $group, int $year, int $month, float $workingDays)
+    {
+        $phpWord = \PhpOffice\PhpWord\IOFactory::load($templatePath);
+
+        // Get the first section
+        $sections = $phpWord->getSections();
+        $section = $sections[0];
+
+        // Add period info
+        $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY');
+        $section->addTextBreak(1);
+        $section->addText(
+            "Periode : {$monthName} | Jours ouvrables : " . number_format($workingDays, 1) .
+            " | Employes : {$group['count']} | Edition : " . date('d/m/Y H:i'),
+            ['size' => 9, 'bold' => true],
+            ['spaceAfter' => 100]
+        );
+
+        // Create the employee table
+        $tableStyle = [
+            'borderSize' => 6,
+            'borderColor' => '999999',
+            'cellMargin' => 40,
+        ];
+        $phpWord->addTableStyle('SalaryTable', $tableStyle);
+        $table = $section->addTable('SalaryTable');
+
+        // Header row
+        $headerStyle = ['bold' => true, 'size' => 8, 'color' => 'FFFFFF'];
+        $headerCellStyle = ['bgColor' => '1e40af', 'valign' => 'center'];
+
+        $table->addRow();
+        $table->addCell(400, $headerCellStyle)->addText('#', $headerStyle);
+        $table->addCell(1200, $headerCellStyle)->addText('Matricule', $headerStyle);
+        $table->addCell(2800, $headerCellStyle)->addText('Nom & Prenom', $headerStyle);
+        $table->addCell(1800, $headerCellStyle)->addText('N Compte', $headerStyle);
+        $table->addCell(900, $headerCellStyle)->addText('Jrs Trav.', $headerStyle);
+        $table->addCell(800, $headerCellStyle)->addText('Heures', $headerStyle);
+        $table->addCell(800, $headerCellStyle)->addText('Retards', $headerStyle);
+        $table->addCell(1100, $headerCellStyle)->addText('Sal. Brut', $headerStyle);
+        $table->addCell(800, $headerCellStyle)->addText('Ded.', $headerStyle);
+        $table->addCell(1100, $headerCellStyle)->addText('Sal. Net', $headerStyle);
+
+        // Data rows
+        $textStyle = ['size' => 8];
+        $boldStyle = ['size' => 8, 'bold' => true];
+        $redStyle = ['size' => 8, 'color' => 'dc2626'];
+        $greenStyle = ['size' => 8, 'bold' => true, 'color' => '059669'];
+
+        foreach ($group['employees'] as $empIndex => $employee) {
+            $evenBg = ($empIndex % 2 === 1) ? ['bgColor' => 'f3f4f6'] : [];
+
+            $table->addRow();
+            $table->addCell(400, $evenBg)->addText($empIndex + 1, $textStyle);
+            $table->addCell(1200, $evenBg)->addText($employee->employee_id, $textStyle);
+            $table->addCell(2800, $evenBg)->addText($employee->full_name, $boldStyle);
+            $table->addCell(1800, $evenBg)->addText($employee->numero_compte ?: '-', $textStyle);
+            $table->addCell(900, $evenBg)->addText(number_format($employee->days_worked, 1) . '/' . number_format($employee->working_days ?? 0, 1), $textStyle);
+            $table->addCell(800, $evenBg)->addText(number_format($employee->total_hours_worked ?? 0, 1) . 'h', $textStyle);
+            $table->addCell(800, $evenBg)->addText(($employee->total_late_minutes ?? 0) . 'min', $textStyle);
+            $table->addCell(1100, $evenBg)->addText(number_format($employee->gross_salary, 0, ',', ' '), $textStyle);
+            $table->addCell(800, $evenBg)->addText(number_format($employee->total_deductions, 0, ',', ' '), $redStyle);
+            $table->addCell(1100, $evenBg)->addText(number_format($employee->net_salary, 0, ',', ' '), $greenStyle);
+        }
+
+        // Total row
+        $totalCellStyle = ['bgColor' => '1e40af'];
+        $totalTextStyle = ['size' => 8, 'bold' => true, 'color' => 'FFFFFF'];
+        $table->addRow();
+        $mergedCell = $table->addCell(8700, array_merge($totalCellStyle, ['gridSpan' => 7]));
+        $mergedCell->addText('TOTAL', $totalTextStyle, ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::END]);
+        $table->addCell(1100, $totalCellStyle)->addText(number_format($group['total_gross'], 0, ',', ' '), $totalTextStyle);
+        $table->addCell(800, $totalCellStyle)->addText(number_format($group['total_deductions'], 0, ',', ' '), $totalTextStyle);
+        $table->addCell(1100, $totalCellStyle)->addText(number_format($group['total_net'], 0, ',', ' '), $totalTextStyle);
+
+        // Signatures
+        $section->addTextBreak(2);
+        $sigTable = $section->addTable();
+        $sigTable->addRow();
+        $leftCell = $sigTable->addCell(5000);
+        $leftCell->addText('Prepare par :', ['size' => 8, 'bold' => true], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        $leftCell->addTextBreak(2);
+        $leftCell->addText('____________________', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        $leftCell->addText('Signature & Cachet', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+
+        $rightCell = $sigTable->addCell(5000);
+        $rightCell->addText('Verifie et approuve par :', ['size' => 8, 'bold' => true], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        $rightCell->addTextBreak(2);
+        $rightCell->addText('____________________', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        $rightCell->addText('Signature & Cachet', ['size' => 7], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+
+        // Save as DOCX and return
+        $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM');
+        $bankSlug = \Illuminate\Support\Str::slug($group['bank_name']);
+        $filename = "salaires-{$bankSlug}-{$monthName}-{$year}.docx";
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'payroll_') . '.docx';
+        $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+        $writer->save($tmpFile);
+
+        return response()->download($tmpFile, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Fallback PDF export for banks without DOCX template.
+     */
+    private function exportFallbackPdf($bankGroups, int $year, int $month, float $workingDays, ?string $selectedBank)
+    {
         $totalEmployees = $bankGroups->sum(fn($g) => $g['employees']->count());
         $totalNetSalary = $bankGroups->sum('total_net');
         $totalGrossSalary = $bankGroups->sum('total_gross');
         $totalBanks = $bankGroups->count();
-
-        // Resolve header image paths per bank
-        $bankHeaderPaths = [];
-        foreach ($bankGroups as $group) {
-            $headerPath = $this->getBankHeaderPath($group['bank_name']);
-            if ($headerPath) {
-                $bankHeaderPaths[$group['bank_name']] = $headerPath;
-            }
-        }
 
         $pdf = Pdf::loadView('admin.payroll.pdf.by-bank', compact(
             'bankGroups',
@@ -399,8 +471,7 @@ class PayrollByBankController extends Controller
             'totalNetSalary',
             'totalGrossSalary',
             'totalBanks',
-            'selectedBank',
-            'bankHeaderPaths'
+            'selectedBank'
         ));
 
         $pdf->setPaper('A4', 'portrait');

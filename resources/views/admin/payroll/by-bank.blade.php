@@ -165,8 +165,8 @@
                             </a>
                             <button onclick="openHeaderUpload('{{ addslashes($group['bank_name']) }}')"
                                 class="{{ ($bankHeaders[$group['bank_name']] ?? false) ? 'text-green-600 hover:text-green-800' : 'text-gray-400 hover:text-gray-600' }} text-sm"
-                                title="{{ ($bankHeaders[$group['bank_name']] ?? false) ? 'En-tete uploade - cliquer pour modifier' : 'Uploader en-tete PDF' }}">
-                                <i class="fas fa-image"></i>
+                                title="{{ ($bankHeaders[$group['bank_name']] ?? false) ? 'Template DOCX uploade - cliquer pour modifier' : 'Uploader template DOCX' }}">
+                                <i class="fas fa-file-word"></i>
                             </button>
                             @endif
                             @if(!$group['all_paid'])
@@ -399,23 +399,25 @@
             <div class="flex items-center justify-center w-12 h-12 mx-auto bg-purple-100 rounded-full mb-4">
                 <i class="fas fa-image text-2xl text-purple-600"></i>
             </div>
-            <h3 class="text-lg font-bold text-gray-900 text-center mb-4">En-tete PDF - <span id="header_bank_name_display"></span></h3>
+            <h3 class="text-lg font-bold text-gray-900 text-center mb-4">Template DOCX - <span id="header_bank_name_display"></span></h3>
 
             <div id="header_preview_area" class="hidden mb-4">
-                <p class="text-sm text-gray-600 mb-2">En-tete actuel :</p>
-                <img id="header_preview_img" src="" class="w-full border rounded" alt="En-tete">
+                <div class="bg-green-50 border border-green-200 rounded p-3">
+                    <p class="text-sm text-green-700"><i class="fas fa-check-circle mr-1"></i> Template DOCX uploade</p>
+                    <p class="text-xs text-green-600 mt-1">Le PDF sera genere a partir de ce template avec les donnees inserees.</p>
+                </div>
                 <button onclick="submitDeleteHeader()" class="mt-2 text-sm text-red-600 hover:text-red-800">
-                    <i class="fas fa-trash mr-1"></i> Supprimer cet en-tete
+                    <i class="fas fa-trash mr-1"></i> Supprimer ce template
                 </button>
             </div>
 
             <form id="headerUploadForm" enctype="multipart/form-data">
                 <input type="hidden" id="header_bank_name" name="bank_name">
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">En-tete (JPG, PNG ou DOCX)</label>
-                    <input type="file" id="header_image" name="header_image" accept="image/jpeg,image/png,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fichier DOCX de la banque</label>
+                    <input type="file" id="header_image" name="header_image" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <p class="text-xs text-gray-500 mt-1">Uploadez directement le fichier DOCX ou une image. L'en-tete apparaitra en haut du PDF.</p>
+                    <p class="text-xs text-gray-500 mt-1">Uploadez le fichier DOCX avec l'en-tete de la banque. Les donnees des employes seront inserees automatiquement.</p>
                 </div>
             </form>
 
@@ -605,18 +607,13 @@ function openHeaderUpload(bankName) {
     document.getElementById('header_bank_name_display').textContent = bankName;
     document.getElementById('header_image').value = '';
 
-    // Check if header exists (slug-based URL)
-    const slug = bankName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const imgUrl = '/storage/bank-headers/' + slug + '.jpg?t=' + Date.now();
-    const img = new Image();
-    img.onload = function() {
-        document.getElementById('header_preview_img').src = imgUrl;
+    // Check if template exists via bankHeaders data
+    const hasTemplate = @json($bankHeaders);
+    if (hasTemplate[bankName]) {
         document.getElementById('header_preview_area').classList.remove('hidden');
-    };
-    img.onerror = function() {
+    } else {
         document.getElementById('header_preview_area').classList.add('hidden');
-    };
-    img.src = imgUrl;
+    }
 
     document.getElementById('headerUploadModal').classList.remove('hidden');
 }
