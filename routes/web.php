@@ -244,6 +244,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/by-bank/update-salary', [App\Http\Controllers\Admin\PayrollByBankController::class, 'updateEmployeeSalary'])->name('by-bank.update-salary');
         Route::post('/by-bank/upload-header', [App\Http\Controllers\Admin\PayrollByBankController::class, 'uploadBankHeader'])->name('by-bank.upload-header');
         Route::post('/by-bank/delete-header', [App\Http\Controllers\Admin\PayrollByBankController::class, 'deleteBankHeader'])->name('by-bank.delete-header');
+        Route::get('/by-bank/quitus/{userId}', [App\Http\Controllers\Admin\PayrollByBankController::class, 'generateQuitus'])->name('by-bank.quitus');
+        Route::post('/by-bank/add-hours', [App\Http\Controllers\Admin\PayrollByBankController::class, 'addMonthlyHours'])->name('by-bank.add-hours');
     });
 
     // Calculateur Générique

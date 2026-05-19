@@ -12,8 +12,11 @@
             <p class="text-gray-600">{{ \Carbon\Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY') }}</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('admin.payroll.by-bank.export-pdf', request()->query()) }}" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm">
-                <i class="fas fa-file-pdf mr-2"></i> PDF Global
+            <a href="{{ route('admin.payroll.by-bank.export-pdf', array_merge(request()->query(), ['type' => 'banque'])) }}" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm">
+                <i class="fas fa-university mr-2"></i> PDF Banque
+            </a>
+            <a href="{{ route('admin.payroll.by-bank.export-pdf', array_merge(request()->query(), ['type' => 'directeur'])) }}" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition text-sm">
+                <i class="fas fa-user-tie mr-2"></i> PDF Directeur
             </a>
         </div>
     </div>
@@ -160,8 +163,11 @@
                                 <i class="fas fa-eye"></i>
                             </button>
                             @if(!$group['is_unassigned'])
-                            <a href="{{ route('admin.payroll.by-bank.export-pdf', array_merge(request()->query(), ['banque' => $group['bank_name']])) }}" class="text-red-600 hover:text-red-800 text-sm" title="PDF cette banque">
-                                <i class="fas fa-file-pdf"></i>
+                            <a href="{{ route('admin.payroll.by-bank.export-pdf', array_merge(request()->query(), ['banque' => $group['bank_name'], 'type' => 'banque'])) }}" class="text-red-600 hover:text-red-800 text-sm" title="PDF Banque (sans details)">
+                                <i class="fas fa-university"></i>
+                            </a>
+                            <a href="{{ route('admin.payroll.by-bank.export-pdf', array_merge(request()->query(), ['banque' => $group['bank_name'], 'type' => 'directeur'])) }}" class="text-indigo-600 hover:text-indigo-800 text-sm" title="PDF Directeur (avec details)">
+                                <i class="fas fa-user-tie"></i>
                             </a>
                             <button onclick="openHeaderUpload('{{ addslashes($group['bank_name']) }}')"
                                 class="{{ ($bankHeaders[$group['bank_name']] ?? false) ? 'text-green-600 hover:text-green-800' : 'text-gray-400 hover:text-gray-600' }} text-sm"
@@ -216,8 +222,18 @@
                                         <tr class="hover:bg-white {{ $employee->is_paid ? 'bg-green-50' : '' }}">
                                             <td class="px-4 py-2 text-xs text-gray-600">{{ $empIndex + 1 }}</td>
                                             <td class="px-4 py-2">
-                                                <div class="text-sm font-medium text-gray-900">{{ $employee->full_name }}</div>
-                                                <div class="text-xs text-gray-500">{{ $employee->employee_id }}</div>
+                                                <div class="flex items-center gap-2">
+                                                    <a href="{{ route('admin.payroll.by-bank.quitus', ['userId' => $employee->id, 'month' => $month, 'year' => $year]) }}"
+                                                        target="_blank"
+                                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition"
+                                                        title="Telecharger le quitus de paiement">
+                                                        <i class="fas fa-file-contract mr-1"></i> Quitus
+                                                    </a>
+                                                    <div>
+                                                        <div class="text-sm font-medium text-gray-900">{{ $employee->full_name }}</div>
+                                                        <div class="text-xs text-gray-500">{{ $employee->employee_id }}</div>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td class="px-4 py-2">
                                                 @if($employee->employee_type == 'enseignant_titulaire')
@@ -256,7 +272,11 @@
                                                     </span>
                                                 @endif
                                             </td>
-                                            <td class="px-4 py-2 text-center">
+                                            <td class="px-4 py-2 text-center space-x-1">
+                                                <button onclick="openAddHours({{ $employee->id }}, '{{ addslashes($employee->full_name) }}', {{ round($employee->total_hours_worked ?? 0) }})"
+                                                    class="text-purple-600 hover:text-purple-800 text-sm" title="Saisir les heures de presence">
+                                                    <i class="fas fa-clock"></i>
+                                                </button>
                                                 <button onclick="openEditSalary({{ $employee->id }}, '{{ addslashes($employee->full_name) }}', {{ round($employee->net_salary) }}, {{ round($employee->gross_salary) }})"
                                                     class="text-blue-600 hover:text-blue-800 text-sm" title="Modifier le salaire">
                                                     <i class="fas fa-edit"></i>
@@ -427,6 +447,72 @@
                 </button>
                 <button id="confirmUploadBtn" onclick="submitHeaderUpload()" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">
                     <i class="fas fa-upload mr-2"></i> Uploader
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Saisir Heures de Presence -->
+<div id="addHoursModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-12 h-12 mx-auto bg-purple-100 rounded-full mb-4">
+                <i class="fas fa-clock text-2xl text-purple-600"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 text-center mb-2">Saisir les heures de presence</h3>
+            <p class="text-sm text-gray-500 text-center mb-4">Pour les employes qui ne scannent pas via l'application</p>
+
+            <div class="bg-gray-50 p-4 rounded text-sm space-y-1 mb-4">
+                <p><strong>Employe :</strong> <span id="hours_employee_name"></span></p>
+                <p><strong>Periode :</strong> {{ \Carbon\Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY') }}</p>
+                <p><strong>Heures deja enregistrees :</strong> <span id="hours_existing" class="text-blue-600 font-semibold"></span>h</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mode de saisie</label>
+                    <select id="hours_mode" onchange="toggleHoursMode()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="total">Total d'heures pour le mois</option>
+                        <option value="daily">Nombre de jours travailles</option>
+                    </select>
+                </div>
+
+                <div id="hours_total_mode">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Heures totales du mois <span class="text-red-500">*</span></label>
+                    <input type="number" id="hours_total" min="0" max="744" step="0.5" placeholder="Ex: 176"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-bold">
+                    <p class="text-xs text-gray-500 mt-1">Nombre total d'heures travaillees ce mois</p>
+                </div>
+
+                <div id="hours_daily_mode" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de jours travailles <span class="text-red-500">*</span></label>
+                    <input type="number" id="hours_days" min="0" max="31" step="0.5" placeholder="Ex: 22"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-bold">
+                    <p class="text-xs text-gray-500 mt-1">Le systeme calculera les heures automatiquement (x {{ \App\Models\Setting::get('working_hours_per_day', 8) }}h/jour)</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Note / Justification</label>
+                    <input type="text" id="hours_note" placeholder="Ex: Employe ne disposant pas de l'application..."
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+                    <p class="text-xs text-yellow-800">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <strong>Attention :</strong> Les heures saisies ici remplacent les anciennes saisies manuelles du mois pour cet employe.
+                        Les pointages GPS existants seront conserves et s'ajouteront a ces heures.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-3 mt-5">
+                <button onclick="closeAddHoursModal()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition">
+                    Annuler
+                </button>
+                <button id="confirmAddHoursBtn" onclick="submitAddHours()" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">
+                    <i class="fas fa-save mr-2"></i> Enregistrer
                 </button>
             </div>
         </div>
@@ -683,12 +769,96 @@ function submitDeleteHeader() {
     });
 }
 
+// Add Hours
+let currentHoursUserId = null;
+
+function openAddHours(userId, name, existingHours) {
+    currentHoursUserId = userId;
+    document.getElementById('hours_employee_name').textContent = name;
+    document.getElementById('hours_existing').textContent = existingHours;
+    document.getElementById('hours_total').value = '';
+    document.getElementById('hours_days').value = '';
+    document.getElementById('hours_note').value = '';
+    document.getElementById('hours_mode').value = 'total';
+    toggleHoursMode();
+    document.getElementById('addHoursModal').classList.remove('hidden');
+}
+
+function closeAddHoursModal() {
+    document.getElementById('addHoursModal').classList.add('hidden');
+}
+
+function toggleHoursMode() {
+    const mode = document.getElementById('hours_mode').value;
+    document.getElementById('hours_total_mode').classList.toggle('hidden', mode !== 'total');
+    document.getElementById('hours_daily_mode').classList.toggle('hidden', mode !== 'daily');
+}
+
+function submitAddHours() {
+    const mode = document.getElementById('hours_mode').value;
+    let totalHours;
+
+    if (mode === 'total') {
+        totalHours = parseFloat(document.getElementById('hours_total').value);
+        if (!totalHours || totalHours <= 0) {
+            alert('Veuillez saisir un nombre d\'heures valide.');
+            return;
+        }
+    } else {
+        const days = parseFloat(document.getElementById('hours_days').value);
+        if (!days || days <= 0) {
+            alert('Veuillez saisir un nombre de jours valide.');
+            return;
+        }
+        totalHours = days * {{ \App\Models\Setting::get('working_hours_per_day', 8) }};
+    }
+
+    const note = document.getElementById('hours_note').value;
+
+    const btn = document.getElementById('confirmAddHoursBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enregistrement...';
+
+    fetch('{{ route("admin.payroll.by-bank.add-hours") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            user_id: currentHoursUserId,
+            year: {{ $year }},
+            month: {{ $month }},
+            total_hours: totalHours,
+            note: note
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeAddHoursModal();
+            location.reload();
+        } else {
+            alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save mr-2"></i> Enregistrer';
+        }
+    })
+    .catch(() => {
+        alert('Erreur de connexion');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-2"></i> Enregistrer';
+    });
+}
+
 // Close modals on outside click
 window.onclick = function(event) {
     if (event.target === document.getElementById('markPaidModal')) closeMarkPaidModal();
     if (event.target === document.getElementById('cancelPaymentModal')) closeCancelModal();
     if (event.target === document.getElementById('editSalaryModal')) closeEditSalaryModal();
     if (event.target === document.getElementById('headerUploadModal')) closeHeaderUploadModal();
+    if (event.target === document.getElementById('addHoursModal')) closeAddHoursModal();
 }
 </script>
 @endpush

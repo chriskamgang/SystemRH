@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Campus;
 use App\Models\PayrollRecord;
+use App\Models\Setting;
 use App\Helpers\PayrollCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -332,6 +333,7 @@ class PayrollByBankController extends Controller
         $month = $request->filled('month') ? (int) $request->month : Carbon::now()->month;
         $year = $request->filled('year') ? (int) $request->year : Carbon::now()->year;
         $selectedBank = $request->input('banque');
+        $type = $request->input('type', 'banque'); // 'banque' ou 'directeur'
 
         $workingDays = PayrollCalculator::calculateWorkingDays($year, $month);
 
@@ -347,19 +349,19 @@ class PayrollByBankController extends Controller
             $templatePath = $this->getBankTemplatePath($group['bank_name']);
 
             if ($templatePath && file_exists($templatePath)) {
-                return $this->exportFromDocxTemplate($templatePath, $group, $year, $month, $workingDays);
+                return $this->exportFromDocxTemplate($templatePath, $group, $year, $month, $workingDays, $type);
             }
         }
 
         // Fallback: DomPDF for banks without template or multi-bank export
-        return $this->exportFallbackPdf($bankGroups, $year, $month, $workingDays, $selectedBank);
+        return $this->exportFallbackPdf($bankGroups, $year, $month, $workingDays, $selectedBank, $type);
     }
 
     /**
      * Generate DOCX from bank template by injecting table XML directly into the ZIP.
      * This preserves all original formatting, images, headers, backgrounds.
      */
-    private function exportFromDocxTemplate(string $templatePath, array $group, int $year, int $month, float $workingDays)
+    private function exportFromDocxTemplate(string $templatePath, array $group, int $year, int $month, float $workingDays, string $type = 'banque')
     {
         $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY');
         $bankSlug = \Illuminate\Support\Str::slug($group['bank_name']);
@@ -369,18 +371,19 @@ class PayrollByBankController extends Controller
         copy($templatePath, $tmpFile);
 
         // Build the table XML
-        $tableXml = $this->buildSalaryTableXml($group, $monthName, $workingDays);
+        $showDetails = ($type === 'directeur');
+        $tableXml = $this->buildSalaryTableXml($group, $monthName, $workingDays, $showDetails);
 
         // Open the DOCX (ZIP) and inject table into document.xml
         $zip = new \ZipArchive();
         if ($zip->open($tmpFile) !== true) {
-            return $this->exportFallbackPdf(collect([$group]), $year, $month, $workingDays, $group['bank_name']);
+            return $this->exportFallbackPdf(collect([$group]), $year, $month, $workingDays, $group['bank_name'], $type);
         }
 
         $documentXml = $zip->getFromName('word/document.xml');
         if (!$documentXml) {
             $zip->close();
-            return $this->exportFallbackPdf(collect([$group]), $year, $month, $workingDays, $group['bank_name']);
+            return $this->exportFallbackPdf(collect([$group]), $year, $month, $workingDays, $group['bank_name'], $type);
         }
 
         // Insert table XML before the last </w:body> closing tag
@@ -460,7 +463,7 @@ class PayrollByBankController extends Controller
     /**
      * Build Word XML for the salary table.
      */
-    private function buildSalaryTableXml(array $group, string $monthName, float $workingDays): string
+    private function buildSalaryTableXml(array $group, string $monthName, float $workingDays, bool $showDetails = true): string
     {
         $w = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
@@ -493,8 +496,15 @@ class PayrollByBankController extends Controller
         $xml .= '<w:tblCellMar><w:top w:w="10" w:type="dxa"/><w:left w:w="30" w:type="dxa"/><w:bottom w:w="10" w:type="dxa"/><w:right w:w="30" w:type="dxa"/></w:tblCellMar>';
         $xml .= '</w:tblPr>';
 
-        // Column widths (total ~10000 dxa for A4)
-        $cols = [350, 1000, 2200, 1400, 800, 650, 650, 1000, 700, 1000];
+        // Column widths depending on mode
+        if ($showDetails) {
+            $cols = [350, 1000, 2200, 1400, 800, 650, 650, 1000, 700, 1000];
+            $headers = ['#', 'Matricule', 'Nom & Prenom', 'N Compte', 'Jrs Trav.', 'Heures', 'Retards', 'Sal. Brut', 'Ded.', 'Sal. Net'];
+        } else {
+            $cols = [400, 1200, 2800, 1800, 1300, 900, 1350];
+            $headers = ['#', 'Matricule', 'Nom & Prenom', 'N Compte', 'Sal. Brut', 'Ded.', 'Sal. Net'];
+        }
+
         $xml .= '<w:tblGrid>';
         foreach ($cols as $c) {
             $xml .= '<w:gridCol w:w="' . $c . '"/>';
@@ -505,7 +515,6 @@ class PayrollByBankController extends Controller
         $rowHeight = '<w:trPr><w:trHeight w:val="200" w:hRule="atLeast"/></w:trPr>';
 
         // Header row
-        $headers = ['#', 'Matricule', 'Nom & Prenom', 'N Compte', 'Jrs Trav.', 'Heures', 'Retards', 'Sal. Brut', 'Ded.', 'Sal. Net'];
         $xml .= '<w:tr>' . $rowHeight;
         foreach ($headers as $i => $h) {
             $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $cols[$i] . '" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
@@ -525,29 +534,49 @@ class PayrollByBankController extends Controller
                 $displayName = $employee->full_name;
             }
 
-            $cells = [
-                $empIndex + 1,
-                $employee->employee_id,
-                $displayName,
-                $employee->numero_compte ?: '-',
-                number_format($employee->days_worked, 1) . '/' . number_format($employee->working_days ?? 0, 1),
-                number_format($employee->total_hours_worked ?? 0, 1) . 'h',
-                ($employee->total_late_minutes ?? 0) . 'min',
-                number_format($employee->gross_salary, 0, ',', ' '),
-                number_format($employee->total_deductions, 0, ',', ' '),
-                number_format($employee->net_salary, 0, ',', ' '),
-            ];
+            if ($showDetails) {
+                $cells = [
+                    $empIndex + 1,
+                    $employee->employee_id,
+                    $displayName,
+                    $employee->numero_compte ?: '-',
+                    number_format($employee->days_worked, 1) . '/' . number_format($employee->working_days ?? 0, 1),
+                    number_format($employee->total_hours_worked ?? 0, 1) . 'h',
+                    ($employee->total_late_minutes ?? 0) . 'min',
+                    number_format($employee->gross_salary, 0, ',', ' '),
+                    number_format($employee->total_deductions, 0, ',', ' '),
+                    number_format($employee->net_salary, 0, ',', ' '),
+                ];
+                $centerFrom = 4;
+                $rightFrom = 7;
+                $dedIdx = 8;
+                $netIdx = 9;
+            } else {
+                $cells = [
+                    $empIndex + 1,
+                    $employee->employee_id,
+                    $displayName,
+                    $employee->numero_compte ?: '-',
+                    number_format($employee->gross_salary, 0, ',', ' '),
+                    number_format($employee->total_deductions, 0, ',', ' '),
+                    number_format($employee->net_salary, 0, ',', ' '),
+                ];
+                $centerFrom = 99; // no center columns
+                $rightFrom = 4;
+                $dedIdx = 5;
+                $netIdx = 6;
+            }
 
             $xml .= '<w:tr>' . $rowHeight;
             foreach ($cells as $ci => $val) {
                 $color = '333333';
                 $bold = '';
-                if ($ci === 8) $color = 'dc2626'; // Deductions in red
-                if ($ci === 9) { $color = '059669'; $bold = '<w:b/>'; } // Net in green bold
-                if ($ci === 2) $bold = '<w:b/>'; // Name bold
+                if ($ci === $dedIdx) $color = 'dc2626';
+                if ($ci === $netIdx) { $color = '059669'; $bold = '<w:b/>'; }
+                if ($ci === 2) $bold = '<w:b/>';
 
-                $align = ($ci >= 4) ? 'center' : 'left';
-                if ($ci >= 7) $align = 'right';
+                $align = ($ci >= $centerFrom) ? 'center' : 'left';
+                if ($ci >= $rightFrom) $align = 'right';
 
                 $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $cols[$ci] . '" w:type="dxa"/><w:shd w:val="clear" w:fill="' . $fill . '"/></w:tcPr>';
                 $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="' . $align . '"/></w:pPr>';
@@ -558,20 +587,25 @@ class PayrollByBankController extends Controller
         }
 
         // Total row
+        $totalSpan = $showDetails ? 7 : 4;
+        $totalWidth = array_sum(array_slice($cols, 0, $totalSpan));
         $xml .= '<w:tr>' . $rowHeight;
-        $xml .= '<w:tc><w:tcPr><w:tcW w:w="7050" w:type="dxa"/><w:gridSpan w:val="7"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $totalWidth . '" w:type="dxa"/><w:gridSpan w:val="' . $totalSpan . '"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
         $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
         $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>TOTAL</w:t></w:r></w:p></w:tc>';
-        $xml .= '<w:tc><w:tcPr><w:tcW w:w="1000" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $grossWidth = $showDetails ? 1000 : 1300;
+        $dedWidth = $showDetails ? 700 : 900;
+        $netWidth = $showDetails ? 1000 : 1350;
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $grossWidth . '" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
         $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
         $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>' . number_format($group['total_gross'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
-        $xml .= '<w:tc><w:tcPr><w:tcW w:w="700" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $dedWidth . '" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
         $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
         $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>' . number_format($group['total_deductions'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
-        $xml .= '<w:tc><w:tcPr><w:tcW w:w="1000" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
+        $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $netWidth . '" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
         $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
         $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>' . number_format($group['total_net'], 0, ',', ' ') . '</w:t></w:r></w:p></w:tc>';
@@ -606,12 +640,13 @@ class PayrollByBankController extends Controller
     /**
      * Fallback PDF export for banks without DOCX template.
      */
-    private function exportFallbackPdf($bankGroups, int $year, int $month, float $workingDays, ?string $selectedBank)
+    private function exportFallbackPdf($bankGroups, int $year, int $month, float $workingDays, ?string $selectedBank, string $type = 'banque')
     {
         $totalEmployees = $bankGroups->sum(fn($g) => $g['employees']->count());
         $totalNetSalary = $bankGroups->sum('total_net');
         $totalGrossSalary = $bankGroups->sum('total_gross');
         $totalBanks = $bankGroups->count();
+        $showDetails = ($type === 'directeur');
 
         $pdf = Pdf::loadView('admin.payroll.pdf.by-bank', compact(
             'bankGroups',
@@ -622,7 +657,8 @@ class PayrollByBankController extends Controller
             'totalNetSalary',
             'totalGrossSalary',
             'totalBanks',
-            'selectedBank'
+            'selectedBank',
+            'showDetails'
         ));
 
         $pdf->setPaper('A4', 'portrait');
@@ -630,6 +666,115 @@ class PayrollByBankController extends Controller
         $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM');
         $suffix = $selectedBank ? '-' . \Illuminate\Support\Str::slug($selectedBank) : '';
         $filename = "salaires-par-banque-{$monthName}-{$year}{$suffix}.pdf";
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Add monthly hours for an employee who doesn't scan.
+     * Creates ManualAttendance records spread across working days.
+     */
+    public function addMonthlyHours(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'year' => 'required|integer',
+            'month' => 'required|integer|min:1|max:12',
+            'total_hours' => 'required|numeric|min:0.5|max:744',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $user = User::findOrFail($request->user_id);
+        $year = $request->year;
+        $month = $request->month;
+        $totalHours = (float) $request->total_hours;
+        $note = $request->note ?: 'Heures saisies manuellement (employe ne scannant pas)';
+
+        $workingHoursPerDay = (float) Setting::get('working_hours_per_day', 8);
+
+        // Supprimer les anciennes saisies manuelles du mois pour cet employe
+        $deleted = \App\Models\ManualAttendance::where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->whereNull('unite_enseignement_id')
+            ->delete();
+
+        // Repartir les heures sur les jours ouvrables du mois
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        $currentDate = $startDate->copy();
+        $remainingHours = $totalHours;
+        $createdCount = 0;
+
+        while ($currentDate->lte($endDate) && $remainingHours > 0) {
+            $dayOfWeek = $currentDate->dayOfWeek;
+
+            // Jours ouvrables : Lundi-Vendredi (plein) + Samedi (demi)
+            $maxHoursForDay = 0;
+            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                $maxHoursForDay = $workingHoursPerDay;
+            } elseif ($dayOfWeek == 6) {
+                $maxHoursForDay = $workingHoursPerDay / 2;
+            }
+
+            if ($maxHoursForDay > 0) {
+                $hoursForDay = min($remainingHours, $maxHoursForDay);
+                $checkIn = '08:00';
+                $totalMinutes = (int) ($hoursForDay * 60);
+                $checkOutHour = 8 + intdiv($totalMinutes, 60);
+                $checkOutMin = $totalMinutes % 60;
+                $checkOut = sprintf('%02d:%02d', $checkOutHour, $checkOutMin);
+
+                \App\Models\ManualAttendance::create([
+                    'user_id' => $user->id,
+                    'date' => $currentDate->format('Y-m-d'),
+                    'check_in_time' => $checkIn,
+                    'check_out_time' => $checkOut,
+                    'session_type' => 'jour',
+                    'notes' => $note,
+                    'created_by' => auth()->id(),
+                ]);
+
+                $remainingHours -= $hoursForDay;
+                $createdCount++;
+            }
+
+            $currentDate->addDay();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$totalHours}h de presence enregistrees pour {$user->full_name} ({$createdCount} jours). Le salaire sera recalcule automatiquement.",
+        ]);
+    }
+
+    /**
+     * Generate a quitus PDF for a specific employee.
+     */
+    public function generateQuitus(Request $request, $userId)
+    {
+        $month = $request->filled('month') ? (int) $request->month : Carbon::now()->month;
+        $year = $request->filled('year') ? (int) $request->year : Carbon::now()->year;
+
+        $employee = User::findOrFail($userId);
+        $workingDays = PayrollCalculator::calculateWorkingDays($year, $month);
+        $payroll = PayrollCalculator::calculatePayroll($employee, $year, $month);
+        $payroll['working_days'] = $workingDays;
+
+        $bankName = $employee->banque ?: 'Non assignee';
+
+        $pdf = Pdf::loadView('admin.payroll.pdf.quitus', compact(
+            'employee',
+            'payroll',
+            'bankName',
+            'year',
+            'month'
+        ));
+
+        $pdf->setPaper('A4', 'portrait');
+
+        $monthName = Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM');
+        $filename = "quitus-{$employee->employee_id}-{$monthName}-{$year}.pdf";
 
         return $pdf->download($filename);
     }
