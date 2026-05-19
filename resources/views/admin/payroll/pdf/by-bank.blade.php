@@ -75,8 +75,8 @@
         .stat-value { font-size: 12px; font-weight: bold; color: #1e40af; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
         thead { background: #1e40af; color: white; }
-        th { padding: 4px 3px; text-align: left; font-size: 7px; font-weight: bold; }
-        td { padding: 3px; border-bottom: 1px solid #e5e7eb; font-size: 7px; }
+        th { padding: {{ ($showDetails ?? false) ? '4px 3px' : '6px 5px' }}; text-align: left; font-size: {{ ($showDetails ?? false) ? '7px' : '9px' }}; font-weight: bold; }
+        td { padding: {{ ($showDetails ?? false) ? '3px' : '5px' }}; border-bottom: 1px solid #e5e7eb; font-size: {{ ($showDetails ?? false) ? '7px' : '9px' }}; }
         tbody tr:nth-child(even) { background: rgba(249, 250, 251, 0.8); }
         .footer-zone {
             margin-top: 15px;

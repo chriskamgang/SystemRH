@@ -467,10 +467,16 @@ class PayrollByBankController extends Controller
     {
         $w = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
-        // Font sizes (half-points): 12 = 6pt, 13 = 6.5pt, 14 = 7pt
-        $dataSize = '13';
-        $headerSize = '13';
-        $periodSize = '14';
+        // Font sizes (half-points): 14 = 7pt, 16 = 8pt, 18 = 9pt, 20 = 10pt
+        if ($showDetails) {
+            $dataSize = '13';
+            $headerSize = '13';
+            $periodSize = '14';
+        } else {
+            $dataSize = '18';
+            $headerSize = '18';
+            $periodSize = '20';
+        }
 
         // Period info paragraph
         $xml = '<w:p xmlns:w="' . $w . '"><w:pPr><w:spacing w:after="40" w:line="240" w:lineRule="auto"/></w:pPr>';
@@ -493,7 +499,11 @@ class PayrollByBankController extends Controller
         $xml .= '<w:insideH w:val="single" w:sz="2" w:color="999999"/>';
         $xml .= '<w:insideV w:val="single" w:sz="2" w:color="999999"/>';
         $xml .= '</w:tblBorders>';
-        $xml .= '<w:tblCellMar><w:top w:w="10" w:type="dxa"/><w:left w:w="30" w:type="dxa"/><w:bottom w:w="10" w:type="dxa"/><w:right w:w="30" w:type="dxa"/></w:tblCellMar>';
+        if ($showDetails) {
+            $xml .= '<w:tblCellMar><w:top w:w="10" w:type="dxa"/><w:left w:w="30" w:type="dxa"/><w:bottom w:w="10" w:type="dxa"/><w:right w:w="30" w:type="dxa"/></w:tblCellMar>';
+        } else {
+            $xml .= '<w:tblCellMar><w:top w:w="30" w:type="dxa"/><w:left w:w="60" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tblCellMar>';
+        }
         $xml .= '</w:tblPr>';
 
         // Column widths depending on mode
@@ -501,7 +511,7 @@ class PayrollByBankController extends Controller
             $cols = [350, 1000, 2200, 1400, 800, 650, 650, 1000, 700, 1000];
             $headers = ['#', 'Matricule', 'Nom & Prenom', 'N Compte', 'Jrs Trav.', 'Heures', 'Retards', 'Sal. Brut', 'Ded.', 'Sal. Net'];
         } else {
-            $cols = [400, 1200, 2800, 1800, 1300, 900, 1350];
+            $cols = [500, 1400, 3200, 2000, 1400, 1000, 1500];
             $headers = ['#', 'Matricule', 'Nom & Prenom', 'N Compte', 'Sal. Brut', 'Ded.', 'Sal. Net'];
         }
 
@@ -511,8 +521,9 @@ class PayrollByBankController extends Controller
         }
         $xml .= '</w:tblGrid>';
 
-        // Helper for compact row height
-        $rowHeight = '<w:trPr><w:trHeight w:val="200" w:hRule="atLeast"/></w:trPr>';
+        // Row height
+        $rowHeightVal = $showDetails ? '200' : '300';
+        $rowHeight = '<w:trPr><w:trHeight w:val="' . $rowHeightVal . '" w:hRule="atLeast"/></w:trPr>';
 
         // Header row
         $xml .= '<w:tr>' . $rowHeight;
@@ -594,9 +605,9 @@ class PayrollByBankController extends Controller
         $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
         $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
         $xml .= '<w:t>TOTAL</w:t></w:r></w:p></w:tc>';
-        $grossWidth = $showDetails ? 1000 : 1300;
-        $dedWidth = $showDetails ? 700 : 900;
-        $netWidth = $showDetails ? 1000 : 1350;
+        $grossWidth = $showDetails ? 1000 : 1400;
+        $dedWidth = $showDetails ? 700 : 1000;
+        $netWidth = $showDetails ? 1000 : 1500;
         $xml .= '<w:tc><w:tcPr><w:tcW w:w="' . $grossWidth . '" w:type="dxa"/><w:shd w:val="clear" w:fill="1e40af"/></w:tcPr>';
         $xml .= '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="right"/></w:pPr>';
         $xml .= '<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="' . $headerSize . '"/></w:rPr>';
