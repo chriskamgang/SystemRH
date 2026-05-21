@@ -355,7 +355,7 @@
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                             @php
                                 $jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-                                $joursTravailEmployee = old('jours_travail', $employee->jours_travail ?? []);
+                                $joursTravailEmployee = old('jours_travail', is_array($employee->jours_travail) ? $employee->jours_travail : []);
                             @endphp
                             @foreach($jours as $jour)
                                 <label class="inline-flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
