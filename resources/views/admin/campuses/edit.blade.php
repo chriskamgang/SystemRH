@@ -165,7 +165,7 @@
                                 'sunday' => 'Dimanche'
                             ];
                             $workingDays = is_string($campus->working_days) ? json_decode($campus->working_days, true) : $campus->working_days;
-                            $selectedDays = old('working_days', $workingDays);
+                            $selectedDays = old('working_days', is_array($workingDays) ? $workingDays : []);
                         @endphp
                         
                         @foreach($days as $day => $label)

@@ -101,7 +101,7 @@
                                 'sunday' => 'Dimanche'
                             ];
                             return $days[$day] ?? ucfirst($day);
-                        }, is_string($campus->working_days) ? json_decode($campus->working_days, true) : $campus->working_days)) }}
+                        }, is_array($campus->working_days) ? $campus->working_days : (is_string($campus->working_days) ? (json_decode($campus->working_days, true) ?? []) : []))) }}
                     </div>
                 </div>
                 

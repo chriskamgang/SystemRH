@@ -256,7 +256,7 @@ class SemiPermanentController extends Controller
             // Statistiques sur les UE (si l'enseignant en a)
             $ueStat = UniteEnseignement::where('enseignant_id', $semiPermanent->id)
                 ->where('statut', 'activee')
-                ->selectRaw('COUNT(*) as total_ue, SUM(heures_effectuees) as total_heures_ue')
+                ->selectRaw('COUNT(*) as total_ue, SUM(heures_effectuees_validees) as total_heures_ue')
                 ->first();
 
             $semiPermanent->total_days = $totalDays;
