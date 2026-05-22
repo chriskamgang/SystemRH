@@ -40,7 +40,7 @@ class UserLocation extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true)
-                    ->where('last_updated_at', '>=', now()->subMinutes(2));
+                    ->where('last_updated_at', '>=', now()->subMinutes(5));
     }
 
     /**

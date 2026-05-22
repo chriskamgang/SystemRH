@@ -200,7 +200,7 @@ class LocationController extends Controller
                 'data' => [
                     'location' => $location,
                     'campus' => $campus,
-                    'is_active' => $location->last_updated_at->diffInMinutes(now()) < 2,
+                    'is_active' => $location->last_updated_at->diffInMinutes(now()) < 5,
                 ],
             ]);
         } catch (\Exception $e) {

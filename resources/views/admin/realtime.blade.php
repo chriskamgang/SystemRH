@@ -41,7 +41,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Carte Google Maps -->
         <div class="lg:col-span-2 bg-white rounded-lg shadow overflow-hidden">
-            <div id="map" class="h-96 w-full" style="min-height: 400px;"></div>
+            <div id="map" style="height: 500px; width: 100%;"></div>
         </div>
 
         <!-- Liste des présences actives -->
@@ -257,7 +257,15 @@
     }
 
     // Initialiser la carte quand la page est chargée
-    window.addEventListener('load', initMap);
+    window.addEventListener('load', async function() {
+        await initMap();
+        // Force Leaflet to recalculate size after layout
+        setTimeout(() => {
+            if (mapHelper && mapHelper.map) {
+                mapHelper.map.invalidateSize();
+            }
+        }, 300);
+    });
 
     // Actualiser toutes les 30 secondes
     setInterval(refreshData, 30000);
