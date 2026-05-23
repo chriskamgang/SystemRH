@@ -24,7 +24,9 @@ class AttendanceController extends Controller
             $currentTime = now();
         }
 
-        $separatorTime = Setting::get('shift_separator_time', '17:00');
+        // Séparateur à 17:30 (début réel de la plage du soir)
+        // Avant 17:30 = matin, à partir de 17:30 = soir
+        $separatorTime = Setting::get('shift_separator_time', '17:30');
         $separator = Carbon::parse($separatorTime);
         $current = Carbon::parse($currentTime->format('H:i:s'));
 
@@ -43,7 +45,7 @@ class AttendanceController extends Controller
             ];
         } else {
             return [
-                'start' => Setting::get('evening_start_time', '18:00'),
+                'start' => Setting::get('evening_start_time', '17:30'),
                 'end' => Setting::get('evening_end_time', '21:30'),
             ];
         }
@@ -60,6 +62,33 @@ class AttendanceController extends Controller
         // Charger tous les pointages du jour/shift en une seule requête
         $todayAttendances = Attendance::where('user_id', $user->id)
             ->where('shift', $shift)
+            ->whereDate('timestamp', today())
+            ->orderBy('timestamp', 'desc')
+            ->get();
+
+        $checkOuts = $todayAttendances->where('type', 'check-out');
+
+        foreach ($todayAttendances->where('type', 'check-in') as $ci) {
+            $hasCheckOut = $checkOuts
+                ->where('timestamp', '>', $ci->timestamp)
+                ->isNotEmpty();
+
+            if (!$hasCheckOut) {
+                return $ci;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Trouver un check-in actif TOUS SHIFTS CONFONDUS (pour le check-out)
+     * Le check-out ne doit pas dépendre du shift détecté à l'heure actuelle.
+     * Un employé du matin qui check-out à 19h doit retrouver son check-in "morning".
+     */
+    private function findAnyActiveCheckIn($user)
+    {
+        $todayAttendances = Attendance::where('user_id', $user->id)
             ->whereDate('timestamp', today())
             ->orderBy('timestamp', 'desc')
             ->get();
@@ -276,8 +305,8 @@ class AttendanceController extends Controller
         $allTodayCheckOuts = $allTodayAttendances->where('type', 'check-out');
 
         foreach ($allTodayAttendances->where('type', 'check-in') as $checkIn) {
+            // Chercher un check-out après ce check-in (tous shifts/campus confondus)
             $hasCheckOut = $allTodayCheckOuts
-                ->where('campus_id', $checkIn->campus_id)
                 ->where('timestamp', '>', $checkIn->timestamp)
                 ->isNotEmpty();
 
@@ -471,27 +500,20 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Détecter automatiquement la plage horaire
+        // Chercher un check-in actif TOUS SHIFTS CONFONDUS
+        // Le shift est déterminé au moment du check-in, pas du check-out.
+        // Un employé du matin peut check-out à 19h, 20h sans problème.
         $now = now();
-        $shift = $this->detectShift($now);
-
-        // Chercher un check-in actif : d'abord sur le shift actuel, sinon sur TOUS les shifts
-        $checkIn = $this->findActiveCheckIn($user, $shift);
-
-        // Si pas trouvé sur le shift actuel, chercher sur l'autre shift
-        if (!$checkIn) {
-            $otherShift = $shift === 'morning' ? 'evening' : 'morning';
-            $checkIn = $this->findActiveCheckIn($user, $otherShift);
-            if ($checkIn) {
-                $shift = $otherShift; // Utiliser le shift du check-in trouvé
-            }
-        }
+        $checkIn = $this->findAnyActiveCheckIn($user);
 
         if (!$checkIn) {
             return response()->json([
                 'message' => "Aucun check-in actif trouvé pour aujourd'hui.",
             ], 400);
         }
+
+        // Utiliser le shift du check-in original (pas celui de l'heure actuelle)
+        $shift = $checkIn->shift ?? 'morning';
 
         // Forcer le check-out sur le même campus que le check-in
         if ($checkIn->campus_id !== $campus->id) {
@@ -1017,8 +1039,8 @@ class AttendanceController extends Controller
 
         $activeCheckIns = $todayAttendances->where('type', 'check-in')
             ->filter(function ($checkIn) use ($todayCheckOuts) {
+                // Chercher un check-out après ce check-in (tous shifts confondus)
                 return !$todayCheckOuts
-                    ->where('campus_id', $checkIn->campus_id)
                     ->where('timestamp', '>', $checkIn->timestamp)
                     ->isNotEmpty();
             });

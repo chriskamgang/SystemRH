@@ -318,7 +318,15 @@ class User extends Authenticatable
      */
     public function getFullNameAttribute()
     {
-        return "{$this->first_name} {$this->last_name}";
+        $first = trim($this->first_name ?? '');
+        $last = trim($this->last_name ?? '');
+
+        // Eviter la duplication quand first_name == last_name
+        if ($first !== '' && $last !== '' && mb_strtolower($first) === mb_strtolower($last)) {
+            return $first;
+        }
+
+        return trim("{$first} {$last}");
     }
 
     /**
