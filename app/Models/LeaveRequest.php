@@ -78,4 +78,32 @@ class LeaveRequest extends Model
     {
         return self::TYPES[$this->type] ?? $this->type;
     }
+
+    /**
+     * Vérifier si un employé est en congé approuvé à une date donnée
+     */
+    public static function isUserOnLeave(int $userId, $date = null): bool
+    {
+        $date = $date ? \Carbon\Carbon::parse($date)->toDateString() : today()->toDateString();
+
+        return self::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', $date)
+            ->where('end_date', '>=', $date)
+            ->exists();
+    }
+
+    /**
+     * Récupérer le congé actif d'un employé à une date donnée
+     */
+    public static function getActiveLeave(int $userId, $date = null): ?self
+    {
+        $date = $date ? \Carbon\Carbon::parse($date)->toDateString() : today()->toDateString();
+
+        return self::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', $date)
+            ->where('end_date', '>=', $date)
+            ->first();
+    }
 }

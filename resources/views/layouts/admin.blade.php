@@ -205,6 +205,11 @@
                 </a>
                 @endif
 
+                <a href="{{ route('admin.departments.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.departments.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-sitemap w-5"></i>
+                    <span class="ml-3">Départements</span>
+                </a>
+
                 @if($can('attendance'))
                 <a href="{{ route('admin.attendances.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.attendances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-clock w-5"></i>

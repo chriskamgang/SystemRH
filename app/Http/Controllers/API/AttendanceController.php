@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Campus;
+use App\Models\LeaveRequest;
 use App\Models\Tardiness;
 use App\Models\Setting;
 use App\Models\UeSchedule;
@@ -289,6 +290,18 @@ class AttendanceController extends Controller
                 'distance' => $distance,
                 'radius' => $campus->radius,
                 'accuracy' => $accuracy,
+            ], 400);
+        }
+
+        // Vérifier si l'employé est en congé approuvé aujourd'hui
+        $activeLeave = LeaveRequest::getActiveLeave($user->id);
+        if ($activeLeave) {
+            return response()->json([
+                'message' => "Vous êtes en congé ({$activeLeave->getTypeLabel()}) jusqu'au {$activeLeave->end_date->format('d/m/Y')}. Le pointage n'est pas autorisé.",
+                'on_leave' => true,
+                'leave_type' => $activeLeave->type,
+                'leave_type_label' => $activeLeave->getTypeLabel(),
+                'leave_end_date' => $activeLeave->end_date->toDateString(),
             ], 400);
         }
 

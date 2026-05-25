@@ -130,6 +130,19 @@
             </form>
         </div>
     </div>
+    @elseif($leave->isApproved())
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">Actions</h3>
+        <p class="text-sm text-gray-500 mb-4">Ce congé est approuvé — la biométrie bloque le pointage de l'employé pendant cette période.</p>
+        <form action="{{ route('admin.leaves.cancel', $leave->id) }}" method="POST"
+              onsubmit="return confirm('Annuler ce congé ? L\'employé pourra de nouveau faire le check-in.')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold transition">
+                <i class="fas fa-ban mr-2"></i>Annuler ce congé
+            </button>
+        </form>
+    </div>
     @endif
 </div>
 @endsection

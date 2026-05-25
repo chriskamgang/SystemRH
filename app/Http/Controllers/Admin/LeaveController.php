@@ -171,6 +171,114 @@ class LeaveController extends Controller
     }
 
     /**
+     * Formulaire d'assignation directe de congé par l'administration
+     */
+    public function assignForm(Request $request)
+    {
+        $users = User::where('is_active', true)
+            ->where('employee_type', '!=', 'etudiant')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        $selectedUserId = $request->query('user_id');
+
+        return view('admin.leaves.assign', compact('users', 'selectedUserId'));
+    }
+
+    /**
+     * Assigner directement un congé à un employé (sans demande de sa part)
+     * Le congé est immédiatement approuvé — la biométrie en tiendra compte
+     */
+    public function assign(Request $request)
+    {
+        $request->validate([
+            'user_id'    => 'required|exists:users,id',
+            'type'       => 'required|in:' . implode(',', array_keys(LeaveRequest::TYPES)),
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'reason'     => 'nullable|string|max:500',
+        ]);
+
+        $startDate = \Carbon\Carbon::parse($request->start_date);
+        $endDate   = \Carbon\Carbon::parse($request->end_date);
+        $daysCount = $startDate->diffInDays($endDate) + 1;
+
+        // Vérifier qu'il n'y a pas déjà un congé approuvé qui chevauche cette période
+        $overlap = LeaveRequest::where('user_id', $request->user_id)
+            ->where('status', 'approved')
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('start_date', [$startDate, $endDate])
+                  ->orWhereBetween('end_date', [$startDate, $endDate])
+                  ->orWhere(function ($q2) use ($startDate, $endDate) {
+                      $q2->where('start_date', '<=', $startDate)
+                         ->where('end_date', '>=', $endDate);
+                  });
+            })->first();
+
+        if ($overlap) {
+            return back()->withInput()
+                ->with('error', 'Un congé approuvé existe déjà sur cette période ('
+                    . $overlap->start_date->format('d/m/Y') . ' au ' . $overlap->end_date->format('d/m/Y') . ').');
+        }
+
+        $leave = LeaveRequest::create([
+            'user_id'        => $request->user_id,
+            'type'           => $request->type,
+            'start_date'     => $startDate,
+            'end_date'       => $endDate,
+            'days_count'     => $daysCount,
+            'reason'         => $request->reason ?: 'Congé assigné par l\'administration',
+            'status'         => 'approved',          // Directement approuvé
+            'reviewed_by'    => auth()->id(),
+            'reviewed_at'    => now(),
+            'review_comment' => 'Assigné directement par l\'administration',
+        ]);
+
+        // Déduire du solde si applicable
+        if (!in_array($leave->type, ['unpaid', 'other'])) {
+            $balance = LeaveBalance::firstOrCreate(
+                ['user_id' => $leave->user_id, 'year' => $startDate->year, 'type' => $leave->type],
+                ['total_days' => LeaveRequest::DEFAULT_BALANCES[$leave->type] ?? 0, 'used_days' => 0]
+            );
+            $balance->increment('used_days', $daysCount);
+        }
+
+        // Notifier l'employé
+        $this->notifyEmployee($leave, 'approved');
+
+        $user = User::find($request->user_id);
+        return redirect()->route('admin.leaves.index')
+            ->with('success', "Congé de {$daysCount} jour(s) assigné à {$user->full_name} du {$startDate->format('d/m/Y')} au {$endDate->format('d/m/Y')}. La biométrie en tiendra compte automatiquement.");
+    }
+
+    /**
+     * Annuler un congé assigné (par l'administration)
+     */
+    public function cancel(string $id)
+    {
+        $leave = LeaveRequest::findOrFail($id);
+
+        // Remettre les jours dans le solde si nécessaire
+        if ($leave->status === 'approved' && !in_array($leave->type, ['unpaid', 'other'])) {
+            $balance = LeaveBalance::where('user_id', $leave->user_id)
+                ->where('year', $leave->start_date->year)
+                ->where('type', $leave->type)
+                ->first();
+            if ($balance) {
+                $balance->decrement('used_days', $leave->days_count);
+            }
+        }
+
+        $leave->update([
+            'status'         => 'cancelled',
+            'review_comment' => ($leave->review_comment ? $leave->review_comment . ' | ' : '') . 'Annulé par l\'administration le ' . now()->format('d/m/Y'),
+        ]);
+
+        return back()->with('success', 'Congé annulé. La biométrie ne le prendra plus en compte.');
+    }
+
+    /**
      * Notifier l'employé par push notification
      */
     private function notifyEmployee(LeaveRequest $leave, string $decision)

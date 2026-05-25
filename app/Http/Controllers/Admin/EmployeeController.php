@@ -833,4 +833,57 @@ class EmployeeController extends Controller
 
         return redirect()->back()->with('success', "Tous les verrous d'appareils du jour ont été libérés ({$count} enregistrements supprimés). Les employés peuvent se reconnecter sur n'importe quel téléphone.");
     }
+
+    /**
+     * Attribuer un campus à tout le personnel (en masse)
+     */
+    public function bulkAssignCampus(Request $request)
+    {
+        $request->validate([
+            'campus_id'     => 'required|exists:campuses,id',
+            'employee_type' => 'nullable|string',
+            'set_as_primary'=> 'nullable|boolean',
+        ]);
+
+        $campus = Campus::findOrFail($request->campus_id);
+
+        $query = User::where('is_active', true)
+            ->where('employee_type', '!=', 'etudiant');
+
+        if ($request->filled('employee_type')) {
+            $query->where('employee_type', $request->employee_type);
+        }
+
+        $employees = $query->get();
+        $assigned  = 0;
+        $skipped   = 0;
+
+        foreach ($employees as $employee) {
+            // Vérifier si le campus est déjà attribué
+            if ($employee->campuses->contains($campus->id)) {
+                $skipped++;
+                continue;
+            }
+
+            // Déterminer si on définit comme campus principal
+            $isPrimary = false;
+            if ($request->boolean('set_as_primary')) {
+                // Principal seulement si l'employé n'en a pas encore
+                $hasPrimary = $employee->campuses()
+                    ->wherePivot('is_primary', true)
+                    ->exists();
+                $isPrimary = !$hasPrimary;
+            }
+
+            $employee->campuses()->attach($campus->id, ['is_primary' => $isPrimary]);
+            $assigned++;
+        }
+
+        $msg = "Campus «{$campus->name}» attribué à {$assigned} employé(s).";
+        if ($skipped > 0) {
+            $msg .= " {$skipped} employé(s) l'avaient déjà — ignorés.";
+        }
+
+        return redirect()->back()->with('success', $msg);
+    }
 }

@@ -85,8 +85,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::get('employees-print-by-bank', [EmployeeController::class, 'printByBank'])->name('employees.print-by-bank');
     Route::get('employees-export-pdf', [EmployeeController::class, 'exportPdf'])->name('employees.export-pdf');
 
+    // Bulk campus assignment
+    Route::post('employees-bulk-assign-campus', [EmployeeController::class, 'bulkAssignCampus'])->name('employees.bulk-assign-campus');
+
     // Campus
     Route::resource('campuses', CampusController::class);
+
+    // Departments
+    Route::resource('departments', \App\Http\Controllers\Admin\DepartmentController::class)->except(['show']);
 
     // Attendances
     Route::get('/attendances', [AttendanceController::class, 'index'])->name('attendances.index');
@@ -298,6 +304,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::prefix('leaves')->name('leaves.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\LeaveController::class, 'index'])->name('index');
         Route::get('/balances', [App\Http\Controllers\Admin\LeaveController::class, 'balances'])->name('balances');
+        Route::get('/assign', [App\Http\Controllers\Admin\LeaveController::class, 'assignForm'])->name('assign');
+        Route::post('/assign', [App\Http\Controllers\Admin\LeaveController::class, 'assign'])->name('assign.store');
+        Route::delete('/{id}/cancel', [App\Http\Controllers\Admin\LeaveController::class, 'cancel'])->name('cancel');
         Route::get('/{id}', [App\Http\Controllers\Admin\LeaveController::class, 'show'])->name('show');
         Route::post('/{id}/approve', [App\Http\Controllers\Admin\LeaveController::class, 'approve'])->name('approve');
         Route::post('/{id}/reject', [App\Http\Controllers\Admin\LeaveController::class, 'reject'])->name('reject');

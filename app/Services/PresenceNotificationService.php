@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Campus;
 use App\Models\Attendance;
+use App\Models\LeaveRequest;
 use App\Models\PresenceCheck;
 use App\Models\Notification;
 use App\Models\NotificationSetting;
@@ -141,11 +142,15 @@ class PresenceNotificationService
                 continue;
             }
 
+            // Exclure les employés en congé approuvé : pas de notification de présence
+            if (LeaveRequest::isUserOnLeave($checkIn->user_id, $date)) {
+                Log::info("🏖️ {$checkIn->user->full_name} est en congé — notification de présence ignorée");
+                continue;
+            }
+
             // Vérifier s'il existe un check-out correspondant
             $hasCheckOut = Attendance::where('user_id', $checkIn->user_id)
-                ->where('campus_id', $checkIn->campus_id)
                 ->where('type', 'check-out')
-                ->where('shift', $checkIn->shift)
                 ->where('timestamp', '>', $checkIn->timestamp)
                 ->whereDate('timestamp', $date)
                 ->exists();

@@ -11,6 +11,9 @@
             <p class="text-gray-600 mt-1">Gérez les demandes de congé des employés</p>
         </div>
         <div class="flex gap-3 items-center">
+            <a href="{{ route('admin.leaves.assign') }}" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-plus mr-2"></i> Assigner un congé
+            </a>
             <a href="{{ route('admin.leaves.balances') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-semibold">
                 <i class="fas fa-calculator mr-2"></i> Soldes
             </a>
