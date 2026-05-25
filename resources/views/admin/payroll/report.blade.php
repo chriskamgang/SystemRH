@@ -120,6 +120,7 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Déduction Absences (FCFA)</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Déductions Manuelles (FCFA)</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prêts (FCFA)</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avances (FCFA)</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salaire Final (FCFA)</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
@@ -218,6 +219,16 @@
                             @endif
                         </td>
 
+                        <td class="px-4 py-4 whitespace-nowrap text-sm">
+                            @if(($employee->advance_deductions ?? 0) > 0)
+                                <span class="text-orange-600 font-semibold cursor-help" title="Avance sur salaire">
+                                    {{ number_format($employee->advance_deductions, 0, ',', ' ') }} FCFA
+                                </span>
+                            @else
+                                <span class="text-gray-400">0 FCFA</span>
+                            @endif
+                        </td>
+
                         <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-green-600">
                             {{ number_format($employee->net_salary, 0, ',', ' ') }} FCFA
                         </td>
@@ -280,6 +291,7 @@
                 <div class="text-right text-red-600">{{ number_format($employees->sum('absence_deduction'), 0, ',', ' ') }} FCFA</div>
                 <div class="text-right text-red-600">{{ number_format($employees->sum('manual_deductions'), 0, ',', ' ') }} FCFA</div>
                 <div class="text-right text-purple-600">{{ number_format($employees->sum('loan_deductions'), 0, ',', ' ') }} FCFA</div>
+                <div class="text-right text-orange-600">{{ number_format($employees->sum('advance_deductions'), 0, ',', ' ') }} FCFA</div>
                 <div class="text-right text-green-600">{{ number_format($totalNetSalary, 0, ',', ' ') }} FCFA</div>
                 <div></div>
             </div>

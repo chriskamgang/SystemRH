@@ -138,11 +138,9 @@
             <p id="approveInfo" class="text-gray-600 mb-4"></p>
 
             <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Montant mensuel de remboursement (FCFA) *</label>
-                    <input type="number" id="monthlyAmount" min="1000" step="500" required
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-xs text-gray-500 mt-1">Montant qui sera déduit chaque mois du salaire</p>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Le montant intégral sera déduit du salaire du mois en cours.
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Note (optionnel)</label>
@@ -273,7 +271,6 @@
     function openApproveModal(id, name, amount) {
         currentRequestId = id;
         document.getElementById('approveInfo').textContent = `Approuver l'avance de ${amount.toLocaleString('fr-FR')} FCFA pour ${name} ?`;
-        document.getElementById('monthlyAmount').value = '';
         document.getElementById('approveNote').value = '';
         document.getElementById('approveModal').classList.remove('hidden');
     }
@@ -293,12 +290,6 @@
     }
 
     async function submitApprove() {
-        const monthlyAmount = document.getElementById('monthlyAmount').value;
-        if (!monthlyAmount || monthlyAmount < 1000) {
-            alert('Veuillez saisir le montant mensuel de remboursement (minimum 1000 FCFA).');
-            return;
-        }
-
         try {
             const response = await fetch(`{{ url('admin/salary-advances') }}/${currentRequestId}/approve`, {
                 method: 'POST',
@@ -308,7 +299,6 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 },
                 body: JSON.stringify({
-                    monthly_amount: parseInt(monthlyAmount),
                     admin_note: document.getElementById('approveNote').value,
                 }),
             });

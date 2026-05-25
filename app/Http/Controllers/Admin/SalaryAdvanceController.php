@@ -104,21 +104,12 @@ class SalaryAdvanceController extends Controller
     {
         $request->validate([
             'admin_note' => 'nullable|string|max:500',
-            'monthly_amount' => 'required|numeric|min:1000',
         ]);
 
         $advance = SalaryAdvanceRequest::findOrFail($id);
 
         if ($advance->status !== 'pending') {
             return response()->json(['success' => false, 'message' => 'Cette demande a déjà été traitée.'], 400);
-        }
-
-        // La mensualité ne peut pas dépasser le montant de l'avance
-        if ($request->monthly_amount > $advance->amount) {
-            return response()->json([
-                'success' => false,
-                'message' => 'La mensualité (' . number_format($request->monthly_amount, 0, ',', '.') . ' FCFA) ne peut pas dépasser le montant de l\'avance (' . number_format($advance->amount, 0, ',', '.') . ' FCFA).',
-            ], 422);
         }
 
         $advance->update([
@@ -128,13 +119,13 @@ class SalaryAdvanceController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        // Créer automatiquement un prêt (Loan) pour le remboursement
+        // Créer automatiquement un prêt (Loan) pour le remboursement en une seule fois le mois même
         Loan::create([
             'user_id' => $advance->user_id,
             'total_amount' => $advance->amount,
-            'monthly_amount' => $request->monthly_amount,
+            'monthly_amount' => $advance->amount, // Remboursement intégral en un seul mois
             'amount_paid' => 0,
-            'start_date' => now()->startOfMonth()->addMonth(),
+            'start_date' => now()->startOfMonth(),
             'reason' => 'Avance sur salaire - ' . $advance->reason,
             'status' => 'active',
             'created_by' => auth()->id(),

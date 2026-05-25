@@ -407,19 +407,22 @@ class PayrollCalculator
 
         $totalManualDeductions = $manualDeductions->sum('amount');
 
-        // 11. Récupérer les déductions de prêts
+        // 11. Récupérer les déductions de prêts (prêts classiques) et avances sur salaire (séparés)
         $loans = \App\Models\Loan::where('user_id', $user->id)
             ->where('status', 'active')
             ->get();
 
         $totalLoanDeductions = 0;
+        $totalAdvanceDeductions = 0;
         $loanDeductionsDetails = [];
+        $advanceDeductionsDetails = [];
 
         foreach ($loans as $loan) {
             if ($loan->shouldDeductForMonth($year, $month)) {
                 $deductionAmount = $loan->getDeductionAmountForMonth($year, $month);
-                $totalLoanDeductions += $deductionAmount;
-                $loanDeductionsDetails[] = [
+                $isAdvance = str_starts_with($loan->reason ?? '', 'Avance sur salaire');
+
+                $detail = [
                     'loan_id' => $loan->id,
                     'total_amount' => $loan->total_amount,
                     'monthly_amount' => $loan->monthly_amount,
@@ -428,6 +431,14 @@ class PayrollCalculator
                     'deduction_this_month' => $deductionAmount,
                     'reason' => $loan->reason,
                 ];
+
+                if ($isAdvance) {
+                    $totalAdvanceDeductions += $deductionAmount;
+                    $advanceDeductionsDetails[] = $detail;
+                } else {
+                    $totalLoanDeductions += $deductionAmount;
+                    $loanDeductionsDetails[] = $detail;
+                }
             }
         }
 
@@ -439,7 +450,7 @@ class PayrollCalculator
         $salaryBasedOnDaysWorked = $salaryForDaysWorked;
 
         // Les déductions s'appliquent sur le salaire des jours travaillés
-        $totalDeductions = $latePenaltyAmount + $totalManualDeductions + $totalLoanDeductions;
+        $totalDeductions = $latePenaltyAmount + $totalManualDeductions + $totalLoanDeductions + $totalAdvanceDeductions;
 
         // Plafonner le salaire calculé au salaire mensuel contractuel (un employé ne peut pas gagner plus que son salaire)
         $salaryBasedOnDaysWorked = min($salaryBasedOnDaysWorked, $monthlySalary);
@@ -465,6 +476,8 @@ class PayrollCalculator
             'manual_deductions_details' => $manualDeductions,
             'loan_deductions' => $totalLoanDeductions,
             'loan_deductions_details' => $loanDeductionsDetails,
+            'advance_deductions' => $totalAdvanceDeductions,
+            'advance_deductions_details' => $advanceDeductionsDetails,
             'late_penalty_amount' => $latePenaltyAmount,
             'absence_deduction' => $absenceDeduction,
             'gross_salary' => $grossSalary,

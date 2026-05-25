@@ -50,6 +50,7 @@
                 <th class="text-right">Déd. Absences</th>
                 <th class="text-right">Déd. Manuelles</th>
                 <th class="text-right">Prêts</th>
+                <th class="text-right">Avances</th>
                 <th class="text-right">Salaire Final</th>
             </tr>
         </thead>
@@ -88,6 +89,7 @@
                 <td class="text-right text-red">{{ number_format($employee->absence_deduction, 0, ',', ' ') }}</td>
                 <td class="text-right text-red">{{ number_format($employee->manual_deductions, 0, ',', ' ') }}</td>
                 <td class="text-right" style="color: #7c3aed;">{{ number_format($employee->loan_deductions, 0, ',', ' ') }}</td>
+                <td class="text-right" style="color: #ea580c;">{{ number_format($employee->advance_deductions ?? 0, 0, ',', ' ') }}</td>
                 <td class="text-right text-green font-bold">{{ number_format($employee->net_salary, 0, ',', ' ') }}</td>
             </tr>
             @endforeach
@@ -103,6 +105,7 @@
                 <td class="text-right" style="padding: 8px 5px;">{{ number_format($employees->sum('absence_deduction'), 0, ',', ' ') }}</td>
                 <td class="text-right" style="padding: 8px 5px;">{{ number_format($employees->sum('manual_deductions'), 0, ',', ' ') }}</td>
                 <td class="text-right" style="padding: 8px 5px;">{{ number_format($employees->sum('loan_deductions'), 0, ',', ' ') }}</td>
+                <td class="text-right" style="padding: 8px 5px;">{{ number_format($employees->sum('advance_deductions'), 0, ',', ' ') }}</td>
                 <td class="text-right" style="padding: 8px 5px;">{{ number_format($totalNetSalary, 0, ',', ' ') }}</td>
             </tr>
         </tfoot>
