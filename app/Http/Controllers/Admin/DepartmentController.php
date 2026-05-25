@@ -54,7 +54,9 @@ class DepartmentController extends Controller
 
     public function edit(string $id)
     {
-        $department = Department::findOrFail($id);
+        $department = Department::withCount('users')
+            ->with(['head', 'users.jobPosition'])
+            ->findOrFail($id);
         $campuses = Campus::where('is_active', true)->orderBy('name')->get();
         $users = User::where('is_active', true)->orderBy('first_name')->orderBy('last_name')->get();
 

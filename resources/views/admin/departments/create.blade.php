@@ -73,18 +73,38 @@
                     </select>
                 </div>
 
-                <!-- Responsable -->
+                <!-- Chef de département -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Responsable du département</label>
-                    <select name="head_user_id"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">— Aucun responsable —</option>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-crown text-yellow-500 mr-1"></i>
+                        Chef de département
+                    </label>
+                    <!-- Recherche filtrante -->
+                    <input type="text" id="headSearch" placeholder="Rechercher par nom ou ID..."
+                           class="w-full border border-gray-300 rounded-t-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 border-b-0">
+                    <select name="head_user_id" id="headSelect"
+                            class="w-full border border-gray-300 rounded-b-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" size="5">
+                        <option value="">— Aucun chef de département —</option>
                         @foreach($users as $user)
-                            <option value="{{ $user->id }}" {{ old('head_user_id') == $user->id ? 'selected' : '' }}>
-                                {{ $user->full_name }} — {{ $user->employee_id ?? 'N/A' }}
+                            <option value="{{ $user->id }}"
+                                    data-label="{{ strtolower($user->full_name) }} {{ strtolower($user->employee_id ?? '') }}"
+                                    {{ old('head_user_id') == $user->id ? 'selected' : '' }}>
+                                {{ $user->full_name }}
+                                @if($user->employee_id) ({{ $user->employee_id }}) @endif
+                                — {{ ucfirst(str_replace('_', ' ', $user->employee_type)) }}
                             </option>
                         @endforeach
                     </select>
+                    <p class="text-xs text-gray-400 mt-1">Tapez pour filtrer, cliquez pour sélectionner</p>
+
+                    <!-- Affichage du chef sélectionné -->
+                    <div id="headPreview" class="hidden mt-2 flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                        <i class="fas fa-crown text-yellow-500"></i>
+                        <span id="headPreviewName" class="text-sm font-semibold text-yellow-800"></span>
+                        <button type="button" onclick="clearHead()" class="ml-auto text-gray-400 hover:text-red-500 text-xs">
+                            <i class="fas fa-times"></i> Retirer
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Statut -->
@@ -111,4 +131,46 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+const headSearch  = document.getElementById('headSearch');
+const headSelect  = document.getElementById('headSelect');
+const headPreview = document.getElementById('headPreview');
+const headPreviewName = document.getElementById('headPreviewName');
+
+headSearch.addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    Array.from(headSelect.options).forEach(opt => {
+        opt.hidden = q !== '' && !opt.dataset.label?.includes(q);
+    });
+});
+
+headSelect.addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) {
+        headPreview.classList.remove('hidden');
+        headPreviewName.textContent = opt.text.split('—')[0].trim();
+    } else {
+        headPreview.classList.add('hidden');
+    }
+});
+
+function clearHead() {
+    headSelect.value = '';
+    headPreview.classList.add('hidden');
+    headSearch.value = '';
+    Array.from(headSelect.options).forEach(opt => opt.hidden = false);
+}
+
+// Restore on page load (old input)
+window.addEventListener('DOMContentLoaded', function() {
+    const opt = headSelect.options[headSelect.selectedIndex];
+    if (opt && opt.value) {
+        headPreview.classList.remove('hidden');
+        headPreviewName.textContent = opt.text.split('—')[0].trim();
+    }
+});
+</script>
+@endpush
 @endsection
