@@ -75,7 +75,11 @@
                 <td class="text-right">{{ number_format($employee->monthly_salary, 0, ',', ' ') }}</td>
                 <td class="text-center">{{ number_format($employee->days_worked, 1) }}</td>
                 <td class="text-center {{ $employee->days_not_worked > 0 ? 'text-red font-bold' : '' }}">
-                    {{ number_format($employee->days_not_worked, 1) }}
+                    @if(($employee->extra_days ?? 0) > 0)
+                        0 <small>(+{{ number_format($employee->extra_days, 1) }}j suppl.)</small>
+                    @else
+                        {{ number_format($employee->days_not_worked, 1) }}
+                    @endif
                 </td>
                 <td class="text-center {{ $employee->total_late_minutes > 0 ? 'text-orange font-bold' : '' }}">
                     {{ $employee->total_late_minutes }}

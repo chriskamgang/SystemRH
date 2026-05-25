@@ -87,8 +87,9 @@
         </div>
 
         <div class="bg-white rounded-lg shadow p-6">
-            <div class="text-sm text-gray-600">Salaires Bruts</div>
+            <div class="text-sm text-gray-600">Salaires Bruts Effectifs</div>
             <div class="text-2xl font-bold text-gray-800">{{ number_format($totalGrossSalary, 0, ',', ' ') }} FCFA</div>
+            <div class="text-xs text-gray-400 mt-1">Basé sur les présences réelles, plafonné au mensuel</div>
         </div>
 
         <div class="bg-white rounded-lg shadow p-6">
@@ -168,9 +169,16 @@
                         </td>
 
                         <td class="px-4 py-4 whitespace-nowrap text-sm">
-                            <span class="{{ $employee->days_not_worked > 0 ? 'text-red-600 font-semibold' : 'text-gray-900' }}">
-                                {{ number_format($employee->days_not_worked, 1) }}
-                            </span>
+                            @if(($employee->extra_days ?? 0) > 0)
+                                <span class="text-green-600 font-semibold" title="A travaillé {{ number_format($employee->extra_days, 1) }} jour(s) de plus que le contrat">
+                                    0
+                                </span>
+                                <span class="block text-xs text-green-500">+{{ number_format($employee->extra_days, 1) }}j suppl.</span>
+                            @else
+                                <span class="{{ $employee->days_not_worked > 0 ? 'text-red-600 font-semibold' : 'text-gray-900' }}">
+                                    {{ number_format($employee->days_not_worked, 1) }}
+                                </span>
+                            @endif
                         </td>
 
                         <td class="px-4 py-4 whitespace-nowrap text-sm">

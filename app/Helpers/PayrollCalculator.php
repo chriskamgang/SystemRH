@@ -440,7 +440,13 @@ class PayrollCalculator
 
         // Les déductions s'appliquent sur le salaire des jours travaillés
         $totalDeductions = $latePenaltyAmount + $totalManualDeductions + $totalLoanDeductions;
+
+        // Plafonner le salaire calculé au salaire mensuel contractuel (un employé ne peut pas gagner plus que son salaire)
+        $salaryBasedOnDaysWorked = min($salaryBasedOnDaysWorked, $monthlySalary);
         $netSalary = max(0, $salaryBasedOnDaysWorked - $totalDeductions);
+
+        // Jours supplémentaires (au-delà des jours contractuels, ex: semi-permanent)
+        $extraDays = max(0, round($daysWorked - $workingDaysInMonth, 2));
 
         return [
             'monthly_salary' => $monthlySalary,
@@ -448,6 +454,7 @@ class PayrollCalculator
             'days_worked' => $daysWorked,
             'total_hours_worked' => $totalHoursWorked,
             'days_not_worked' => $daysNotWorked,
+            'extra_days' => $extraDays,
             'days_justified' => $daysJustified,
             'total_late_minutes' => $totalLateMinutes,
             'total_travel_late_minutes' => $totalTravelLateMinutes,

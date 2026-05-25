@@ -71,7 +71,8 @@ class PayrollReportController extends Controller
         $roles = Role::where('id', '!=', 1)->orderBy('display_name')->get();
 
         // Statistiques globales
-        $totalGrossSalary = $employees->sum('gross_salary');
+        // On utilise salary_based_on_days_worked (plafonné au mensuel) comme base brute réelle
+        $totalGrossSalary = $employees->sum('salary_based_on_days_worked');
         $totalDeductions = $employees->sum('total_deductions');
         $totalNetSalary = $employees->sum('net_salary');
         $totalEmployees = $employees->count();
@@ -217,7 +218,7 @@ class PayrollReportController extends Controller
             return $employee;
         })->sortByDesc('net_salary')->values();
 
-        $totalGrossSalary = $employees->sum('gross_salary');
+        $totalGrossSalary = $employees->sum('salary_based_on_days_worked');
         $totalDeductions = $employees->sum('total_deductions');
         $totalNetSalary = $employees->sum('net_salary');
         $totalEmployees = $employees->count();
