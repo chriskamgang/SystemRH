@@ -260,7 +260,12 @@
                                                     <span class="text-gray-400">0</span>
                                                 @endif
                                             </td>
-                                            <td class="px-3 py-2 text-right text-sm">{{ number_format($employee->gross_salary, 0, ',', ' ') }}</td>
+                                            <td class="px-3 py-2 text-right text-sm">
+                                                {{ number_format($employee->salary_based_on_days_worked ?? $employee->gross_salary, 0, ',', ' ') }}
+                                                @if(($employee->salary_based_on_days_worked ?? 0) < ($employee->gross_salary ?? 0))
+                                                    <div class="text-xs text-gray-400">/ {{ number_format($employee->gross_salary, 0, ',', ' ') }}</div>
+                                                @endif
+                                            </td>
                                             <td class="px-3 py-2 text-right text-sm {{ ($employee->loan_deductions ?? 0) > 0 ? 'text-blue-600 font-semibold' : 'text-gray-400' }}">
                                                 {{ ($employee->loan_deductions ?? 0) > 0 ? number_format($employee->loan_deductions, 0, ',', ' ') : '—' }}
                                             </td>
