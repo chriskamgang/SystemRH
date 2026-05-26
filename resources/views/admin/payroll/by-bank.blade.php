@@ -273,7 +273,7 @@
                                                 @endif
                                             </td>
                                             <td class="px-4 py-2 text-center space-x-1">
-                                                <button onclick="openAddHours({{ $employee->id }}, '{{ addslashes($employee->full_name) }}', {{ round($employee->total_hours_worked ?? 0) }})"
+                                                <button onclick="openAddHours({{ $employee->id }}, '{{ addslashes($employee->full_name) }}', {{ round($employee->total_hours_worked ?? 0) }}, {{ round($employee->total_late_minutes ?? 0) }}, {{ round($employee->days_not_worked ?? 0) }})"
                                                     class="text-purple-600 hover:text-purple-800 text-sm" title="Saisir les heures de presence">
                                                     <i class="fas fa-clock"></i>
                                                 </button>
@@ -467,6 +467,16 @@
                 <p><strong>Employe :</strong> <span id="hours_employee_name"></span></p>
                 <p><strong>Periode :</strong> {{ \Carbon\Carbon::create($year, $month)->locale('fr')->isoFormat('MMMM YYYY') }}</p>
                 <p><strong>Heures deja enregistrees :</strong> <span id="hours_existing" class="text-blue-600 font-semibold"></span>h</p>
+            </div>
+
+            <!-- Situation actuelle (GPS) -->
+            <div class="bg-orange-50 border border-orange-200 rounded p-3 mb-4 text-sm">
+                <p class="font-semibold text-orange-800 mb-1"><i class="fas fa-info-circle mr-1"></i> Situation actuelle (GPS)</p>
+                <div class="grid grid-cols-2 gap-2 text-orange-700">
+                    <p>Retard enregistre : <strong><span id="existing_late_minutes"></span> min</strong></p>
+                    <p>Jours d'absence : <strong><span id="existing_absence_days"></span> j</strong></p>
+                </div>
+                <p class="text-xs text-orange-600 mt-1">Saisissez ci-dessous uniquement si des retards ou absences supplementaires doivent etre ajoutes.</p>
             </div>
 
             <div class="space-y-4">
@@ -769,10 +779,12 @@ function submitDeleteHeader() {
 // Add Hours
 let currentHoursUserId = null;
 
-function openAddHours(userId, name, existingHours) {
+function openAddHours(userId, name, existingHours, existingLateMinutes, existingAbsenceDays) {
     currentHoursUserId = userId;
     document.getElementById('hours_employee_name').textContent = name;
     document.getElementById('hours_existing').textContent = existingHours;
+    document.getElementById('existing_late_minutes').textContent = existingLateMinutes || 0;
+    document.getElementById('existing_absence_days').textContent = existingAbsenceDays || 0;
     document.getElementById('hours_note').value = '';
     document.getElementById('late_hours').value = '';
     document.getElementById('late_days').value = '';
