@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Campus;
 use App\Models\PayrollRecord;
+use App\Models\ManualPayrollAdjustment;
 use App\Models\Setting;
 use App\Helpers\PayrollCalculator;
 use Illuminate\Http\Request;
@@ -691,71 +692,67 @@ class PayrollByBankController extends Controller
             'user_id' => 'required|exists:users,id',
             'year' => 'required|integer',
             'month' => 'required|integer|min:1|max:12',
-            'total_hours' => 'required|numeric|min:0.5|max:744',
             'note' => 'nullable|string|max:500',
+            'late_hours' => 'required|numeric|min:0|max:99',
+            'late_days' => 'required|integer|min:0|max:31',
         ]);
 
         $user = User::findOrFail($request->user_id);
-        $year = $request->year;
-        $month = $request->month;
-        $totalHours = (float) $request->total_hours;
-        $note = $request->note ?: 'Heures saisies manuellement (employe ne scannant pas)';
+        $year  = (int) $request->year;
+        $month = (int) $request->month;
+        $lateHours = (float) $request->late_hours;
+        $lateDays  = (int)   $request->late_days;
+        $note = $request->note ?: 'Ajustement manuel retards/absences';
 
-        $workingHoursPerDay = (float) Setting::get('working_hours_per_day', 8);
+        // Calcul de la pénalité de retard
+        $penaltyPerSecond  = (float) Setting::get('penalty_per_second', 0.50);
+        $totalLateSeconds  = $lateHours * 3600;
+        $latePenalty       = round($totalLateSeconds * $penaltyPerSecond, 2);
 
-        // Supprimer les anciennes saisies manuelles du mois pour cet employe
-        $deleted = \App\Models\ManualAttendance::where('user_id', $user->id)
-            ->whereYear('date', $year)
-            ->whereMonth('date', $month)
-            ->whereNull('unite_enseignement_id')
-            ->delete();
+        $workingDays   = PayrollCalculator::calculateWorkingDays($year, $month, $user);
+        $monthlySalary = (float) $user->monthly_salary;
+        $dailyRate     = $workingDays > 0 ? ($monthlySalary / $workingDays) : 0;
 
-        // Repartir les heures sur les jours ouvrables du mois
-        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
-        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
-        $currentDate = $startDate->copy();
-        $remainingHours = $totalHours;
-        $createdCount = 0;
+        // Jours travailles = jours ouvrables - jours d'absence
+        $daysWorked = max(0, $workingDays - $lateDays);
+        $salaireBrut  = min(round($dailyRate * $daysWorked, 2), $monthlySalary);
+        $montantPerdu = round($lateDays * $dailyRate, 2);
 
-        while ($currentDate->lte($endDate) && $remainingHours > 0) {
-            $dayOfWeek = $currentDate->dayOfWeek;
+        // Déductions prêts/avances existantes
+        $tempPayroll   = PayrollCalculator::calculatePayroll($user, $year, $month);
+        $loanDeductions = ($tempPayroll['loan_deductions'] ?? 0) + ($tempPayroll['advance_deductions'] ?? 0);
 
-            // Jours ouvrables : Lundi-Vendredi (plein) + Samedi (demi)
-            $maxHoursForDay = 0;
-            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                $maxHoursForDay = $workingHoursPerDay;
-            } elseif ($dayOfWeek == 6) {
-                $maxHoursForDay = $workingHoursPerDay / 2;
-            }
+        $salaireNet = max(0, $salaireBrut - $latePenalty - $loanDeductions);
 
-            if ($maxHoursForDay > 0) {
-                $hoursForDay = min($remainingHours, $maxHoursForDay);
-                $checkIn = '08:00';
-                $totalMinutes = (int) ($hoursForDay * 60);
-                $checkOutHour = 8 + intdiv($totalMinutes, 60);
-                $checkOutMin = $totalMinutes % 60;
-                $checkOut = sprintf('%02d:%02d', $checkOutHour, $checkOutMin);
+        ManualPayrollAdjustment::updateOrCreate(
+            ['user_id' => $user->id, 'year' => $year, 'month' => $month],
+            [
+                'applied_by'           => auth()->id(),
+                'salaire_mensuel'      => $monthlySalary,
+                'jours_travailles'     => $daysWorked,
+                'jours_total'          => $workingDays,
+                'heures_retard'        => (int) floor($lateHours),
+                'minutes_retard'       => (int) round(($lateHours - floor($lateHours)) * 60),
+                'prime'                => 0,
+                'deduction_manuelle'   => $loanDeductions,
+                'salaire_journalier'   => round($dailyRate, 2),
+                'salaire_brut'         => $salaireBrut,
+                'penalite_retard'      => $latePenalty,
+                'salaire_net'          => $salaireNet,
+                'montant_perdu'        => $montantPerdu,
+                'pourcentage_presence' => $workingDays > 0 ? round($daysWorked / $workingDays * 100, 2) : 0,
+                'notes'                => "Retard {$lateHours}h - Absences {$lateDays}j. {$note}",
+                'status'               => 'active',
+            ]
+        );
 
-                \App\Models\ManualAttendance::create([
-                    'user_id' => $user->id,
-                    'date' => $currentDate->format('Y-m-d'),
-                    'check_in_time' => $checkIn,
-                    'check_out_time' => $checkOut,
-                    'session_type' => 'jour',
-                    'notes' => $note,
-                    'created_by' => auth()->id(),
-                ]);
-
-                $remainingHours -= $hoursForDay;
-                $createdCount++;
-            }
-
-            $currentDate->addDay();
-        }
+        $lateMessage = $lateHours > 0
+            ? " Penalite retard : " . number_format($latePenalty, 0, ',', ' ') . " FCFA."
+            : '';
 
         return response()->json([
             'success' => true,
-            'message' => "{$totalHours}h de presence enregistrees pour {$user->full_name} ({$createdCount} jours). Le salaire sera recalcule automatiquement.",
+            'message' => "Ajustement enregistre pour {$user->full_name} : {$lateDays} jour(s) d'absence, {$lateHours}h de retard.{$lateMessage}",
         ]);
     }
 

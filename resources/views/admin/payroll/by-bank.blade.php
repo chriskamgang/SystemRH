@@ -470,32 +470,29 @@
             </div>
 
             <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Mode de saisie</label>
-                    <select id="hours_mode" onchange="toggleHoursMode()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        <option value="total">Total d'heures pour le mois</option>
-                        <option value="daily">Nombre de jours travailles</option>
-                    </select>
-                </div>
-
-                <div id="hours_total_mode">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Heures totales du mois <span class="text-red-500">*</span></label>
-                    <input type="number" id="hours_total" min="0" max="744" step="0.5" placeholder="Ex: 176"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-bold">
-                    <p class="text-xs text-gray-500 mt-1">Nombre total d'heures travaillees ce mois</p>
-                </div>
-
-                <div id="hours_daily_mode" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de jours travailles <span class="text-red-500">*</span></label>
-                    <input type="number" id="hours_days" min="0" max="31" step="0.5" placeholder="Ex: 22"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-bold">
-                    <p class="text-xs text-gray-500 mt-1">Le systeme calculera les heures automatiquement (x {{ \App\Models\Setting::get('working_hours_per_day', 8) }}h/jour)</p>
-                </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Note / Justification</label>
                     <input type="text" id="hours_note" placeholder="Ex: Employe ne disposant pas de l'application..."
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+
+                <!-- Retards / Absences -->
+                <div class="border-t pt-3">
+                    <p class="text-sm font-semibold text-red-700 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i> Retards &amp; Absences</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Heures de retard <span class="text-red-500">*</span></label>
+                            <input type="number" id="late_hours" min="0" max="99" step="0.5" placeholder="0" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Jours d'absence <span class="text-red-500">*</span></label>
+                            <input type="number" id="late_days" min="0" max="31" step="1" placeholder="0" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-center font-bold">
+                        </div>
+                    </div>
+                    <p class="text-xs text-red-600 mt-1"><i class="fas fa-info-circle mr-1"></i> Une penalite de retard sera calculee et deduite du salaire net.</p>
                 </div>
 
                 <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
@@ -776,11 +773,9 @@ function openAddHours(userId, name, existingHours) {
     currentHoursUserId = userId;
     document.getElementById('hours_employee_name').textContent = name;
     document.getElementById('hours_existing').textContent = existingHours;
-    document.getElementById('hours_total').value = '';
-    document.getElementById('hours_days').value = '';
     document.getElementById('hours_note').value = '';
-    document.getElementById('hours_mode').value = 'total';
-    toggleHoursMode();
+    document.getElementById('late_hours').value = '';
+    document.getElementById('late_days').value = '';
     document.getElementById('addHoursModal').classList.remove('hidden');
 }
 
@@ -788,32 +783,22 @@ function closeAddHoursModal() {
     document.getElementById('addHoursModal').classList.add('hidden');
 }
 
-function toggleHoursMode() {
-    const mode = document.getElementById('hours_mode').value;
-    document.getElementById('hours_total_mode').classList.toggle('hidden', mode !== 'total');
-    document.getElementById('hours_daily_mode').classList.toggle('hidden', mode !== 'daily');
-}
-
 function submitAddHours() {
-    const mode = document.getElementById('hours_mode').value;
-    let totalHours;
+    const note = document.getElementById('hours_note').value;
+    const lateHoursVal = document.getElementById('late_hours').value;
+    const lateDaysVal = document.getElementById('late_days').value;
 
-    if (mode === 'total') {
-        totalHours = parseFloat(document.getElementById('hours_total').value);
-        if (!totalHours || totalHours <= 0) {
-            alert('Veuillez saisir un nombre d\'heures valide.');
-            return;
-        }
-    } else {
-        const days = parseFloat(document.getElementById('hours_days').value);
-        if (!days || days <= 0) {
-            alert('Veuillez saisir un nombre de jours valide.');
-            return;
-        }
-        totalHours = days * {{ \App\Models\Setting::get('working_hours_per_day', 8) }};
+    if (lateHoursVal === '' || lateHoursVal === null) {
+        alert('Veuillez saisir les heures de retard (0 si aucun retard).');
+        return;
+    }
+    if (lateDaysVal === '' || lateDaysVal === null) {
+        alert('Veuillez saisir les jours d\'absence (0 si aucune absence).');
+        return;
     }
 
-    const note = document.getElementById('hours_note').value;
+    const lateHours = parseFloat(lateHoursVal);
+    const lateDays = parseInt(lateDaysVal);
 
     const btn = document.getElementById('confirmAddHoursBtn');
     btn.disabled = true;
@@ -829,8 +814,9 @@ function submitAddHours() {
             user_id: currentHoursUserId,
             year: {{ $year }},
             month: {{ $month }},
-            total_hours: totalHours,
-            note: note
+            note: note,
+            late_hours: lateHours,
+            late_days: lateDays
         })
     })
     .then(r => r.json())
