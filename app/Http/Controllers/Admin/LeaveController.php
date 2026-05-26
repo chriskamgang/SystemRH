@@ -171,6 +171,94 @@ class LeaveController extends Controller
     }
 
     /**
+     * Formulaire d'assignation de congé en masse (plusieurs employés, même période)
+     */
+    public function bulkAssignForm(Request $request)
+    {
+        $users = User::where('is_active', true)
+            ->where('employee_type', '!=', 'etudiant')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        return view('admin.leaves.bulk-assign', compact('users'));
+    }
+
+    /**
+     * Assigner un congé à plusieurs employés en même temps
+     */
+    public function bulkAssign(Request $request)
+    {
+        $request->validate([
+            'user_ids'   => 'required|array|min:1',
+            'user_ids.*' => 'exists:users,id',
+            'type'       => 'required|in:' . implode(',', array_keys(LeaveRequest::TYPES)),
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'reason'     => 'nullable|string|max:500',
+        ]);
+
+        $startDate = \Carbon\Carbon::parse($request->start_date);
+        $endDate   = \Carbon\Carbon::parse($request->end_date);
+        $daysCount = $startDate->diffInDays($endDate) + 1;
+
+        $assigned = 0;
+        $skipped  = [];
+
+        foreach ($request->user_ids as $userId) {
+            // Vérifier chevauchement
+            $overlap = LeaveRequest::where('user_id', $userId)
+                ->where('status', 'approved')
+                ->where(function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('start_date', [$startDate, $endDate])
+                      ->orWhereBetween('end_date', [$startDate, $endDate])
+                      ->orWhere(function ($q2) use ($startDate, $endDate) {
+                          $q2->where('start_date', '<=', $startDate)
+                             ->where('end_date', '>=', $endDate);
+                      });
+                })->exists();
+
+            if ($overlap) {
+                $user = User::find($userId);
+                $skipped[] = $user->full_name;
+                continue;
+            }
+
+            $leave = LeaveRequest::create([
+                'user_id'        => $userId,
+                'type'           => $request->type,
+                'start_date'     => $startDate,
+                'end_date'       => $endDate,
+                'days_count'     => $daysCount,
+                'reason'         => $request->reason ?: 'Congé assigné par l\'administration',
+                'status'         => 'approved',
+                'reviewed_by'    => auth()->id(),
+                'reviewed_at'    => now(),
+                'review_comment' => 'Assigné en masse par l\'administration',
+            ]);
+
+            // Déduire du solde si applicable
+            if (!in_array($leave->type, ['unpaid', 'other'])) {
+                $balance = LeaveBalance::firstOrCreate(
+                    ['user_id' => $userId, 'year' => $startDate->year, 'type' => $leave->type],
+                    ['total_days' => LeaveRequest::DEFAULT_BALANCES[$leave->type] ?? 0, 'used_days' => 0]
+                );
+                $balance->increment('used_days', $daysCount);
+            }
+
+            $this->notifyEmployee($leave, 'approved');
+            $assigned++;
+        }
+
+        $msg = "Congé de {$daysCount} jour(s) assigné à {$assigned} employé(s) du {$startDate->format('d/m/Y')} au {$endDate->format('d/m/Y')}.";
+        if (!empty($skipped)) {
+            $msg .= ' Ignorés (congé existant) : ' . implode(', ', $skipped) . '.';
+        }
+
+        return redirect()->route('admin.leaves.index')->with('success', $msg);
+    }
+
+    /**
      * Formulaire d'assignation directe de congé par l'administration
      */
     public function assignForm(Request $request)

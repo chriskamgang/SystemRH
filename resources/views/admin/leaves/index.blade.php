@@ -14,6 +14,9 @@
             <a href="{{ route('admin.leaves.assign') }}" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-semibold">
                 <i class="fas fa-plus mr-2"></i> Assigner un congé
             </a>
+            <a href="{{ route('admin.leaves.bulk-assign') }}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition font-semibold">
+                <i class="fas fa-users mr-2"></i> Congé en masse
+            </a>
             <a href="{{ route('admin.leaves.balances') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-semibold">
                 <i class="fas fa-calculator mr-2"></i> Soldes
             </a>

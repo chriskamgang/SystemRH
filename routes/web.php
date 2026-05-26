@@ -309,6 +309,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/balances', [App\Http\Controllers\Admin\LeaveController::class, 'balances'])->name('balances');
         Route::get('/assign', [App\Http\Controllers\Admin\LeaveController::class, 'assignForm'])->name('assign');
         Route::post('/assign', [App\Http\Controllers\Admin\LeaveController::class, 'assign'])->name('assign.store');
+        Route::get('/bulk-assign', [App\Http\Controllers\Admin\LeaveController::class, 'bulkAssignForm'])->name('bulk-assign');
+        Route::post('/bulk-assign', [App\Http\Controllers\Admin\LeaveController::class, 'bulkAssign'])->name('bulk-assign.store');
         Route::delete('/{id}/cancel', [App\Http\Controllers\Admin\LeaveController::class, 'cancel'])->name('cancel');
         Route::get('/{id}', [App\Http\Controllers\Admin\LeaveController::class, 'show'])->name('show');
         Route::post('/{id}/approve', [App\Http\Controllers\Admin\LeaveController::class, 'approve'])->name('approve');
