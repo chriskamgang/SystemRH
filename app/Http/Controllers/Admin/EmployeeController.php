@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Campus;
+use App\Models\Department;
 use App\Models\UserCampusShift;
 use App\Imports\EmployeesImport;
 use App\Exports\EmployeesTemplateExport;
@@ -60,6 +61,7 @@ class EmployeeController extends Controller
         $employees = $query->orderBy('created_at', 'desc')->paginate(15)->appends($request->all());
         $roles = Role::where('id', '!=', 1)->get(); // Exclure le role admin
         $campuses = Campus::all();
+        $departments = Department::where('is_active', true)->orderBy('name')->get();
 
         // Récupérer la liste des banques distinctes
         $banques = User::whereNotNull('banque')
@@ -69,7 +71,7 @@ class EmployeeController extends Controller
             ->sort()
             ->values();
 
-        return view('admin.employees.index', compact('employees', 'roles', 'campuses', 'banques'));
+        return view('admin.employees.index', compact('employees', 'roles', 'campuses', 'banques', 'departments'));
     }
 
     /**
@@ -882,6 +884,49 @@ class EmployeeController extends Controller
         $msg = "Campus «{$campus->name}» attribué à {$assigned} employé(s).";
         if ($skipped > 0) {
             $msg .= " {$skipped} employé(s) l'avaient déjà — ignorés.";
+        }
+
+        return redirect()->back()->with('success', $msg);
+    }
+
+    /**
+     * Attribuer un département à tout le personnel (en masse)
+     */
+    public function bulkAssignDepartment(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,id',
+            'employee_type' => 'nullable|string',
+            'overwrite'     => 'nullable|boolean',
+        ]);
+
+        $department = Department::findOrFail($request->department_id);
+
+        $query = User::where('is_active', true)
+            ->where('employee_type', '!=', 'etudiant');
+
+        if ($request->filled('employee_type')) {
+            $query->where('employee_type', $request->employee_type);
+        }
+
+        $employees = $query->get();
+        $assigned  = 0;
+        $skipped   = 0;
+
+        foreach ($employees as $employee) {
+            // Si l'employé a déjà un département et qu'on ne force pas l'écrasement
+            if ($employee->department_id && !$request->boolean('overwrite')) {
+                $skipped++;
+                continue;
+            }
+
+            $employee->update(['department_id' => $department->id]);
+            $assigned++;
+        }
+
+        $msg = "Département «{$department->name}» attribué à {$assigned} employé(s).";
+        if ($skipped > 0) {
+            $msg .= " {$skipped} employé(s) avaient déjà un département — ignorés.";
         }
 
         return redirect()->back()->with('success', $msg);

@@ -36,6 +36,11 @@
                 <i class="fas fa-building mr-2"></i>
                 Attribuer Campus
             </button>
+            <button onclick="document.getElementById('bulkDepartmentModal').classList.remove('hidden')"
+                    class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition">
+                <i class="fas fa-sitemap mr-2"></i>
+                Attribuer Département
+            </button>
             <a href="{{ route('admin.employees.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
                 <i class="fas fa-plus mr-2"></i>
                 Nouvel Employé
@@ -364,6 +369,7 @@
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         document.getElementById('bulkCampusModal').classList.add('hidden');
+        document.getElementById('bulkDepartmentModal').classList.add('hidden');
     }
 });
 </script>
@@ -437,6 +443,84 @@ document.addEventListener('keydown', function(e) {
                         onclick="return confirm('Attribuer ce campus à tous les employés sélectionnés ?\n\nLes employés qui l\'ont déjà ne seront pas affectés.')"
                         class="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition font-semibold">
                     <i class="fas fa-building mr-2"></i> Attribuer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal : Attribuer un département à tout le personnel -->
+<div id="bulkDepartmentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+        <div class="flex justify-between items-center px-6 py-4 border-b">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Attribuer un département en masse</h3>
+                <p class="text-xs text-gray-500 mt-0.5">Le département sera attribué à tous les employés actifs sélectionnés</p>
+            </div>
+            <button onclick="document.getElementById('bulkDepartmentModal').classList.add('hidden')"
+                    class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+
+        <form action="{{ route('admin.employees.bulk-assign-department') }}" method="POST">
+            @csrf
+            <div class="px-6 py-5 space-y-4">
+
+                <!-- Sélection du département -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Département à attribuer <span class="text-red-500">*</span>
+                    </label>
+                    <select name="department_id" required
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">— Sélectionner un département —</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->id }}">{{ $dept->name }}{{ $dept->code ? ' ('.$dept->code.')' : '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Filtre type d'employé (optionnel) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Appliquer à (optionnel)
+                    </label>
+                    <select name="employee_type"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">Tous les types d'employés</option>
+                        <option value="administratif">Administratif</option>
+                        <option value="technique">Technique</option>
+                        <option value="direction">Direction</option>
+                        <option value="enseignant_titulaire">Enseignant Titulaire</option>
+                        <option value="enseignant_vacataire">Enseignant Vacataire</option>
+                        <option value="semi_permanent">Semi-permanent</option>
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Laisser vide pour appliquer à tout le personnel actif</p>
+                </div>
+
+                <!-- Option : écraser le département existant -->
+                <div class="flex items-center">
+                    <input type="checkbox" name="overwrite" id="overwrite_dept" value="1"
+                           class="w-4 h-4 text-purple-600 border-gray-300 rounded">
+                    <label for="overwrite_dept" class="ml-2 text-sm text-gray-700">
+                        Écraser le département des employés qui en ont déjà un
+                    </label>
+                </div>
+                <p class="text-xs text-orange-500">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Sans cette option, seuls les employés sans département seront affectés.
+                </p>
+            </div>
+
+            <div class="px-6 py-4 border-t bg-gray-50 rounded-b-xl flex justify-end gap-3">
+                <button type="button"
+                        onclick="document.getElementById('bulkDepartmentModal').classList.add('hidden')"
+                        class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition">
+                    Annuler
+                </button>
+                <button type="submit"
+                        onclick="return confirm('Attribuer ce département à tous les employés sélectionnés ?')"
+                        class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-semibold">
+                    <i class="fas fa-sitemap mr-2"></i> Attribuer
                 </button>
             </div>
         </form>

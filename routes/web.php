@@ -88,6 +88,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Bulk campus assignment
     Route::post('employees-bulk-assign-campus', [EmployeeController::class, 'bulkAssignCampus'])->name('employees.bulk-assign-campus');
 
+    // Bulk department assignment
+    Route::post('employees-bulk-assign-department', [EmployeeController::class, 'bulkAssignDepartment'])->name('employees.bulk-assign-department');
+
     // Campus
     Route::resource('campuses', CampusController::class);
 
