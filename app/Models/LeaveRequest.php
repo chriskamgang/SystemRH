@@ -86,7 +86,8 @@ class LeaveRequest extends Model
     {
         $date = $date ? \Carbon\Carbon::parse($date)->toDateString() : today()->toDateString();
 
-        return self::where('user_id', $userId)
+        return self::withoutGlobalScopes()
+            ->where('user_id', $userId)
             ->where('status', 'approved')
             ->where('start_date', '<=', $date)
             ->where('end_date', '>=', $date)
@@ -100,7 +101,8 @@ class LeaveRequest extends Model
     {
         $date = $date ? \Carbon\Carbon::parse($date)->toDateString() : today()->toDateString();
 
-        return self::where('user_id', $userId)
+        return self::withoutGlobalScopes()
+            ->where('user_id', $userId)
             ->where('status', 'approved')
             ->where('start_date', '<=', $date)
             ->where('end_date', '>=', $date)

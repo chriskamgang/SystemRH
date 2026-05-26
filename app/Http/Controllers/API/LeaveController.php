@@ -18,7 +18,8 @@ class LeaveController extends Controller
         $user = $request->user();
         $status = $request->query('status'); // pending, approved, rejected, cancelled
 
-        $query = LeaveRequest::where('user_id', $user->id)
+        $query = LeaveRequest::withoutGlobalScopes()
+            ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc');
 
         if ($status) {
@@ -133,7 +134,8 @@ class LeaveController extends Controller
         }
 
         // Vérifier les chevauchements avec des demandes existantes
-        $overlap = LeaveRequest::where('user_id', $user->id)
+        $overlap = LeaveRequest::withoutGlobalScopes()
+            ->where('user_id', $user->id)
             ->whereIn('status', ['pending', 'approved'])
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->whereBetween('start_date', [$startDate, $endDate])
@@ -189,7 +191,7 @@ class LeaveController extends Controller
     public function cancel(Request $request, $id)
     {
         $user = $request->user();
-        $leave = LeaveRequest::where('user_id', $user->id)->findOrFail($id);
+        $leave = LeaveRequest::withoutGlobalScopes()->where('user_id', $user->id)->findOrFail($id);
 
         if (!$leave->isPending()) {
             return response()->json([
