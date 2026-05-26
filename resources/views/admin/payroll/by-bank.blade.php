@@ -211,7 +211,9 @@
                                             <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Heures</th>
                                             <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Retards</th>
                                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Sal. Brut</th>
-                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Deductions</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-blue-500">Prets</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-orange-500">Avances</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-red-500">Deductions</th>
                                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Sal. Net</th>
                                             <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Statut</th>
                                             <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Actions</th>
@@ -259,6 +261,12 @@
                                                 @endif
                                             </td>
                                             <td class="px-3 py-2 text-right text-sm">{{ number_format($employee->gross_salary, 0, ',', ' ') }}</td>
+                                            <td class="px-3 py-2 text-right text-sm {{ ($employee->loan_deductions ?? 0) > 0 ? 'text-blue-600 font-semibold' : 'text-gray-400' }}">
+                                                {{ ($employee->loan_deductions ?? 0) > 0 ? number_format($employee->loan_deductions, 0, ',', ' ') : '—' }}
+                                            </td>
+                                            <td class="px-3 py-2 text-right text-sm {{ ($employee->advance_deductions ?? 0) > 0 ? 'text-orange-600 font-semibold' : 'text-gray-400' }}">
+                                                {{ ($employee->advance_deductions ?? 0) > 0 ? number_format($employee->advance_deductions, 0, ',', ' ') : '—' }}
+                                            </td>
                                             <td class="px-3 py-2 text-right text-sm text-red-600">{{ number_format($employee->total_deductions, 0, ',', ' ') }}</td>
                                             <td class="px-3 py-2 text-right text-sm font-bold text-green-600">{{ number_format($employee->net_salary, 0, ',', ' ') }}</td>
                                             <td class="px-4 py-2 text-center">
