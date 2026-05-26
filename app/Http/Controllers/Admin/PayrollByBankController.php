@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Campus;
 use App\Models\PayrollRecord;
 use App\Models\ManualPayrollAdjustment;
+use App\Models\Loan;
 use App\Models\Setting;
 use App\Helpers\PayrollCalculator;
 use Illuminate\Http\Request;
@@ -718,11 +719,26 @@ class PayrollByBankController extends Controller
         $salaireBrut  = min(round($dailyRate * $daysWorked, 2), $monthlySalary);
         $montantPerdu = round($lateDays * $dailyRate, 2);
 
-        // Déductions prêts/avances existantes
-        $tempPayroll   = PayrollCalculator::calculatePayroll($user, $year, $month);
-        $loanDeductions = ($tempPayroll['loan_deductions'] ?? 0) + ($tempPayroll['advance_deductions'] ?? 0);
+        // Déductions prêts/avances — requête directe pour éviter le court-circuit ManualPayrollAdjustment
+        $loans = Loan::where('user_id', $user->id)->where('status', 'active')->get();
+        $loanDeductions = 0;
+        foreach ($loans as $loan) {
+            if ($loan->shouldDeductForMonth($year, $month)) {
+                $loanDeductions += $loan->getDeductionAmountForMonth($year, $month);
+            }
+        }
 
-        $salaireNet = max(0, $salaireBrut - $latePenalty - $loanDeductions);
+        // Pénalités GPS déjà accumulées (pointages avant casse du téléphone)
+        // On supprime l'éventuel ManualPayrollAdjustment précédent pour calculer proprement
+        \App\Models\ManualPayrollAdjustment::where('user_id', $user->id)
+            ->where('year', $year)->where('month', $month)->delete();
+        $gpsPayroll = PayrollCalculator::calculatePayroll($user, $year, $month);
+        $gpsLatePenalty = $gpsPayroll['late_penalty_amount'] ?? 0;
+
+        // Pénalité totale = GPS déjà enregistrés + retard manuel saisi
+        $totalLatePenalty = round($latePenalty + $gpsLatePenalty, 2);
+
+        $salaireNet = max(0, $salaireBrut - $totalLatePenalty - $loanDeductions);
 
         ManualPayrollAdjustment::updateOrCreate(
             ['user_id' => $user->id, 'year' => $year, 'month' => $month],
@@ -737,7 +753,7 @@ class PayrollByBankController extends Controller
                 'deduction_manuelle'   => $loanDeductions,
                 'salaire_journalier'   => round($dailyRate, 2),
                 'salaire_brut'         => $salaireBrut,
-                'penalite_retard'      => $latePenalty,
+                'penalite_retard'      => $totalLatePenalty,
                 'salaire_net'          => $salaireNet,
                 'montant_perdu'        => $montantPerdu,
                 'pourcentage_presence' => $workingDays > 0 ? round($daysWorked / $workingDays * 100, 2) : 0,
@@ -746,8 +762,8 @@ class PayrollByBankController extends Controller
             ]
         );
 
-        $lateMessage = $lateHours > 0
-            ? " Penalite retard : " . number_format($latePenalty, 0, ',', ' ') . " FCFA."
+        $lateMessage = $totalLatePenalty > 0
+            ? " Penalite retard : " . number_format($totalLatePenalty, 0, ',', ' ') . " FCFA (GPS inclus)."
             : '';
 
         return response()->json([

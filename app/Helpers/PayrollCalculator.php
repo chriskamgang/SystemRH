@@ -301,29 +301,53 @@ class PayrollCalculator
 
         // Si un ajustement manuel existe, utiliser ces valeurs au lieu des calculs automatiques
         if ($manualAdjustment) {
+            // Récupérer les prêts/avances réels (toujours affichés même avec ajustement manuel)
+            $loans = \App\Models\Loan::where('user_id', $user->id)->where('status', 'active')->get();
+            $totalLoanDeductions = 0;
+            $totalAdvanceDeductions = 0;
+            $loanDeductionsDetails = [];
+            $advanceDeductionsDetails = [];
+            foreach ($loans as $loan) {
+                if ($loan->shouldDeductForMonth($year, $month)) {
+                    $deductionAmount = $loan->getDeductionAmountForMonth($year, $month);
+                    $isAdvance = str_starts_with($loan->reason ?? '', 'Avance sur salaire');
+                    $detail = ['loan_id' => $loan->id, 'deduction_this_month' => $deductionAmount, 'reason' => $loan->reason];
+                    if ($isAdvance) {
+                        $totalAdvanceDeductions += $deductionAmount;
+                        $advanceDeductionsDetails[] = $detail;
+                    } else {
+                        $totalLoanDeductions += $deductionAmount;
+                        $loanDeductionsDetails[] = $detail;
+                    }
+                }
+            }
+
             return [
                 'monthly_salary' => $manualAdjustment->salaire_mensuel,
                 'working_days' => $manualAdjustment->jours_total,
                 'days_worked' => $manualAdjustment->jours_travailles,
                 'days_not_worked' => $manualAdjustment->jours_total - $manualAdjustment->jours_travailles,
-                'days_justified' => 0, // Pas de justifications avec ajustements manuels
+                'days_justified' => 0,
                 'total_late_minutes' => ($manualAdjustment->heures_retard * 60) + $manualAdjustment->minutes_retard,
                 'late_minutes_justified' => 0,
-                'manual_deductions' => $manualAdjustment->deduction_manuelle,
+                'manual_deductions' => 0,
                 'manual_deductions_details' => [],
-                'loan_deductions' => 0,
-                'loan_deductions_details' => [],
+                'loan_deductions' => $totalLoanDeductions,
+                'loan_deductions_details' => $loanDeductionsDetails,
+                'advance_deductions' => $totalAdvanceDeductions,
+                'advance_deductions_details' => $advanceDeductionsDetails,
                 'late_penalty_amount' => $manualAdjustment->penalite_retard,
                 'absence_deduction' => $manualAdjustment->montant_perdu,
                 'gross_salary' => $manualAdjustment->salaire_brut,
                 'salary_based_on_days_worked' => $manualAdjustment->salaire_brut,
-                'total_deductions' => $manualAdjustment->penalite_retard + $manualAdjustment->deduction_manuelle,
+                'total_deductions' => $manualAdjustment->penalite_retard + $totalLoanDeductions + $totalAdvanceDeductions,
                 'net_salary' => $manualAdjustment->salaire_net,
                 'days_without_checkout' => 0,
                 'daily_rate' => $manualAdjustment->salaire_journalier,
                 'hourly_rate' => 0,
                 'per_second_rate' => 0,
-                'is_manual_adjustment' => true, // Indicateur pour savoir qu'il s'agit d'un ajustement manuel
+                'extra_days' => 0,
+                'is_manual_adjustment' => true,
                 'manual_adjustment_notes' => $manualAdjustment->notes,
             ];
         }
