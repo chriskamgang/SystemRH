@@ -9,6 +9,7 @@ use App\Models\LeaveRequest;
 use App\Models\Tardiness;
 use App\Models\Setting;
 use App\Models\UeSchedule;
+use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -475,6 +476,20 @@ class AttendanceController extends Controller
             $message = "Check-in enregistré avec succès pour la plage du {$shiftLabel}.";
         }
 
+        // Notification WhatsApp (fire-and-forget)
+        if ($user->phone) {
+            dispatch(function () use ($user, $campus, $now, $isLate, $lateMinutes) {
+                (new WhatsAppService())->sendCheckIn(
+                    $user->phone,
+                    $user->first_name,
+                    $campus->name,
+                    $now->format('H:i'),
+                    $isLate,
+                    $lateMinutes
+                );
+            })->afterResponse();
+        }
+
         return response()->json([
             'message' => $message,
             'attendance' => $attendance,
@@ -667,6 +682,19 @@ class AttendanceController extends Controller
             $response['capped_hours'] = $cappedHours;
             $response['non_counted_hours'] = $nonCountedHours;
             $response['ue_warning'] = $ueWarning;
+        }
+
+        // Notification WhatsApp (fire-and-forget)
+        if ($user->phone) {
+            dispatch(function () use ($user, $campus, $now, $sessionDurationHours) {
+                (new WhatsAppService())->sendCheckOut(
+                    $user->phone,
+                    $user->first_name,
+                    $campus->name,
+                    $now->format('H:i'),
+                    $sessionDurationHours
+                );
+            })->afterResponse();
         }
 
         return response()->json($response, 201);

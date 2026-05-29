@@ -40,4 +40,9 @@ return [
         'environment' => env('ELGIOPAY_ENV', 'prod'),
     ],
 
+    'whatsapp' => [
+        'url'    => env('WHATSAPP_SERVICE_URL', 'http://localhost:3001'),
+        'secret' => env('WHATSAPP_SERVICE_SECRET', ''),
+    ],
+
 ];
