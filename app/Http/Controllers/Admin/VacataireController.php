@@ -194,6 +194,7 @@ class VacataireController extends Controller
 
         // Mettre à jour les campus
         $vacataire->campuses()->sync($request->campuses);
+        \App\Http\Controllers\API\UserController::clearCampusCache($vacataire->id);
 
         return redirect()->route('admin.vacataires.index')
             ->with('success', 'Vacataire mis à jour avec succès.');

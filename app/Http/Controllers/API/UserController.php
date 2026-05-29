@@ -3,8 +3,14 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\BreakLog;
+use App\Models\Task;
+use App\Models\UniteEnseignement;
+use App\Models\UeSchedule;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -227,35 +233,264 @@ class UserController extends Controller
     }
 
     /**
+     * Toutes les données du tableau de bord en une seule requête
+     * GET /api/user/home-data
+     */
+    public function homeData(Request $request)
+    {
+        $user = $request->user();
+        $today = Carbon::today()->toDateString();
+        $isTeacher = in_array($user->employee_type, ['enseignant_vacataire', 'semi_permanent', 'enseignant_titulaire']);
+
+        // ── Attendances du jour ───────────────────────────────────────────────
+        $todayAttendances = $user->attendances()
+            ->whereDate('timestamp', today())
+            ->with('campus')
+            ->orderBy('timestamp', 'asc')
+            ->get();
+
+        $todayCheckIns  = $todayAttendances->where('type', 'check-in');
+        $todayCheckOuts = $todayAttendances->where('type', 'check-out');
+
+        $activeCheckIns = $todayCheckIns->filter(function ($checkIn) use ($todayCheckOuts) {
+            return !$todayCheckOuts
+                ->where('campus_id', $checkIn->campus_id)
+                ->where('timestamp', '>', $checkIn->timestamp)
+                ->isNotEmpty();
+        });
+
+        // ── Stats du mois ─────────────────────────────────────────────────────
+        $monthCheckIns = $user->attendances()
+            ->where('type', 'check-in')
+            ->whereBetween('timestamp', [now()->startOfMonth(), now()->endOfMonth()])
+            ->get(['timestamp', 'is_late']);
+
+        // ── Campus (cachés 30 min — données statiques) ────────────────────────
+        $campuses = Cache::remember("user_{$user->id}_campuses", 1800, function () use ($user) {
+            return $user->campuses()->get()->map(function ($campus) {
+                return [
+                    'id'             => $campus->id,
+                    'name'           => $campus->name,
+                    'code'           => $campus->code,
+                    'address'        => $campus->address,
+                    'latitude'       => $campus->latitude,
+                    'longitude'      => $campus->longitude,
+                    'radius'         => $campus->radius,
+                    'start_time'     => substr($campus->start_time, 0, 5),
+                    'end_time'       => substr($campus->end_time, 0, 5),
+                    'late_tolerance' => $campus->late_tolerance,
+                    'is_primary'     => $campus->pivot->is_primary,
+                    'is_active'      => $campus->is_active,
+                ];
+            })->values()->all();
+        });
+
+        // ── Tâches ────────────────────────────────────────────────────────────
+        $tasks = $user->tasks()
+            ->with('creator:id,first_name,last_name')
+            ->orderByRaw("CASE WHEN task_user.status = 'pending' THEN 0 WHEN task_user.status = 'in_progress' THEN 1 ELSE 2 END")
+            ->orderBy('due_date', 'asc')
+            ->get()
+            ->map(function ($task) {
+                return [
+                    'id'               => $task->id,
+                    'title'            => $task->title,
+                    'description'      => $task->description,
+                    'priority'         => $task->priority,
+                    'status'           => $task->status,
+                    'penalty_amount'   => (int) ($task->pivot->penalty_amount ?? 0),
+                    'my_status'        => $task->pivot->status,
+                    'my_note'          => $task->pivot->note,
+                    'completed_at'     => $task->pivot->completed_at,
+                    'penalty_approved' => (bool) $task->pivot->penalty_approved,
+                    'due_date'         => $task->due_date?->format('Y-m-d'),
+                    'creator_name'     => $task->creator ? $task->creator->full_name : null,
+                    'created_at'       => $task->created_at->toIso8601String(),
+                ];
+            });
+
+        // ── Pause ─────────────────────────────────────────────────────────────
+        $activeBreak   = BreakLog::where('user_id', $user->id)->where('date', $today)->whereNull('break_end')->first();
+        $todayBreaks   = BreakLog::where('user_id', $user->id)->where('date', $today)->orderBy('break_start')->get();
+
+        $breakData = [
+            'on_break'    => $activeBreak !== null,
+            'active_break' => $activeBreak ? [
+                'break_id'         => $activeBreak->id,
+                'break_start'      => $activeBreak->break_start->format('H:i'),
+                'elapsed_minutes'  => $activeBreak->break_start->diffInMinutes(now()),
+            ] : null,
+            'total_break_minutes' => $todayBreaks->sum('duration_minutes'),
+        ];
+
+        // ── Vérifications de présence ─────────────────────────────────────────
+        $pendingChecks = $user->presenceChecks()
+            ->whereNull('response')
+            ->where('check_time', '>=', now()->subDay())
+            ->count();
+
+        // ── Dernier check-in ──────────────────────────────────────────────────
+        $lastCheckIn = $user->attendances()
+            ->where('type', 'check-in')
+            ->with('campus')
+            ->latest('timestamp')
+            ->first();
+
+        // ── UE & Emploi du temps (enseignants seulement) ──────────────────────
+        $ueData       = null;
+        $todaySchedule = null;
+
+        if ($isTeacher) {
+            $unitesActivees = UniteEnseignement::where('enseignant_id', $user->id)
+                ->where('statut', 'activee')
+                ->orderBy('nom_matiere')
+                ->get()
+                ->map(function ($ue) use ($user) {
+                    $tauxHoraire      = (float) ($user->hourly_rate ?? 0);
+                    $heuresValidees   = (float) $ue->heures_effectuees_validees;
+                    return [
+                        'id'                    => $ue->id,
+                        'code_ue'               => $ue->code_ue,
+                        'nom_matiere'           => $ue->nom_matiere,
+                        'volume_horaire_total'  => (float) $ue->volume_horaire_total,
+                        'heures_effectuees'     => $heuresValidees,
+                        'heures_restantes'      => max(0, (float) $ue->volume_horaire_total - $heuresValidees),
+                        'pourcentage_progression' => (float) $ue->pourcentage_progression_validees,
+                        'montant_paye'          => $heuresValidees * $tauxHoraire,
+                        'montant_restant'       => max(0, ((float) $ue->volume_horaire_total - $heuresValidees) * $tauxHoraire),
+                        'montant_max'           => (float) $ue->montant_max,
+                        'taux_horaire'          => $tauxHoraire,
+                        'annee_academique'      => $ue->annee_academique,
+                        'semestre'              => $ue->semestre,
+                        'statut'                => 'activee',
+                        'date_activation'       => $ue->date_activation?->format('Y-m-d H:i:s'),
+                    ];
+                });
+
+            $unitesNonActivees = UniteEnseignement::where('enseignant_id', $user->id)
+                ->where('statut', 'non_activee')
+                ->orderBy('nom_matiere')
+                ->get()
+                ->map(function ($ue) use ($user) {
+                    return [
+                        'id'                   => $ue->id,
+                        'code_ue'              => $ue->code_ue,
+                        'nom_matiere'          => $ue->nom_matiere,
+                        'volume_horaire_total' => (float) $ue->volume_horaire_total,
+                        'montant_potentiel'    => (float) $ue->montant_max,
+                        'taux_horaire'         => (float) $user->hourly_rate,
+                        'annee_academique'     => $ue->annee_academique,
+                        'semestre'             => $ue->semestre,
+                        'statut'               => 'non_activee',
+                        'date_attribution'     => $ue->date_attribution?->format('Y-m-d H:i:s'),
+                    ];
+                });
+
+            $ueData = [
+                'unites_activees'     => $unitesActivees,
+                'unites_non_activees' => $unitesNonActivees,
+                'totaux' => [
+                    'heures_effectuees' => (float) $unitesActivees->sum('heures_effectuees'),
+                    'montant_paye'      => (float) $unitesActivees->sum('montant_paye'),
+                    'montant_restant'   => (float) $unitesActivees->sum('montant_restant'),
+                    'taux_horaire'      => (float) $user->hourly_rate,
+                ],
+            ];
+
+            $jourActuel  = UeSchedule::getCurrentDayFr();
+            $ueIds       = UniteEnseignement::where('enseignant_id', $user->id)->where('statut', 'activee')->pluck('id');
+            $schedules   = UeSchedule::whereIn('unite_enseignement_id', $ueIds)
+                ->where('is_active', true)
+                ->validNow()
+                ->where('jour_semaine', $jourActuel)
+                ->with(['uniteEnseignement', 'campus'])
+                ->orderBy('heure_debut')
+                ->get();
+
+            $todaySchedule = $schedules->map(function ($schedule) {
+                return [
+                    'id'           => $schedule->id,
+                    'jour_semaine' => $schedule->jour_semaine,
+                    'heure_debut'  => substr($schedule->heure_debut, 0, 5),
+                    'heure_fin'    => substr($schedule->heure_fin, 0, 5),
+                    'salle'        => $schedule->salle,
+                    'duree_heures' => $schedule->duree_en_heures,
+                    'ue' => [
+                        'id'                     => $schedule->uniteEnseignement->id,
+                        'code_ue'                => $schedule->uniteEnseignement->code_ue,
+                        'nom_matiere'            => $schedule->uniteEnseignement->nom_matiere,
+                        'heures_restantes'       => $schedule->uniteEnseignement->heures_restantes,
+                        'volume_horaire_total'   => $schedule->uniteEnseignement->volume_horaire_total,
+                        'pourcentage_progression'=> $schedule->uniteEnseignement->pourcentage_progression,
+                    ],
+                    'campus' => [
+                        'id'   => $schedule->campus->id,
+                        'name' => $schedule->campus->name,
+                    ],
+                ];
+            })->values()->all();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'dashboard' => [
+                    'pending_presence_checks' => $pendingChecks,
+                    'has_active_checkin'      => $activeCheckIns->isNotEmpty(),
+                    'active_checkins'         => $activeCheckIns->load('campus')->values(),
+                    'month_stats' => [
+                        'total_check_ins' => $monthCheckIns->count(),
+                        'total_late'      => $monthCheckIns->where('is_late', true)->count(),
+                        'days_worked'     => $monthCheckIns->map(fn($a) => $a->timestamp->format('Y-m-d'))->unique()->count(),
+                    ],
+                    'last_checkin' => $lastCheckIn,
+                ],
+                'campuses'      => $campuses,
+                'tasks'         => $tasks,
+                'break'         => $breakData,
+                'ue'            => $ueData,
+                'today_schedule'=> $todaySchedule,
+            ],
+        ]);
+    }
+
+    /**
      * Mes campus
      */
     public function myCampuses(Request $request)
     {
         $user = $request->user();
-        $campuses = $user->campuses()
-            ->with(['departments'])
-            ->get()
-            ->map(function ($campus) {
+        $campuses = Cache::remember("user_{$user->id}_campuses", 1800, function () use ($user) {
+            return $user->campuses()->get()->map(function ($campus) {
                 return [
-                    'id' => $campus->id,
-                    'name' => $campus->name,
-                    'code' => $campus->code,
-                    'address' => $campus->address,
-                    'latitude' => $campus->latitude,
-                    'longitude' => $campus->longitude,
-                    'radius' => $campus->radius,
-                    'start_time' => substr($campus->start_time, 0, 5),
-                    'end_time' => substr($campus->end_time, 0, 5),
+                    'id'             => $campus->id,
+                    'name'           => $campus->name,
+                    'code'           => $campus->code,
+                    'address'        => $campus->address,
+                    'latitude'       => $campus->latitude,
+                    'longitude'      => $campus->longitude,
+                    'radius'         => $campus->radius,
+                    'start_time'     => substr($campus->start_time, 0, 5),
+                    'end_time'       => substr($campus->end_time, 0, 5),
                     'late_tolerance' => $campus->late_tolerance,
-                    'is_primary' => $campus->pivot->is_primary,
-                    'is_active' => $campus->is_active,
+                    'is_primary'     => $campus->pivot->is_primary,
+                    'is_active'      => $campus->is_active,
                 ];
-            });
+            })->values()->all();
+        });
 
         return response()->json([
             'campuses' => $campuses,
-            'total' => $campuses->count(),
+            'total'    => count($campuses),
         ], 200);
+    }
+
+    /**
+     * Invalider le cache campus d'un utilisateur (à appeler si on modifie ses campus)
+     */
+    public static function clearCampusCache(int $userId): void
+    {
+        Cache::forget("user_{$userId}_campuses");
     }
 
     /**

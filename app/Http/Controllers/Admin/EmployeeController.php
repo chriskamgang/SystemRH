@@ -400,6 +400,8 @@ class EmployeeController extends Controller
         } else {
             $employee->campuses()->detach();
         }
+        // Invalider le cache campus de cet employé
+        \App\Http\Controllers\API\UserController::clearCampusCache($employee->id);
 
         // Gérer les plages horaires pour les permanents enseignants
         if ($request->employee_type === 'enseignant_titulaire' && $request->has('shifts')) {

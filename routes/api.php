@@ -130,6 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/change-password', [UserController::class, 'changePassword']);
         Route::post('/update-fcm-token', [UserController::class, 'updateFcmToken']);
         Route::post('/remove-fcm-token', [UserController::class, 'removeFcmToken']);
+        Route::get('/home-data', [UserController::class, 'homeData']);
         Route::get('/dashboard', [UserController::class, 'dashboard']);
         Route::get('/my-campuses', [UserController::class, 'myCampuses']);
         Route::get('/notifications', [UserController::class, 'notifications']);
