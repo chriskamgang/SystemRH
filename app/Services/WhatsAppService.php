@@ -25,16 +25,24 @@ class WhatsAppService
             return;
         }
 
+        // Normaliser le numéro : garder uniquement les chiffres
+        $normalized = preg_replace('/\D/', '', $phone);
+
+        // Ajouter l'indicatif Cameroun (237) si absent
+        if (!str_starts_with($normalized, '237')) {
+            $normalized = '237' . $normalized;
+        }
+
         try {
             Http::timeout(5)
                 ->withHeaders(['x-api-secret' => $this->secret])
                 ->post("{$this->baseUrl}/send-message", [
-                    'phone'   => $phone,
+                    'phone'   => $normalized,
                     'message' => $message,
                 ]);
         } catch (\Throwable $e) {
             Log::warning('[WhatsApp] Envoi échoué : ' . $e->getMessage(), [
-                'phone' => $phone,
+                'phone' => $normalized,
             ]);
         }
     }
