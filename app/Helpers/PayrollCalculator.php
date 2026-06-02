@@ -416,8 +416,9 @@ class PayrollCalculator
         $latePenaltyAmount = $normalLatePenalty + $travelLatePenalty;
 
         // 9. Calculer le salaire proportionnel aux heures réellement travaillées
-        // Salaire = heures travaillées × taux horaire (progressif)
-        $salaryForDaysWorked = $totalHoursWorked * $hourlyRate;
+        // Les jours justifiés sont comptés comme des heures payées (ex: congé maladie justifié)
+        $justifiedHours = $daysJustified * $workingHoursPerDay;
+        $salaryForDaysWorked = ($totalHoursWorked + $justifiedHours) * $hourlyRate;
 
         // On garde le concept de déduction d'absence pour la compatibilité, mais mis à 0
         $absenceDeduction = 0;
