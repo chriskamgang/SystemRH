@@ -25,6 +25,9 @@ class Campus extends Model
         'late_tolerance',
         'working_days',
         'is_active',
+        'attendance_mode',
+        'night_start_time',
+        'night_late_tolerance',
     ];
 
     protected $casts = [
@@ -34,7 +37,13 @@ class Campus extends Model
         'late_tolerance' => 'integer',
         'working_days' => 'array',
         'is_active' => 'boolean',
+        'night_late_tolerance' => 'integer',
     ];
+
+    public function isHospitalMode(): bool
+    {
+        return $this->attendance_mode === 'hospital';
+    }
 
     /**
      * Relations

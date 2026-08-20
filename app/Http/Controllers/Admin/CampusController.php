@@ -50,14 +50,22 @@ class CampusController extends Controller
                 ->withInput();
         }
 
-        Campus::create([
+        $data = [
             'name' => $request->name,
             'address' => $request->address,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'radius' => $request->radius,
             'is_active' => $request->has('is_active'),
-        ]);
+            'attendance_mode' => $request->input('attendance_mode', 'standard'),
+        ];
+
+        if ($request->input('attendance_mode') === 'hospital') {
+            $data['night_start_time'] = $request->input('night_start_time', '19:00');
+            $data['night_late_tolerance'] = $request->input('night_late_tolerance', 15);
+        }
+
+        Campus::create($data);
 
         return redirect()
             ->route('admin.campuses.index')
@@ -114,14 +122,25 @@ class CampusController extends Controller
                 ->withInput();
         }
 
-        $campus->update([
+        $data = [
             'name' => $request->name,
             'address' => $request->address,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'radius' => $request->radius,
             'is_active' => $request->has('is_active'),
-        ]);
+            'attendance_mode' => $request->input('attendance_mode', 'standard'),
+        ];
+
+        if ($request->input('attendance_mode') === 'hospital') {
+            $data['night_start_time'] = $request->input('night_start_time', '19:00');
+            $data['night_late_tolerance'] = $request->input('night_late_tolerance', 15);
+        } else {
+            $data['night_start_time'] = null;
+            $data['night_late_tolerance'] = null;
+        }
+
+        $campus->update($data);
 
         return redirect()
             ->route('admin.campuses.index')

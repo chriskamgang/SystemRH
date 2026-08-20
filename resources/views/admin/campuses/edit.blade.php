@@ -188,12 +188,49 @@
                     @enderror
                 </div>
 
+                <!-- Mode de presence -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Mode de presence</h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label for="attendance_mode" class="block text-sm font-medium text-gray-700 mb-2">Type de campus</label>
+                            <select name="attendance_mode" id="attendance_mode"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onchange="toggleHospitalFields()">
+                                <option value="standard" {{ old('attendance_mode', $campus->attendance_mode) !== 'hospital' ? 'selected' : '' }}>Standard (horaires fixes)</option>
+                                <option value="hospital" {{ old('attendance_mode', $campus->attendance_mode) === 'hospital' ? 'selected' : '' }}>Hopital (jour + garde de nuit)</option>
+                            </select>
+                            <p class="mt-1 text-sm text-gray-500">Le mode hopital permet les gardes de nuit avec check-in le soir et check-out le lendemain matin.</p>
+                        </div>
+
+                        <div id="hospital-fields" style="display: none;" class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
+                            <h4 class="text-sm font-semibold text-blue-800">Configuration des gardes</h4>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="night_start_time" class="block text-sm font-medium text-gray-700 mb-2">Heure de debut de garde</label>
+                                    <input type="time" name="night_start_time" id="night_start_time" value="{{ old('night_start_time', $campus->night_start_time ?? '19:00') }}"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <p class="mt-1 text-sm text-gray-500">L'employe de garde doit arriver avant cette heure (sinon retard).</p>
+                                </div>
+
+                                <div>
+                                    <label for="night_late_tolerance" class="block text-sm font-medium text-gray-700 mb-2">Tolerance retard garde (minutes)</label>
+                                    <input type="number" name="night_late_tolerance" id="night_late_tolerance" value="{{ old('night_late_tolerance', $campus->night_late_tolerance ?? 15) }}" min="0" max="60"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Statut -->
                 <div>
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Statut</h3>
-                    
+
                     <div class="flex items-center">
-                        <input type="checkbox" name="is_active" id="is_active" value="1" 
+                        <input type="checkbox" name="is_active" id="is_active" value="1"
                                {{ old('is_active', $campus->is_active) ? 'checked' : '' }}
                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         <label for="is_active" class="ml-2 block text-sm text-gray-700">
@@ -297,6 +334,12 @@
             updateCircle(lat, lng);
         }
     });
+
+    function toggleHospitalFields() {
+        const mode = document.getElementById('attendance_mode').value;
+        document.getElementById('hospital-fields').style.display = mode === 'hospital' ? 'block' : 'none';
+    }
+    toggleHospitalFields();
 
     // Gérer l'événement de chargement de la page
     window.addEventListener('load', initMap);

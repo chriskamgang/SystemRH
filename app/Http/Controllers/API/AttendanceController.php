@@ -18,19 +18,31 @@ use Illuminate\Validation\ValidationException;
 class AttendanceController extends Controller
 {
     /**
-     * Détecter automatiquement la plage horaire (matin ou soir) selon l'heure actuelle
+     * Détecter automatiquement la plage horaire selon l'heure actuelle et le campus
+     * - morning : avant le séparateur (17:30 par défaut)
+     * - evening : après le séparateur (campus standard)
+     * - night   : après l'heure de garde (campus hopital uniquement)
      */
-    private function detectShift($currentTime = null)
+    private function detectShift($currentTime = null, $campus = null)
     {
         if (!$currentTime) {
             $currentTime = now();
         }
 
-        // Séparateur à 17:30 (début réel de la plage du soir)
-        // Avant 17:30 = matin, à partir de 17:30 = soir
+        $current = Carbon::parse($currentTime->format('H:i:s'));
+
+        // Campus hopital : detecter si c'est une garde de nuit
+        if ($campus && $campus->isHospitalMode() && $campus->night_start_time) {
+            $nightStart = Carbon::parse($campus->night_start_time);
+            // Apres l'heure de garde OU avant l'heure d'arrivee du matin = shift night
+            $morningStart = Carbon::parse($campus->start_time ?? '08:00');
+            if ($current->gte($nightStart) || $current->lt($morningStart)) {
+                return 'night';
+            }
+        }
+
         $separatorTime = Setting::get('shift_separator_time', '17:30');
         $separator = Carbon::parse($separatorTime);
-        $current = Carbon::parse($currentTime->format('H:i:s'));
 
         return $current->lt($separator) ? 'morning' : 'evening';
     }
@@ -38,9 +50,14 @@ class AttendanceController extends Controller
     /**
      * Obtenir les horaires d'une plage
      */
-    private function getShiftTimes($shift)
+    private function getShiftTimes($shift, $campus = null)
     {
-        if ($shift === 'morning') {
+        if ($shift === 'night' && $campus && $campus->isHospitalMode()) {
+            return [
+                'start' => $campus->night_start_time ?? '19:00',
+                'end' => $campus->start_time ?? '08:00', // fin de garde = debut du matin suivant
+            ];
+        } elseif ($shift === 'morning') {
             return [
                 'start' => Setting::get('morning_start_time', '08:00'),
                 'end' => Setting::get('morning_end_time', '17:00'),
@@ -87,17 +104,20 @@ class AttendanceController extends Controller
      * Trouver un check-in actif TOUS SHIFTS CONFONDUS (pour le check-out)
      * Le check-out ne doit pas dépendre du shift détecté à l'heure actuelle.
      * Un employé du matin qui check-out à 19h doit retrouver son check-in "morning".
+     * Pour les gardes de nuit : cherche aussi les check-ins de la veille (cross-minuit).
      */
     private function findAnyActiveCheckIn($user)
     {
-        $todayAttendances = Attendance::where('user_id', $user->id)
-            ->whereDate('timestamp', today())
+        // Chercher aujourd'hui + hier (pour les gardes de nuit cross-minuit)
+        $attendances = Attendance::where('user_id', $user->id)
+            ->where('timestamp', '>=', today()->subDay())
+            ->with('campus')
             ->orderBy('timestamp', 'desc')
             ->get();
 
-        $checkOuts = $todayAttendances->where('type', 'check-out');
+        $checkOuts = $attendances->where('type', 'check-out');
 
-        foreach ($todayAttendances->where('type', 'check-in') as $ci) {
+        foreach ($attendances->where('type', 'check-in') as $ci) {
             $hasCheckOut = $checkOuts
                 ->where('timestamp', '>', $ci->timestamp)
                 ->isNotEmpty();
@@ -306,27 +326,28 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Détecter automatiquement la plage horaire
+        // Détecter automatiquement la plage horaire (avec support mode hopital)
         $now = now();
-        $shift = $this->detectShift($now);
+        $shift = $this->detectShift($now, $campus);
 
         // Vérifier s'il y a un check-in actif sur N'IMPORTE QUEL campus et N'IMPORTE QUEL shift
-        // L'employé doit d'abord faire check-out avant de changer de campus ou de shift
-        $allTodayAttendances = Attendance::where('user_id', $user->id)
-            ->whereDate('timestamp', today())
+        // Inclure la veille pour les gardes de nuit (cross-minuit)
+        $recentAttendances = Attendance::where('user_id', $user->id)
+            ->where('timestamp', '>=', today()->subDay())
+            ->with('campus')
             ->get();
 
-        $allTodayCheckOuts = $allTodayAttendances->where('type', 'check-out');
+        $recentCheckOuts = $recentAttendances->where('type', 'check-out');
 
-        foreach ($allTodayAttendances->where('type', 'check-in') as $checkIn) {
-            // Chercher un check-out après ce check-in (tous shifts/campus confondus)
-            $hasCheckOut = $allTodayCheckOuts
+        foreach ($recentAttendances->where('type', 'check-in') as $checkIn) {
+            $hasCheckOut = $recentCheckOuts
                 ->where('timestamp', '>', $checkIn->timestamp)
                 ->isNotEmpty();
 
             if (!$hasCheckOut) {
                 $checkInShift = $checkIn->shift ?? 'morning';
-                $shiftLabel = $checkInShift === 'morning' ? 'matin' : 'soir';
+                $shiftLabels = ['morning' => 'matin', 'evening' => 'soir', 'night' => 'garde de nuit'];
+                $shiftLabel = $shiftLabels[$checkInShift] ?? $checkInShift;
                 $activeCampusName = $checkIn->campus ? $checkIn->campus->name : 'un autre campus';
 
                 if ($checkIn->campus_id === $campus->id) {
@@ -355,8 +376,9 @@ class AttendanceController extends Controller
 
         // Obtenir les horaires de travail
         $currentTime = Carbon::parse($now->format('H:i:s'));
+        $isNightShift = $shift === 'night';
 
-        if ($user->hasCustomWorkHours()) {
+        if ($user->hasCustomWorkHours() && !$isNightShift) {
             $shiftStartTime = Carbon::parse($user->custom_start_time);
             $shiftEndTime = Carbon::parse($user->custom_end_time);
             $lateTolerance = $user->getLateTolerance($campus);
@@ -365,12 +387,18 @@ class AttendanceController extends Controller
                 'end' => $user->custom_end_time,
             ];
         } else {
-            $shiftTimes = $this->getShiftTimes($shift);
-            $effectiveEnd = $this->getEffectiveEndTime($user);
-            $shiftTimes['end'] = $effectiveEnd;
+            $shiftTimes = $this->getShiftTimes($shift, $campus);
 
-            $shiftStartTime = Carbon::parse($shiftTimes['start']);
-            $lateTolerance = 0;
+            if ($isNightShift) {
+                // Garde de nuit : pas de plafonnement d'heure de fin
+                $shiftStartTime = Carbon::parse($shiftTimes['start']);
+                $lateTolerance = $campus->night_late_tolerance ?? 15;
+            } else {
+                $effectiveEnd = $this->getEffectiveEndTime($user);
+                $shiftTimes['end'] = $effectiveEnd;
+                $shiftStartTime = Carbon::parse($shiftTimes['start']);
+                $lateTolerance = 0;
+            }
         }
 
         $toleranceTime = $shiftStartTime->copy()->addMinutes($lateTolerance);
@@ -385,6 +413,11 @@ class AttendanceController extends Controller
             // Vacataires : pas de retard (payés à l'heure)
             $isLate = false;
             $lateMinutes = 0;
+        } elseif ($isNightShift && $isFirstCheckInOfDay) {
+            // Garde de nuit : retard par rapport a l'heure de debut de garde
+            $isLate = $currentTime->gt($toleranceTime);
+            $lateMinutes = $isLate ? $shiftStartTime->diffInMinutes($currentTime) : 0;
+            // Pas de demi-journee pour les gardes
         } elseif ($isFirstCheckInOfDay) {
             // Premier check-in du jour : contrôle de retard normal
             $isLate = $currentTime->gt($toleranceTime);
@@ -400,6 +433,7 @@ class AttendanceController extends Controller
                 ->where('type', 'check-out')
                 ->where('shift', $shift)
                 ->whereDate('timestamp', today())
+                ->with('campus')
                 ->latest('timestamp')
                 ->first();
 
@@ -465,15 +499,16 @@ class AttendanceController extends Controller
 
         $attendance->load(['campus', 'tardiness']);
 
-        $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+        $shiftLabels = ['morning' => 'matin', 'evening' => 'soir', 'night' => 'garde de nuit'];
+        $shiftLabel = $shiftLabels[$shift] ?? $shift;
         if ($isHalfDay) {
-            $message = "Check-in enregistré pour la plage du {$shiftLabel}. Demi-journée comptabilisée (arrivée tardive).";
+            $message = "Check-in enregistre pour la plage du {$shiftLabel}. Demi-journee comptabilisee (arrivee tardive).";
         } elseif ($isLate && $travelLateReason) {
-            $message = "Check-in enregistré pour la plage du {$shiftLabel}. Retard de {$lateMinutes} min (déplacement entre campus).";
+            $message = "Check-in enregistre pour la plage du {$shiftLabel}. Retard de {$lateMinutes} min (deplacement entre campus).";
         } elseif ($isLate) {
-            $message = "Check-in enregistré pour la plage du {$shiftLabel} avec retard de {$lateMinutes} minutes.";
+            $message = "Check-in enregistre pour la plage du {$shiftLabel} avec retard de {$lateMinutes} minutes.";
         } else {
-            $message = "Check-in enregistré avec succès pour la plage du {$shiftLabel}.";
+            $message = "Check-in enregistre avec succes pour la plage du {$shiftLabel}.";
         }
 
         // Notification WhatsApp (fire-and-forget)
@@ -553,11 +588,14 @@ class AttendanceController extends Controller
             ], 400);
         }
 
+        // Pour les gardes de nuit : pas de normalisation (heures reelles)
+        $isNightShiftCheckout = ($shift === 'night');
+
         // Normaliser les heures pour le calcul :
-        // - Check-in avant 8h → compter à partir de 8h
-        // - Check-out après 18h (ou 21h30 si cours le soir) → plafonner
-        $effectiveCheckIn = $this->normalizeCheckInTime($checkIn->timestamp);
-        $effectiveCheckOut = $this->normalizeCheckOutTime($now, $user);
+        // - Check-in avant 8h → compter à partir de 8h (sauf garde de nuit)
+        // - Check-out après 18h (ou 21h30 si cours le soir) → plafonner (sauf garde de nuit)
+        $effectiveCheckIn = $isNightShiftCheckout ? $checkIn->timestamp : $this->normalizeCheckInTime($checkIn->timestamp);
+        $effectiveCheckOut = $isNightShiftCheckout ? $now : $this->normalizeCheckOutTime($now, $user);
 
         // Calculer la durée de cette session (en soustrayant la pause)
         $sessionDurationMinutes = $effectiveCheckIn->diffInMinutes($effectiveCheckOut);
@@ -659,9 +697,10 @@ class AttendanceController extends Controller
 
         $checkout->load('campus');
 
-        $shiftLabel = $shift === 'morning' ? 'matin' : 'soir';
+        $shiftLabels = ['morning' => 'matin', 'evening' => 'soir', 'night' => 'garde de nuit'];
+        $shiftLabel = $shiftLabels[$shift] ?? $shift;
 
-        $responseMessage = "Check-out enregistré avec succès pour la plage du {$shiftLabel}.";
+        $responseMessage = "Check-out enregistre avec succes pour la plage du {$shiftLabel}.";
         if ($isCapped) {
             $responseMessage .= " ⚠️ Heures plafonnées à {$cappedHours}h (sur {$sessionDurationHours}h effectuées).";
         }
@@ -743,8 +782,8 @@ class AttendanceController extends Controller
             ], 403);
         }
 
-        // Detecter le shift selon l'heure offline
-        $shift = $this->detectShift($offlineTime);
+        // Detecter le shift selon l'heure offline (avec support mode hopital)
+        $shift = $this->detectShift($offlineTime, $campus);
 
         if ($type === 'check-out') {
             // Chercher un check-in actif pour ce jour
@@ -832,13 +871,19 @@ class AttendanceController extends Controller
         $lateMinutes = 0;
         $isHalfDay = false;
 
+        $isNightShiftOffline = $shift === 'night';
+
         if (!$isVacataire && $isFirstCheckIn) {
-            if ($user->hasCustomWorkHours()) {
+            if ($isNightShiftOffline && $campus->isHospitalMode()) {
+                $shiftTimes = $this->getShiftTimes($shift, $campus);
+                $shiftStartTime = Carbon::parse($shiftTimes['start']);
+                $lateTolerance = $campus->night_late_tolerance ?? 15;
+            } elseif ($user->hasCustomWorkHours()) {
                 $shiftStartTime = Carbon::parse($user->custom_start_time);
                 $lateTolerance = $user->getLateTolerance($campus);
                 $shiftTimes = ['start' => $user->custom_start_time, 'end' => $user->custom_end_time];
             } else {
-                $shiftTimes = $this->getShiftTimes($shift);
+                $shiftTimes = $this->getShiftTimes($shift, $campus);
                 $shiftStartTime = Carbon::parse($shiftTimes['start']);
                 $lateTolerance = 0;
             }

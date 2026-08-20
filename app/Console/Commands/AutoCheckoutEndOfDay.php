@@ -38,6 +38,12 @@ class AutoCheckoutEndOfDay extends Command
 
         $count = 0;
         foreach ($openCheckIns as $checkIn) {
+            // Gardes de nuit (hopital) : ne pas auto-checkout, l'employe le fait lui-meme
+            if ($checkIn->shift === 'night') {
+                $this->line("  -> Garde de nuit ignoree pour {$checkIn->user->last_name} {$checkIn->user->first_name} (check-out manuel)");
+                continue;
+            }
+
             // Déterminer l'heure de fin de la plage
             $endTime = $checkIn->shift === 'evening' ? '21:00:00' : '17:00:00';
             $checkoutTimestamp = Carbon::parse($checkIn->timestamp->toDateString() . ' ' . $endTime);
