@@ -10,6 +10,7 @@ use App\Models\Specialty;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class UniteEnseignementController extends Controller
 {
@@ -655,5 +656,77 @@ class UniteEnseignementController extends Controller
             new \App\Exports\UnitesEnseignementTemplateExport(),
             'template_import_ue.xlsx'
         );
+    }
+
+    /**
+     * Export PDF des attributions de cours
+     */
+    public function exportAttributions(Request $request)
+    {
+        $query = UniteEnseignement::with(['enseignant', 'schedules'])
+            ->whereNotNull('enseignant_id');
+
+        if ($request->filled('specialite')) {
+            $query->where('specialite', $request->specialite);
+        }
+        if ($request->filled('niveau')) {
+            $query->where('niveau', $request->niveau);
+        }
+        if ($request->filled('annee_academique')) {
+            $query->where('annee_academique', $request->annee_academique);
+        }
+        if ($request->filled('semestre')) {
+            $query->where('semestre', $request->semestre);
+        }
+        if ($request->filled('statut')) {
+            $query->where('statut', $request->statut);
+        }
+
+        $unites = $query->orderBy('specialite')->orderBy('niveau')->orderBy('code_ue')->get();
+
+        // Group by enseignant
+        $byEnseignant = $unites->groupBy('enseignant_id')->map(function ($ues) {
+            $enseignant = $ues->first()->enseignant;
+            $totalVolume = $ues->sum('volume_horaire_total');
+            $totalEffectuees = $ues->sum(fn($ue) => $ue->heures_effectuees);
+            $totalMontant = $ues->sum(fn($ue) => $ue->montant_paye);
+
+            return (object) [
+                'enseignant' => $enseignant,
+                'ues' => $ues,
+                'total_ues' => $ues->count(),
+                'total_volume' => $totalVolume,
+                'total_effectuees' => $totalEffectuees,
+                'total_montant' => $totalMontant,
+            ];
+        })->sortBy('enseignant.first_name')->values();
+
+        // Group by specialite/niveau
+        $bySpecialite = $unites->groupBy(function ($ue) {
+            return ($ue->specialite ?? 'Non definie') . ' - ' . ($ue->niveau ?? 'Non defini');
+        })->sortKeys();
+
+        // Stats globales
+        $totalUes = $unites->count();
+        $totalActivees = $unites->where('statut', 'activee')->count();
+        $totalEnseignants = $byEnseignant->count();
+        $totalVolume = $unites->sum('volume_horaire_total');
+
+        // Filtres appliques
+        $filters = collect([
+            $request->filled('specialite') ? 'Specialite: ' . $request->specialite : null,
+            $request->filled('niveau') ? 'Niveau: ' . $request->niveau : null,
+            $request->filled('annee_academique') ? 'Annee: ' . $request->annee_academique : null,
+            $request->filled('semestre') ? 'Semestre: ' . $request->semestre : null,
+            $request->filled('statut') ? 'Statut: ' . $request->statut : null,
+        ])->filter()->implode(' | ');
+
+        $pdf = Pdf::loadView('admin.unites-enseignement.pdf.attributions', compact(
+            'byEnseignant', 'bySpecialite', 'totalUes', 'totalActivees',
+            'totalEnseignants', 'totalVolume', 'filters'
+        ));
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('attributions-cours-' . now()->format('Y-m-d') . '.pdf');
     }
 }

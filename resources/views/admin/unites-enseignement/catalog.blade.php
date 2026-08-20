@@ -17,6 +17,9 @@
             <a href="{{ route('admin.unites-enseignement.import') }}" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition shadow-sm font-semibold">
                 <i class="fas fa-file-import mr-2"></i> Importer des UE
             </a>
+            <a href="{{ route('admin.unites-enseignement.export-attributions', request()->query()) }}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm font-semibold">
+                <i class="fas fa-file-pdf mr-2"></i> Imprimer Attributions
+            </a>
         </div>
 
         <!-- Recherche Employé type "Mise en avant" -->
