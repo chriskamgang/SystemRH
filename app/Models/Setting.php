@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Traits\BelongsToCompany;
 
 class Setting extends Model
@@ -18,23 +19,42 @@ class Setting extends Model
         'description',
     ];
 
+    private static array $localCache = [];
+
+    /**
+     * Charger tous les settings en une seule requete et les garder en cache
+     */
+    private static function loadAll(): array
+    {
+        if (!empty(self::$localCache)) {
+            return self::$localCache;
+        }
+
+        self::$localCache = Cache::remember('settings_all', 3600, function () {
+            return self::all()->keyBy('key_name')->toArray();
+        });
+
+        return self::$localCache;
+    }
+
     /**
      * Helper methods
      */
     public static function get($key, $default = null)
     {
-        $setting = self::where('key_name', $key)->first();
+        $settings = self::loadAll();
 
-        if (!$setting) {
+        if (!isset($settings[$key])) {
             return $default;
         }
 
-        // Cast selon le type
-        return match ($setting->type) {
-            'integer' => (int) $setting->value,
-            'boolean' => $setting->value === 'true' || $setting->value === '1',
-            'json' => json_decode($setting->value, true),
-            default => $setting->value,
+        $setting = $settings[$key];
+
+        return match ($setting['type'] ?? 'string') {
+            'integer' => (int) $setting['value'],
+            'boolean' => $setting['value'] === 'true' || $setting['value'] === '1',
+            'json' => json_decode($setting['value'], true),
+            default => $setting['value'],
         };
     }
 
@@ -51,6 +71,10 @@ class Setting extends Model
                 'type' => 'string',
             ]);
         }
+
+        // Invalider le cache
+        Cache::forget('settings_all');
+        self::$localCache = [];
 
         return true;
     }

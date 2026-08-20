@@ -28,7 +28,6 @@ class UniteEnseignementController extends Controller
         // Récupérer les UE activées
         $unitesActivees = UniteEnseignement::where('enseignant_id', $user->id)
             ->where('statut', 'activee')
-            ->with('presenceIncidents')
             ->orderBy('nom_matiere')
             ->get()
             ->map(function ($ue) use ($user) {

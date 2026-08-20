@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 class UserLocation extends Model
 {
@@ -70,7 +71,9 @@ class UserLocation extends Model
      */
     public function isInCampusZone(): ?Campus
     {
-        $campuses = Campus::all();
+        $campuses = Cache::remember('all_active_campuses', 300, function () {
+            return Campus::where('is_active', true)->get();
+        });
 
         foreach ($campuses as $campus) {
             if ($campus->isUserInZone($this->latitude, $this->longitude)) {

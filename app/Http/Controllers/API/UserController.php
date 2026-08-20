@@ -329,25 +329,28 @@ class UserController extends Controller
             ->where('check_time', '>=', now()->subDay())
             ->count();
 
-        // ── Dernier check-in ──────────────────────────────────────────────────
-        $lastCheckIn = $user->attendances()
-            ->where('type', 'check-in')
-            ->with('campus')
-            ->latest('timestamp')
-            ->first();
+        // ── Dernier check-in (reutiliser les donnees du jour deja chargees) ──
+        $lastCheckIn = $todayCheckIns->sortByDesc('timestamp')->first()
+            ?? $user->attendances()
+                ->where('type', 'check-in')
+                ->with('campus')
+                ->latest('timestamp')
+                ->first();
 
         // ── UE & Emploi du temps (enseignants seulement) ──────────────────────
         $ueData       = null;
         $todaySchedule = null;
 
         if ($isTeacher) {
-            $unitesActivees = UniteEnseignement::where('enseignant_id', $user->id)
-                ->where('statut', 'activee')
+            // Charger toutes les UE en une seule requete (au lieu de 3)
+            $allUes = UniteEnseignement::where('enseignant_id', $user->id)
                 ->orderBy('nom_matiere')
-                ->get()
-                ->map(function ($ue) use ($user) {
-                    $tauxHoraire      = (float) ($user->hourly_rate ?? 0);
-                    $heuresValidees   = (float) $ue->heures_effectuees_validees;
+                ->get();
+
+            $tauxHoraire = (float) ($user->hourly_rate ?? 0);
+
+            $unitesActivees = $allUes->where('statut', 'activee')->map(function ($ue) use ($tauxHoraire) {
+                    $heuresValidees = (float) $ue->heures_effectuees_validees;
                     return [
                         'id'                    => $ue->id,
                         'code_ue'               => $ue->code_ue,
@@ -367,18 +370,14 @@ class UserController extends Controller
                     ];
                 });
 
-            $unitesNonActivees = UniteEnseignement::where('enseignant_id', $user->id)
-                ->where('statut', 'non_activee')
-                ->orderBy('nom_matiere')
-                ->get()
-                ->map(function ($ue) use ($user) {
+            $unitesNonActivees = $allUes->where('statut', 'non_activee')->map(function ($ue) use ($tauxHoraire) {
                     return [
                         'id'                   => $ue->id,
                         'code_ue'              => $ue->code_ue,
                         'nom_matiere'          => $ue->nom_matiere,
                         'volume_horaire_total' => (float) $ue->volume_horaire_total,
                         'montant_potentiel'    => (float) $ue->montant_max,
-                        'taux_horaire'         => (float) $user->hourly_rate,
+                        'taux_horaire'         => $tauxHoraire,
                         'annee_academique'     => $ue->annee_academique,
                         'semestre'             => $ue->semestre,
                         'statut'               => 'non_activee',
@@ -393,12 +392,12 @@ class UserController extends Controller
                     'heures_effectuees' => (float) $unitesActivees->sum('heures_effectuees'),
                     'montant_paye'      => (float) $unitesActivees->sum('montant_paye'),
                     'montant_restant'   => (float) $unitesActivees->sum('montant_restant'),
-                    'taux_horaire'      => (float) $user->hourly_rate,
+                    'taux_horaire'      => $tauxHoraire,
                 ],
             ];
 
             $jourActuel  = UeSchedule::getCurrentDayFr();
-            $ueIds       = UniteEnseignement::where('enseignant_id', $user->id)->where('statut', 'activee')->pluck('id');
+            $ueIds       = $allUes->where('statut', 'activee')->pluck('id');
             $schedules   = UeSchedule::whereIn('unite_enseignement_id', $ueIds)
                 ->where('is_active', true)
                 ->validNow()
