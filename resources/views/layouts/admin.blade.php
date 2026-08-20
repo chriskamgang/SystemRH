@@ -205,6 +205,11 @@
                 </a>
                 @endif
 
+                <a href="{{ route('admin.kiosk.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.kiosk.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-qrcode w-5"></i>
+                    <span class="ml-3">Bornes & Badges</span>
+                </a>
+
                 <a href="{{ route('admin.departments.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.departments.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-sitemap w-5"></i>
                     <span class="ml-3">Départements</span>
@@ -214,6 +219,10 @@
                 <a href="{{ route('admin.attendances.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.attendances.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
                     <i class="fas fa-clock w-5"></i>
                     <span class="ml-3">Presences</span>
+                </a>
+                <a href="{{ route('admin.attendance-report.index') }}" class="flex items-center px-4 py-2.5 mb-1 rounded-lg text-sm {{ request()->routeIs('admin.attendance-report.*') ? 'bg-blue-600' : 'hover:bg-gray-800' }}">
+                    <i class="fas fa-chart-bar w-5"></i>
+                    <span class="ml-3">Rapport Pointages</span>
                 </a>
                 @endif
 

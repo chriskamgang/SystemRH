@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\CampusController;
 use App\Http\Controllers\Admin\AttendanceController;
+use App\Http\Controllers\Admin\AttendanceReportController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\LandingController;
 
@@ -25,6 +26,9 @@ Route::get('/telecharger', [LandingController::class, 'download'])->name('landin
 Route::get('/privacy-policy', [LandingController::class, 'privacyPolicy'])->name('landing.privacy-policy');
 Route::get('/support', [LandingController::class, 'support'])->name('landing.support');
 Route::post('/telecharger/ios-beta', [LandingController::class, 'registerIosBeta'])->name('landing.ios-beta');
+
+// Kiosk (page borne de pointage — publique)
+Route::get('/kiosk', fn() => view('kiosk.scan'))->name('kiosk.scan');
 
 // Authentication routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -94,6 +98,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Campus
     Route::resource('campuses', CampusController::class);
 
+    // Kiosk (bornes de pointage & badges QR)
+    Route::prefix('kiosk')->name('kiosk.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\KioskController::class, 'index'])->name('index');
+        Route::post('/devices', [\App\Http\Controllers\Admin\KioskController::class, 'storeDevice'])->name('devices.store');
+        Route::post('/devices/{id}/toggle', [\App\Http\Controllers\Admin\KioskController::class, 'toggleDevice'])->name('devices.toggle');
+        Route::delete('/devices/{id}', [\App\Http\Controllers\Admin\KioskController::class, 'destroyDevice'])->name('devices.destroy');
+        Route::post('/devices/{id}/regenerate-token', [\App\Http\Controllers\Admin\KioskController::class, 'regenerateDeviceToken'])->name('devices.regenerate');
+        Route::get('/badges', [\App\Http\Controllers\Admin\KioskController::class, 'badges'])->name('badges');
+        Route::post('/badges/{userId}/generate', [\App\Http\Controllers\Admin\KioskController::class, 'generateToken'])->name('badges.generate');
+        Route::post('/badges/generate-bulk', [\App\Http\Controllers\Admin\KioskController::class, 'generateTokensBulk'])->name('badges.generate-bulk');
+        Route::post('/badges/{userId}/revoke', [\App\Http\Controllers\Admin\KioskController::class, 'revokeToken'])->name('badges.revoke');
+        Route::get('/badges/{userId}/download', [\App\Http\Controllers\Admin\KioskController::class, 'downloadBadge'])->name('badges.download');
+        Route::post('/badges/download-bulk', [\App\Http\Controllers\Admin\KioskController::class, 'downloadBadgesBulk'])->name('badges.download-bulk');
+    });
+
     // Departments
     Route::resource('departments', \App\Http\Controllers\Admin\DepartmentController::class)->except(['show']);
 
@@ -101,6 +120,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::get('/attendances', [AttendanceController::class, 'index'])->name('attendances.index');
     Route::get('/attendances/export-pdf', [AttendanceController::class, 'exportPdf'])->name('attendances.export-pdf');
     Route::get('/attendances/{id}', [AttendanceController::class, 'show'])->name('attendances.show');
+
+    // Rapport de pointages (jour/semaine/mois)
+    Route::get('/attendance-report', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
+    Route::get('/attendance-report/export-pdf', [AttendanceReportController::class, 'exportPdf'])->name('attendance-report.export-pdf');
+    Route::get('/attendance-report/export-excel', [AttendanceReportController::class, 'exportExcel'])->name('attendance-report.export-excel');
 
     // Real-time map
     Route::get('/realtime', [DashboardController::class, 'realtime'])->name('realtime');
@@ -220,6 +244,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/assign', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'assignToTeacher'])->name('assign.store');
         Route::get('/search-by-code', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'searchByCode'])->name('search-by-code');
         Route::post('/search-multiple-codes', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'searchMultipleCodes'])->name('search-multiple-codes');
+
+        // Export PDF attributions
+        Route::get('/export-attributions', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'exportAttributions'])->name('export-attributions');
 
         // Import/Export
         Route::get('/import', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'importForm'])->name('import');

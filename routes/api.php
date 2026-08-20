@@ -32,6 +32,12 @@ Route::get('/', function () {
 // Routes publiques
 Route::post('/login', [AuthController::class, 'login']);
 
+// Routes Kiosk (borne de pointage — authentification par device_token)
+Route::prefix('kiosk')->group(function () {
+    Route::post('/auth', [\App\Http\Controllers\API\KioskController::class, 'auth']);
+    Route::post('/scan', [\App\Http\Controllers\API\KioskController::class, 'scan']);
+});
+
 // Vérification de mise à jour de l'app mobile
 Route::get('/check-update', function (Request $request) {
     $platform = $request->query('platform', 'android');

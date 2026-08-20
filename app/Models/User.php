@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -54,6 +55,7 @@ class User extends Authenticatable
         'can_access_admin',
         'is_super_admin',
         'company_id',
+        'qr_token',
     ];
 
     /**
@@ -82,6 +84,27 @@ class User extends Authenticatable
             'jours_travail' => 'array',
             'volume_horaire_hebdomadaire' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Generer ou regenerer le token QR de l'employe
+     */
+    public function generateQrToken(): string
+    {
+        do {
+            $token = Str::random(48);
+        } while (self::where('qr_token', $token)->exists());
+
+        $this->update(['qr_token' => $token]);
+        return $token;
+    }
+
+    /**
+     * Revoquer le token QR (badge perdu/vole)
+     */
+    public function revokeQrToken(): void
+    {
+        $this->update(['qr_token' => null]);
     }
 
     /**
