@@ -114,9 +114,11 @@ class Campus extends Model
     {
         $distance = $this->distanceToUser($latitude, $longitude);
 
-        // Tolérance dynamique : max entre 50m fixe et la précision GPS du téléphone
+        // Tolérance dynamique basée sur la précision GPS du téléphone
+        // - Minimum 50m (bon GPS)
+        // - Jusqu'à la précision reportée, cap 1000m (téléphones bas de gamme)
         $baseTolerance = 50;
-        $gpsTolerance = ($accuracy && $accuracy > 0) ? min($accuracy, 500) : 0;
+        $gpsTolerance = ($accuracy && $accuracy > 0) ? min($accuracy, 1000) : 0;
         $tolerance = max($baseTolerance, $gpsTolerance);
 
         return $distance <= ($this->radius + $tolerance);
