@@ -114,12 +114,33 @@ class Campus extends Model
     {
         $distance = $this->distanceToUser($latitude, $longitude);
 
-        // Tolérance dynamique basée sur la précision GPS du téléphone
-        // - Minimum 50m (bon GPS)
-        // - Jusqu'à la précision reportée, cap 1000m (téléphones bas de gamme)
+        // Tolérance dynamique basée sur le chevauchement GPS
+        // Logique : si le cercle d'incertitude GPS chevauche la zone du campus,
+        // l'employé PEUT être dans la zone → on l'autorise.
+        // Sécurité : si distance - accuracy > radius, impossible d'être dans la zone.
         $baseTolerance = 50;
-        $gpsTolerance = ($accuracy && $accuracy > 0) ? min($accuracy, 1000) : 0;
-        $tolerance = max($baseTolerance, $gpsTolerance);
+
+        if ($accuracy && $accuracy > 0) {
+            // GPS très précis (< 100m) : tolérance fixe de 50m
+            if ($accuracy <= 100) {
+                $tolerance = $baseTolerance;
+            }
+            // GPS moyen (100-500m) : utiliser la précision complète
+            elseif ($accuracy <= 500) {
+                $tolerance = $accuracy;
+            }
+            // GPS faible (500-3000m) : chevauchement avec facteur de sécurité
+            // On utilise 70% de la précision pour éviter les faux positifs à grande distance
+            elseif ($accuracy <= 3000) {
+                $tolerance = $accuracy * 0.7;
+            }
+            // GPS inutilisable (> 3000m) : cap à 2000m
+            else {
+                $tolerance = 2000;
+            }
+        } else {
+            $tolerance = $baseTolerance;
+        }
 
         return $distance <= ($this->radius + $tolerance);
     }

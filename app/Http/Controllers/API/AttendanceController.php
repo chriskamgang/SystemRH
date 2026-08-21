@@ -306,11 +306,20 @@ class AttendanceController extends Controller
         $accuracy = $request->accuracy;
         if (!$campus->isUserInZone($request->latitude, $request->longitude, $accuracy)) {
             $distance = round($campus->distanceToUser($request->latitude, $request->longitude));
+            $accuracyInt = round($accuracy ?? 0);
+
+            // Message adapté selon la qualité du GPS
+            if ($accuracyInt > 500) {
+                $message = "GPS imprécis (±{$accuracyInt}m). Activez le GPS en mode haute précision, attendez 30 secondes dehors, puis réessayez.";
+            } else {
+                $message = "Vous êtes à {$distance}m du campus. Rapprochez-vous à moins de {$campus->radius}m.";
+            }
+
             return response()->json([
-                'message' => "Vous êtes à {$distance}m du campus. Rapprochez-vous à moins de {$campus->radius}m.",
+                'message' => $message,
                 'distance' => $distance,
                 'radius' => $campus->radius,
-                'accuracy' => $accuracy,
+                'accuracy' => $accuracyInt,
             ], 400);
         }
 
