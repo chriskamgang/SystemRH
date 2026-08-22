@@ -191,10 +191,9 @@ class UserController extends Controller
         $todayCheckIns = $todayAttendances->where('type', 'check-in');
         $todayCheckOuts = $todayAttendances->where('type', 'check-out');
 
-        // Check-in actif : check-ins sans check-out correspondant
+        // Check-in actif : check-ins sans check-out après (tous campus confondus)
         $activeCheckIns = $todayCheckIns->filter(function ($checkIn) use ($todayCheckOuts) {
             return !$todayCheckOuts
-                ->where('campus_id', $checkIn->campus_id)
                 ->where('timestamp', '>', $checkIn->timestamp)
                 ->isNotEmpty();
         });
@@ -254,7 +253,6 @@ class UserController extends Controller
 
         $activeCheckIns = $todayCheckIns->filter(function ($checkIn) use ($todayCheckOuts) {
             return !$todayCheckOuts
-                ->where('campus_id', $checkIn->campus_id)
                 ->where('timestamp', '>', $checkIn->timestamp)
                 ->isNotEmpty();
         });

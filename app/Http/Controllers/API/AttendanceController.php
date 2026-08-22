@@ -354,6 +354,50 @@ class AttendanceController extends Controller
                 ->isNotEmpty();
 
             if (!$hasCheckOut) {
+                // Si le check-in date d'un jour PRECEDENT, le clôturer automatiquement (demi-journée)
+                // au lieu de bloquer l'employé (rattrapage si le cron auto-checkout n'a pas tourné)
+                if ($checkIn->timestamp->toDateString() < today()->toDateString()) {
+                    // Gardes de nuit cross-minuit : ne pas auto-clôturer si c'est la nuit dernière
+                    if ($checkIn->shift === 'night' && $checkIn->timestamp->isYesterday()) {
+                        // Garde de nuit commencée hier soir, encore potentiellement en cours
+                        $checkInShift = 'night';
+                        $shiftLabels = ['morning' => 'matin', 'evening' => 'soir', 'night' => 'garde de nuit'];
+                        $shiftLabel = $shiftLabels[$checkInShift];
+                        $activeCampusName = $checkIn->campus ? $checkIn->campus->name : 'un autre campus';
+                        return response()->json([
+                            'message' => "Vous avez une garde de nuit active sur {$activeCampusName}. Veuillez d'abord faire le check-out.",
+                            'existing_checkin' => $checkIn->load('campus'),
+                            'active_campus' => $activeCampusName,
+                            'shift' => $checkInShift,
+                        ], 400);
+                    }
+
+                    $endTime = $checkIn->shift === 'evening' ? '21:00:00' : '17:00:00';
+                    $checkoutTimestamp = Carbon::parse($checkIn->timestamp->toDateString() . ' ' . $endTime);
+
+                    Attendance::create([
+                        'user_id' => $checkIn->user_id,
+                        'campus_id' => $checkIn->campus_id,
+                        'unite_enseignement_id' => $checkIn->unite_enseignement_id,
+                        'type' => 'check-out',
+                        'shift' => $checkIn->shift ?? 'morning',
+                        'timestamp' => $checkoutTimestamp,
+                        'latitude' => $checkIn->latitude,
+                        'longitude' => $checkIn->longitude,
+                        'accuracy' => $checkIn->accuracy,
+                        'is_half_day' => true,
+                        'device_info' => ['auto_checkout' => true, 'reason' => 'Cloture automatique au check-in du lendemain - demi-journee'],
+                        'notes' => 'Auto-checkout: pas de check-out effectue la veille, demi-journee comptabilisee',
+                        'status' => 'valid',
+                    ]);
+
+                    $checkIn->update(['is_half_day' => true]);
+
+                    \Illuminate\Support\Facades\Log::info("Auto-checkout rattrapage pour user {$checkIn->user_id} - check-in du {$checkIn->timestamp->format('d/m/Y')} cloture en demi-journee");
+
+                    continue; // Check-in clôturé, on continue la boucle
+                }
+
                 $checkInShift = $checkIn->shift ?? 'morning';
                 $shiftLabels = ['morning' => 'matin', 'evening' => 'soir', 'night' => 'garde de nuit'];
                 $shiftLabel = $shiftLabels[$checkInShift] ?? $checkInShift;
