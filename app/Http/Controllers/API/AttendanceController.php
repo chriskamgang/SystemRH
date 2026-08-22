@@ -611,6 +611,11 @@ class AttendanceController extends Controller
         // Vérifier si l'utilisateur est dans la zone du campus indiqué
         $accuracy = $request->accuracy;
         if (!$campus->isUserInZone($request->latitude, $request->longitude, $accuracy)) {
+            \Illuminate\Support\Facades\Log::warning("Check-out refusé (hors zone)", [
+                'user_id' => $user->id, 'user' => $user->first_name . ' ' . $user->last_name,
+                'campus' => $campus->name, 'lat' => $request->latitude, 'lng' => $request->longitude,
+                'accuracy' => $accuracy,
+            ]);
             return response()->json([
                 'message' => 'Vous n\'êtes pas dans la zone du campus pour faire le check-out.',
             ], 400);
@@ -623,6 +628,10 @@ class AttendanceController extends Controller
         $checkIn = $this->findAnyActiveCheckIn($user);
 
         if (!$checkIn) {
+            \Illuminate\Support\Facades\Log::warning("Check-out refusé (aucun check-in actif)", [
+                'user_id' => $user->id, 'user' => $user->first_name . ' ' . $user->last_name,
+                'campus' => $campus->name,
+            ]);
             return response()->json([
                 'message' => "Aucun check-in actif trouvé pour aujourd'hui.",
             ], 400);
@@ -634,6 +643,10 @@ class AttendanceController extends Controller
         // Forcer le check-out sur le même campus que le check-in
         if ($checkIn->campus_id !== $campus->id) {
             $checkInCampusName = $checkIn->campus ? $checkIn->campus->name : 'un autre campus';
+            \Illuminate\Support\Facades\Log::warning("Check-out refusé (mauvais campus)", [
+                'user_id' => $user->id, 'user' => $user->first_name . ' ' . $user->last_name,
+                'campus_demande' => $campus->name, 'campus_checkin' => $checkInCampusName,
+            ]);
             return response()->json([
                 'message' => "Vous devez faire le check-out sur {$checkInCampusName} (campus de votre check-in).",
                 'checkin_campus_id' => $checkIn->campus_id,
