@@ -339,7 +339,7 @@ class UserController extends Controller
             ->count();
 
         // ── Dernier check-in (reutiliser les donnees du jour deja chargees) ──
-        $lastCheckIn = $todayCheckIns->sortByDesc('timestamp')->first()
+        $lastCheckIn = $todayAttendances->where('type', 'check-in')->sortByDesc('timestamp')->first()
             ?? $user->attendances()
                 ->where('type', 'check-in')
                 ->with('campus')
