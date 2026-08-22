@@ -188,15 +188,20 @@ class UserController extends Controller
             ->orderBy('timestamp', 'asc')
             ->get();
 
-        $todayCheckIns = $todayAttendances->where('type', 'check-in');
-        $todayCheckOuts = $todayAttendances->where('type', 'check-out');
+        // Check-ins actifs (aujourd'hui + hier pour détecter les orphelins cross-jour)
+        $recentAttendances = $user->attendances()
+            ->where('timestamp', '>=', today()->subDay())
+            ->with('campus')
+            ->get();
 
-        // Check-in actif : check-ins sans check-out après (tous campus confondus)
-        $activeCheckIns = $todayCheckIns->filter(function ($checkIn) use ($todayCheckOuts) {
-            return !$todayCheckOuts
-                ->where('timestamp', '>', $checkIn->timestamp)
-                ->isNotEmpty();
-        });
+        $recentCheckOuts = $recentAttendances->where('type', 'check-out');
+
+        $activeCheckIns = $recentAttendances->where('type', 'check-in')
+            ->filter(function ($checkIn) use ($recentCheckOuts) {
+                return !$recentCheckOuts
+                    ->where('timestamp', '>', $checkIn->timestamp)
+                    ->isNotEmpty();
+            });
 
         $hasActiveCheckIn = $activeCheckIns->isNotEmpty();
 
@@ -248,14 +253,20 @@ class UserController extends Controller
             ->orderBy('timestamp', 'asc')
             ->get();
 
-        $todayCheckIns  = $todayAttendances->where('type', 'check-in');
-        $todayCheckOuts = $todayAttendances->where('type', 'check-out');
+        // ── Check-ins actifs (aujourd'hui + hier pour détecter les orphelins cross-jour) ──
+        $recentAttendances = $user->attendances()
+            ->where('timestamp', '>=', today()->subDay())
+            ->with('campus')
+            ->get();
 
-        $activeCheckIns = $todayCheckIns->filter(function ($checkIn) use ($todayCheckOuts) {
-            return !$todayCheckOuts
-                ->where('timestamp', '>', $checkIn->timestamp)
-                ->isNotEmpty();
-        });
+        $recentCheckOuts = $recentAttendances->where('type', 'check-out');
+
+        $activeCheckIns = $recentAttendances->where('type', 'check-in')
+            ->filter(function ($checkIn) use ($recentCheckOuts) {
+                return !$recentCheckOuts
+                    ->where('timestamp', '>', $checkIn->timestamp)
+                    ->isNotEmpty();
+            });
 
         // ── Stats du mois ─────────────────────────────────────────────────────
         $monthCheckIns = $user->attendances()

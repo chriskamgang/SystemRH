@@ -1169,24 +1169,24 @@ class AttendanceController extends Controller
     {
         $user = $request->user();
 
-        // Charger tous les pointages du jour en une seule requête
-        $todayAttendances = Attendance::where('user_id', $user->id)
-            ->whereDate('timestamp', today())
+        // Charger les pointages d'aujourd'hui + hier (pour détecter les check-ins orphelins cross-jour)
+        $recentAttendances = Attendance::where('user_id', $user->id)
+            ->where('timestamp', '>=', today()->subDay())
+            ->with(['campus', 'uniteEnseignement'])
             ->get();
 
-        $todayCheckOuts = $todayAttendances->where('type', 'check-out');
+        $recentCheckOuts = $recentAttendances->where('type', 'check-out');
 
-        $activeCheckIns = $todayAttendances->where('type', 'check-in')
-            ->filter(function ($checkIn) use ($todayCheckOuts) {
-                // Chercher un check-out après ce check-in (tous shifts confondus)
-                return !$todayCheckOuts
+        $activeCheckIns = $recentAttendances->where('type', 'check-in')
+            ->filter(function ($checkIn) use ($recentCheckOuts) {
+                return !$recentCheckOuts
                     ->where('timestamp', '>', $checkIn->timestamp)
                     ->isNotEmpty();
             });
 
         return response()->json([
             'has_active_checkin' => $activeCheckIns->isNotEmpty(),
-            'active_checkins' => $activeCheckIns->load(['campus', 'uniteEnseignement'])->values(),
+            'active_checkins' => $activeCheckIns->values(),
             'count' => $activeCheckIns->count(),
         ], 200);
     }
