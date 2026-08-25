@@ -123,7 +123,7 @@ class RapportController extends Controller
         }
 
         if ($request->filled('specialite')) {
-            $query->where('specialite', $request->specialite);
+            $query->pourSpecialite($request->specialite);
         }
 
         if ($request->filled('niveau')) {
@@ -178,7 +178,7 @@ class RapportController extends Controller
             $query->where('annee_academique', $request->annee_academique);
         }
         if ($request->filled('specialite')) {
-            $query->where('specialite', $request->specialite);
+            $query->pourSpecialite($request->specialite);
         }
         if ($request->filled('niveau')) {
             $query->where('niveau', $request->niveau);
@@ -216,7 +216,7 @@ class RapportController extends Controller
         }
 
         if ($request->filled('specialite')) {
-            $query->where('specialite', $request->specialite);
+            $query->pourSpecialite($request->specialite);
         }
 
         if ($request->filled('niveau')) {
@@ -273,7 +273,7 @@ class RapportController extends Controller
             $query->where('annee_academique', $request->annee_academique);
         }
         if ($request->filled('specialite')) {
-            $query->where('specialite', $request->specialite);
+            $query->pourSpecialite($request->specialite);
         }
         if ($request->filled('niveau')) {
             $query->where('niveau', $request->niveau);

@@ -35,9 +35,39 @@
                         <option value="2" {{ old('semestre') == '2' ? 'selected' : '' }}>Semestre 2</option>
                     </select>
                 </div>
-                <div>
+                <!-- Type UE -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Type d'UE</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="type_ue" value="specialite" {{ old('type_ue', 'specialite') === 'specialite' ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
+                            <span class="text-sm">Spécialité</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="type_ue" value="tronc_commun" {{ old('type_ue') === 'tronc_commun' ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
+                            <span class="text-sm">Tronc commun</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Spécialité (pour UE de spécialité) -->
+                <div id="specialiteField">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Spécialité</label>
                     <input type="text" name="specialite" value="{{ old('specialite') }}" placeholder="Ex: Informatique" class="w-full px-4 py-2 border rounded-lg">
+                </div>
+
+                <!-- Groupes (pour UE tronc commun) -->
+                <div id="groupesField" class="md:col-span-2 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Spécialités concernées</label>
+                    <div class="grid grid-cols-3 md:grid-cols-5 gap-2">
+                        @foreach($specialties as $spec)
+                            <label class="flex items-center gap-1.5 text-sm cursor-pointer bg-gray-50 px-2 py-1.5 rounded border hover:bg-blue-50">
+                                <input type="checkbox" name="groupes[]" value="{{ $spec->name }}" {{ in_array($spec->name, old('groupes', [])) ? 'checked' : '' }}>
+                                {{ $spec->name }}
+                            </label>
+                        @endforeach
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Cochez les spécialités qui suivent ce cours en commun</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Niveau</label>
@@ -71,6 +101,16 @@
 
 @push('scripts')
 <script>
+function toggleTypeUe() {
+    const isTc = document.querySelector('input[name="type_ue"][value="tronc_commun"]').checked;
+    document.getElementById('specialiteField').classList.toggle('hidden', isTc);
+    document.getElementById('groupesField').classList.toggle('hidden', !isTc);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    toggleTypeUe();
+});
+
 const tauxParNiveau = {
     'licence': {{ \App\Models\Setting::get('taux_horaire_licence', 5000) }},
     'master': {{ \App\Models\Setting::get('taux_horaire_master', 7500) }},

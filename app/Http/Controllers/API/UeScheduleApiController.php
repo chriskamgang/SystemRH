@@ -19,9 +19,9 @@ class UeScheduleApiController extends Controller
         $user = $request->user();
         
         if ($user->employee_type === 'etudiant') {
-            // Pour les étudiants, on cherche les UE de leur spécialité et niveau
-            $ueIds = UniteEnseignement::where('specialite', $user->specialite)
-                ->where('niveau', $user->niveau)
+            // Pour les étudiants : UE de leur spécialité/niveau + UE tronc commun de leur niveau
+            $ueIds = UniteEnseignement::where('niveau', $user->niveau)
+                ->pourSpecialite($user->specialite)
                 ->pluck('id');
         } else {
             // Pour les enseignants, on cherche leurs propres UE
@@ -75,8 +75,8 @@ class UeScheduleApiController extends Controller
         $jourActuel = UeSchedule::getCurrentDayFr();
 
         if ($user->employee_type === 'etudiant') {
-            $ueIds = UniteEnseignement::where('specialite', $user->specialite)
-                ->where('niveau', $user->niveau)
+            $ueIds = UniteEnseignement::where('niveau', $user->niveau)
+                ->pourSpecialite($user->specialite)
                 ->pluck('id');
         } else {
             $ueIds = UniteEnseignement::where('enseignant_id', $user->id)

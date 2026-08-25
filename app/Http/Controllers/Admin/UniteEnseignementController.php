@@ -112,6 +112,9 @@ class UniteEnseignementController extends Controller
             'niveau' => 'nullable|string|max:255',
             'taux_horaire' => 'nullable|numeric|min:0',
             'activer_immediatement' => 'boolean',
+            'type_ue' => 'nullable|in:specialite,tronc_commun',
+            'groupes' => 'nullable|array',
+            'groupes.*' => 'string|max:50',
         ]);
 
         // Valider que l'utilisateur est bien un enseignant (vacataire ou semi-permanent)
@@ -178,6 +181,9 @@ class UniteEnseignementController extends Controller
             'semestre' => 'nullable|integer|between:1,9',
             'niveau' => 'nullable|string|max:255',
             'taux_horaire' => 'nullable|numeric|min:0',
+            'type_ue' => 'nullable|in:specialite,tronc_commun',
+            'groupes' => 'nullable|array',
+            'groupes.*' => 'string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -186,7 +192,7 @@ class UniteEnseignementController extends Controller
                 ->withInput();
         }
 
-        $ue->update($request->only([
+        $data = $request->only([
             'code_ue',
             'nom_matiere',
             'volume_horaire_total',
@@ -194,7 +200,18 @@ class UniteEnseignementController extends Controller
             'semestre',
             'niveau',
             'taux_horaire',
-        ]));
+            'type_ue',
+            'groupes',
+        ]);
+
+        // Si tronc commun, la spécialité est null
+        if (($data['type_ue'] ?? 'specialite') === 'tronc_commun') {
+            $data['specialite'] = null;
+        } else {
+            $data['groupes'] = null;
+        }
+
+        $ue->update($data);
 
         return redirect()
             ->route('admin.vacataires.unites', $ue->enseignant_id)
@@ -296,9 +313,9 @@ class UniteEnseignementController extends Controller
     {
         $query = UniteEnseignement::query();
 
-        // Filtre par spécialité
+        // Filtre par spécialité (inclut les UE tronc commun qui concernent cette spécialité)
         if ($request->has('specialite') && $request->specialite) {
-            $query->where('specialite', $request->specialite);
+            $query->pourSpecialite($request->specialite);
         }
 
         // Filtre par niveau
@@ -377,7 +394,17 @@ class UniteEnseignementController extends Controller
             'specialite' => 'nullable|string|max:255',
             'niveau' => 'nullable|string|max:255',
             'taux_horaire' => 'nullable|numeric|min:0',
+            'type_ue' => 'nullable|in:specialite,tronc_commun',
+            'groupes' => 'nullable|array',
+            'groupes.*' => 'string|max:50',
         ]);
+
+        // Si tronc commun, la spécialité est null (concerne plusieurs spécialités)
+        if (($validated['type_ue'] ?? 'specialite') === 'tronc_commun') {
+            $validated['specialite'] = null;
+        } else {
+            $validated['groupes'] = null;
+        }
 
         $validated['statut'] = 'non_activee';
         $validated['created_by'] = Auth::id();
@@ -667,7 +694,7 @@ class UniteEnseignementController extends Controller
             ->whereNotNull('enseignant_id');
 
         if ($request->filled('specialite')) {
-            $query->where('specialite', $request->specialite);
+            $query->pourSpecialite($request->specialite);
         }
         if ($request->filled('niveau')) {
             $query->where('niveau', $request->niveau);

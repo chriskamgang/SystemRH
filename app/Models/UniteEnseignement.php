@@ -31,6 +31,8 @@ class UniteEnseignement extends Model
         'created_by',
         'activated_by',
         'taux_horaire',
+        'type_ue',
+        'groupes',
     ];
 
     protected $casts = [
@@ -41,6 +43,7 @@ class UniteEnseignement extends Model
         'date_activation' => 'datetime',
         'semestre' => 'integer',
         'taux_horaire' => 'decimal:2',
+        'groupes' => 'array',
     ];
 
     /**
@@ -115,6 +118,25 @@ class UniteEnseignement extends Model
     public function scopeForVacataire($query, $vacataireId)
     {
         return $this->scopeForEnseignant($query, $vacataireId);
+    }
+
+    // Filtre les UE tronc commun qui concernent une spécialité donnée
+    public function scopeTroncCommunPourSpecialite($query, $specialite)
+    {
+        return $query->where('type_ue', 'tronc_commun')
+            ->whereJsonContains('groupes', $specialite);
+    }
+
+    // Filtre les UE d'une spécialité (inclut les UE de spécialité + tronc commun)
+    public function scopePourSpecialite($query, $specialite)
+    {
+        return $query->where(function ($q) use ($specialite) {
+            $q->where('specialite', $specialite)
+              ->orWhere(function ($q2) use ($specialite) {
+                  $q2->where('type_ue', 'tronc_commun')
+                     ->whereJsonContains('groupes', $specialite);
+              });
+        });
     }
 
     // Filtre par année académique

@@ -135,7 +135,16 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-600 uppercase">
-                                {{ $ue->specialite ?? 'N/A' }}
+                                @if($ue->type_ue === 'tronc_commun')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        TC
+                                    </span>
+                                    @if($ue->groupes)
+                                        <span class="text-[10px] text-gray-400">{{ implode(', ', $ue->groupes) }}</span>
+                                    @endif
+                                @else
+                                    {{ $ue->specialite ?? 'N/A' }}
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-600 uppercase">
                                 {{ $ue->niveau ?? 'N/A' }}
