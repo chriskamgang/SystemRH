@@ -10,9 +10,11 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800">Modifier {{ $ue->nom_matiere }}</h3>
+                    @if($ue->vacataire)
                     <p class="text-sm text-gray-600 mt-1">
-                        Vacataire: {{ $ue->vacataire->full_name }}
+                        Enseignant: {{ $ue->vacataire->full_name }}
                     </p>
+                    @endif
                 </div>
                 <span class="px-3 py-1 rounded-full text-xs font-medium
                     {{ $ue->statut === 'activee' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700' }}">
@@ -92,13 +94,16 @@
                     <p class="text-xs text-gray-500 mt-1" id="tauxHoraireHint">
                         @if($ue->taux_horaire)
                             Taux spécifique à cette UE
-                        @else
+                        @elseif($ue->vacataire)
                             Vide = taux du vacataire ({{ number_format($ue->vacataire->hourly_rate, 0, ',', ' ') }} FCFA/h)
+                        @else
+                            Aucun enseignant attribué
                         @endif
                     </p>
                 </div>
 
                 <!-- Taux vacataire (info) -->
+                @if($ue->vacataire)
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Taux vacataire (BTS)
@@ -108,6 +113,7 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-1">Taux personnel du vacataire (non modifiable ici)</p>
                 </div>
+                @endif
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -237,7 +243,7 @@
 
             <!-- Boutons -->
             <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
-                <a href="{{ route('admin.vacataires.unites', $ue->vacataire_id) }}" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
+                <a href="{{ $ue->enseignant_id ? route('admin.vacataires.unites', $ue->enseignant_id) : route('admin.unites-enseignement.catalog') }}" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
                     Annuler
                 </a>
                 <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium">
@@ -255,7 +261,7 @@ function toggleTypeUe() {
     document.getElementById('groupesField').classList.toggle('hidden', !isTc);
 }
 
-const tauxVacataire = {{ $ue->vacataire->hourly_rate }};
+const tauxVacataire = {{ $ue->vacataire->hourly_rate ?? 0 }};
 const tauxParNiveau = {
     'licence': {{ \App\Models\Setting::get('taux_horaire_licence', 5000) }},
     'master': {{ \App\Models\Setting::get('taux_horaire_master', 7500) }},
