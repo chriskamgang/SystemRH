@@ -146,7 +146,25 @@
                                         <i class="fas fa-check"></i> <span x-text="formatNumber(ue.heures_saisies)"></span>h saisies
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-sm font-bold text-gray-900" x-text="formatNumber(ue.montant) + ' FCFA'"></td>
+                                <td class="px-4 py-3">
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="0"
+                                        :name="'ue_details[' + index + '][montant_direct]'"
+                                        x-model="ue.montant"
+                                        @input="ue.montant_manual = true; calculateTotal()"
+                                        class="w-28 border-2 rounded-lg text-center text-sm font-bold"
+                                        :class="ue.montant > 0 ? 'border-green-500 bg-green-50' : 'border-gray-300'"
+                                        placeholder="0"
+                                    />
+                                    <div x-show="ue.taux_horaire > 0 && !ue.montant_manual && ue.heures_saisies > 0" class="text-[10px] text-gray-400 mt-0.5">
+                                        auto: <span x-text="formatNumber(ue.heures_saisies * ue.taux_horaire)"></span>
+                                    </div>
+                                    <div x-show="ue.montant_manual" class="text-[10px] text-blue-500 mt-0.5">
+                                        montant saisi manuellement
+                                    </div>
+                                </td>
                             </tr>
                         </template>
                     </tbody>
@@ -234,8 +252,8 @@
                     <button
                         type="submit"
                         class="px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-lg transform hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        :disabled="totalHeures == 0"
-                        :class="totalHeures > 0 ? 'animate-pulse' : ''"
+                        :disabled="totalHeures == 0 && totalMontant == 0"
+                        :class="(totalHeures > 0 || totalMontant > 0) ? 'animate-pulse' : ''"
                     >
                         <i class="fas fa-save mr-2"></i>
                         <span class="font-bold">Enregistrer le paiement</span>
@@ -305,7 +323,8 @@ function paymentForm() {
                     this.ues = data.ues.map(ue => ({
                         ...ue,
                         heures_saisies: 0,
-                        montant: 0
+                        montant: 0,
+                        montant_manual: false
                     }));
                 }
             } catch (error) {
@@ -317,6 +336,7 @@ function paymentForm() {
         },
 
         calculateMontant(ue) {
+            if (ue.montant_manual) return;
             const heures = parseFloat(ue.heures_saisies) || 0;
             ue.montant = heures * (ue.taux_horaire || 0);
         },
@@ -324,6 +344,8 @@ function paymentForm() {
         calculateTotal() {
             this.totalHeures = this.ues.reduce((sum, ue) => sum + (parseFloat(ue.heures_saisies) || 0), 0);
             this.totalMontant = this.ues.reduce((sum, ue) => sum + (parseFloat(ue.montant) || 0), 0);
+            // Permettre la validation si au moins un montant OU des heures sont saisis
+            this.hasData = this.totalHeures > 0 || this.totalMontant > 0;
 
             // Calculate tax if applicable (5% of gross amount)
             this.impotRetenu = this.appliquerImpot ? (this.totalMontant * 0.05) : 0;
@@ -374,9 +396,9 @@ function paymentForm() {
         },
 
         validateForm(e) {
-            if (this.totalHeures == 0) {
+            if (this.totalHeures == 0 && this.totalMontant == 0) {
                 e.preventDefault();
-                alert('Veuillez saisir au moins une heure pour une matière');
+                alert('Veuillez saisir au moins une heure ou un montant pour une matière');
                 return false;
             }
 

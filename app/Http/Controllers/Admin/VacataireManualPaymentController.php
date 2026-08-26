@@ -134,18 +134,19 @@ class VacataireManualPaymentController extends Controller
             'year' => 'required|integer|min:2020|max:2030',
             'ue_details' => 'required|array|min:1',
             'ue_details.*.unite_enseignement_id' => 'required|exists:unites_enseignement,id',
-            'ue_details.*.heures_saisies' => 'required|numeric|min:0',
+            'ue_details.*.heures_saisies' => 'nullable|numeric|min:0',
+            'ue_details.*.montant_direct' => 'nullable|numeric|min:0',
             'appliquer_impot' => 'nullable|boolean',
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        // Filtrer les UE avec 0 heures
+        // Filtrer les UE avec 0 heures ET 0 montant
         $validated['ue_details'] = array_filter($validated['ue_details'], function ($ueData) {
-            return (float) $ueData['heures_saisies'] > 0;
+            return (float) ($ueData['heures_saisies'] ?? 0) > 0 || (float) ($ueData['montant_direct'] ?? 0) > 0;
         });
 
         if (empty($validated['ue_details'])) {
-            return back()->withInput()->with('error', 'Veuillez saisir au moins une heure pour une matière.');
+            return back()->withInput()->with('error', 'Veuillez saisir au moins une heure ou un montant pour une matière.');
         }
 
         DB::beginTransaction();
@@ -153,16 +154,23 @@ class VacataireManualPaymentController extends Controller
         try {
             $vacataire = User::findOrFail($validated['vacataire_id']);
 
-            // Calculer le total en utilisant le taux horaire de chaque UE
+            // Calculer le total en utilisant le montant direct ou heures × taux
             $totalHeures = 0;
             $totalMontant = 0;
             $ueCalculations = [];
 
             foreach ($validated['ue_details'] as $ueData) {
                 $ue = UniteEnseignement::findOrFail($ueData['unite_enseignement_id']);
-                $heures = (float) $ueData['heures_saisies'];
+                $heures = (float) ($ueData['heures_saisies'] ?? 0);
+                $montantDirect = (float) ($ueData['montant_direct'] ?? 0);
                 $tauxEffectif = $ue->taux_horaire_effectif;
-                $montant = $heures * $tauxEffectif;
+
+                // Si montant saisi directement, l'utiliser ; sinon calculer heures × taux
+                if ($montantDirect > 0 && ($tauxEffectif == 0 || $montantDirect != round($heures * $tauxEffectif, 2))) {
+                    $montant = $montantDirect;
+                } else {
+                    $montant = $heures * $tauxEffectif;
+                }
 
                 $totalHeures += $heures;
                 $totalMontant += $montant;
@@ -170,7 +178,7 @@ class VacataireManualPaymentController extends Controller
                 $ueCalculations[] = [
                     'ue' => $ue,
                     'heures' => $heures,
-                    'taux' => $tauxEffectif,
+                    'taux' => $tauxEffectif > 0 ? $tauxEffectif : ($heures > 0 ? $montant / $heures : 0),
                     'montant' => $montant,
                     'notes' => $ueData['notes'] ?? null,
                 ];
