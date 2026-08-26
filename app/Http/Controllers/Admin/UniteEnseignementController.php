@@ -162,12 +162,8 @@ class UniteEnseignementController extends Controller
         $ue = UniteEnseignement::with('vacataire')->findOrFail($id);
         $levels = \App\Models\Level::where('is_active', true)->orderBy('name')->get();
         $specialties = \App\Models\Specialty::where('is_active', true)->orderBy('name')->get();
-        $departments = \App\Models\Department::where('is_active', true)
-            ->whereHas('specialties', fn($q) => $q->where('is_active', true))
-            ->with(['specialties' => fn($q) => $q->where('is_active', true)->orderBy('name')])
-            ->orderBy('name')->get();
 
-        return view('admin.unites-enseignement.edit', compact('ue', 'levels', 'specialties', 'departments'));
+        return view('admin.unites-enseignement.edit', compact('ue', 'levels', 'specialties'));
     }
 
     /**
@@ -381,11 +377,7 @@ class UniteEnseignementController extends Controller
     {
         $levels = \App\Models\Level::where('is_active', true)->orderBy('name')->get();
         $specialties = \App\Models\Specialty::where('is_active', true)->orderBy('name')->get();
-        $departments = \App\Models\Department::where('is_active', true)
-            ->whereHas('specialties', fn($q) => $q->where('is_active', true))
-            ->with(['specialties' => fn($q) => $q->where('is_active', true)->orderBy('name')])
-            ->orderBy('name')->get();
-        return view('admin.unites-enseignement.create-standalone', compact('levels', 'specialties', 'departments'));
+        return view('admin.unites-enseignement.create-standalone', compact('levels', 'specialties'));
     }
 
     /**

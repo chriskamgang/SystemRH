@@ -59,52 +59,18 @@
                 <!-- Groupes (pour UE tronc commun) -->
                 <div id="groupesField" class="md:col-span-2 hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Spécialités concernées</label>
-
-                    <!-- Boutons de sélection rapide par département -->
                     <div class="flex flex-wrap gap-2 mb-3">
-                        <button type="button" onclick="selectAll()" class="px-3 py-1 text-xs font-bold bg-gray-800 text-white rounded hover:bg-gray-900">Tout cocher</button>
-                        <button type="button" onclick="deselectAll()" class="px-3 py-1 text-xs font-bold bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Tout décocher</button>
-                        @foreach($departments as $dept)
-                            <button type="button" onclick="selectDepartment('{{ $dept->id }}')" class="px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700 rounded border border-blue-200 hover:bg-blue-100">
-                                {{ $dept->name }}
-                            </button>
+                        <button type="button" onclick="document.querySelectorAll('.spec-checkbox').forEach(c=>c.checked=true)" class="px-3 py-1 text-xs font-bold bg-gray-800 text-white rounded hover:bg-gray-900">Tout cocher</button>
+                        <button type="button" onclick="document.querySelectorAll('.spec-checkbox').forEach(c=>c.checked=false)" class="px-3 py-1 text-xs font-bold bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Tout décocher</button>
+                    </div>
+                    <div class="grid grid-cols-3 md:grid-cols-5 gap-1">
+                        @foreach($specialties as $spec)
+                            <label class="flex items-center gap-1.5 text-sm cursor-pointer bg-gray-50 px-2 py-1 rounded border hover:bg-blue-50">
+                                <input type="checkbox" name="groupes[]" value="{{ $spec->name }}" class="spec-checkbox" {{ in_array($spec->name, old('groupes', [])) ? 'checked' : '' }}>
+                                {{ $spec->name }}
+                            </label>
                         @endforeach
                     </div>
-
-                    <!-- Cases à cocher groupées par département -->
-                    @foreach($departments as $dept)
-                        @if($dept->specialties->count() > 0)
-                        <div class="mb-2">
-                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{{ $dept->name }}</div>
-                            <div class="grid grid-cols-3 md:grid-cols-5 gap-1">
-                                @foreach($dept->specialties as $spec)
-                                    <label class="flex items-center gap-1.5 text-sm cursor-pointer bg-gray-50 px-2 py-1 rounded border hover:bg-blue-50">
-                                        <input type="checkbox" name="groupes[]" value="{{ $spec->name }}" data-dept="{{ $dept->id }}" class="spec-checkbox" {{ in_array($spec->name, old('groupes', [])) ? 'checked' : '' }}>
-                                        {{ $spec->name }}
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        @endif
-                    @endforeach
-
-                    <!-- Spécialités sans département -->
-                    @php $sansDept = $specialties->filter(fn($s) => !$s->department_id); @endphp
-                    @if($sansDept->count() > 0)
-                    <div class="mb-2">
-                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Autres</div>
-                        <div class="grid grid-cols-3 md:grid-cols-5 gap-1">
-                            @foreach($sansDept as $spec)
-                                <label class="flex items-center gap-1.5 text-sm cursor-pointer bg-gray-50 px-2 py-1 rounded border hover:bg-blue-50">
-                                    <input type="checkbox" name="groupes[]" value="{{ $spec->name }}" data-dept="0" class="spec-checkbox" {{ in_array($spec->name, old('groupes', [])) ? 'checked' : '' }}>
-                                    {{ $spec->name }}
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endif
-
-                    <p class="text-xs text-gray-500 mt-1">Cliquez sur un département pour sélectionner toutes ses spécialités d'un coup</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Niveau</label>
@@ -142,18 +108,6 @@ function toggleTypeUe() {
     const isTc = document.querySelector('input[name="type_ue"][value="tronc_commun"]').checked;
     document.getElementById('specialiteField').classList.toggle('hidden', isTc);
     document.getElementById('groupesField').classList.toggle('hidden', !isTc);
-}
-
-function selectAll() {
-    document.querySelectorAll('.spec-checkbox').forEach(cb => cb.checked = true);
-}
-
-function deselectAll() {
-    document.querySelectorAll('.spec-checkbox').forEach(cb => cb.checked = false);
-}
-
-function selectDepartment(deptId) {
-    document.querySelectorAll('.spec-checkbox[data-dept="' + deptId + '"]').forEach(cb => cb.checked = !cb.checked);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
