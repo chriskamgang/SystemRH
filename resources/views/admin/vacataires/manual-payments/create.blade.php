@@ -13,22 +13,36 @@
             <h2 class="text-lg font-semibold mb-4">1. Sélection du vacataire et de la période</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
+                <div x-data="{ searchVac: '', openVac: false }" class="relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Vacataire <span class="text-red-500">*</span>
                     </label>
-                    <select
-                        name="vacataire_id"
-                        x-model="vacataireId"
-                        @change="loadUEs"
+                    <input type="hidden" name="vacataire_id" x-model="vacataireId" required>
+                    <input
+                        type="text"
+                        x-model="searchVac"
+                        @focus="openVac = true"
+                        @input="openVac = true"
+                        placeholder="Tapez un nom pour rechercher..."
                         class="w-full border-gray-300 rounded-lg"
-                        required
+                        :class="vacataireId ? 'border-green-500 bg-green-50' : ''"
                     >
-                        <option value="">-- Choisir un vacataire --</option>
+                    <div
+                        x-show="openVac && searchVac.length > 0"
+                        @click.away="openVac = false"
+                        class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                    >
                         @foreach($vacataires as $vac)
-                            <option value="{{ $vac->id }}">{{ $vac->full_name }} ({{ number_format($vac->hourly_rate, 0) }} FCFA/h)</option>
+                            <div
+                                x-show="'{{ strtolower(addslashes($vac->full_name)) }}'.includes(searchVac.toLowerCase())"
+                                @click="vacataireId = '{{ $vac->id }}'; searchVac = '{{ addslashes($vac->full_name) }} ({{ number_format($vac->hourly_rate, 0) }} FCFA/h)'; openVac = false; loadUEs()"
+                                class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-50"
+                            >
+                                <span class="font-semibold">{{ $vac->full_name }}</span>
+                                <span class="text-gray-400 ml-1">({{ number_format($vac->hourly_rate, 0) }} FCFA/h)</span>
+                            </div>
                         @endforeach
-                    </select>
+                    </div>
                 </div>
 
                 <div>
