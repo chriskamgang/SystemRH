@@ -92,6 +92,12 @@ class UniteEnseignement extends Model
         return $this->hasMany(UeSchedule::class, 'unite_enseignement_id');
     }
 
+    // Séances TP
+    public function seances(): HasMany
+    {
+        return $this->hasMany(UeSeance::class, 'unite_enseignement_id')->orderBy('numero');
+    }
+
     /**
      * Scopes
      */

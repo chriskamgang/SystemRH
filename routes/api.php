@@ -324,6 +324,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/department/{id}', [\App\Http\Controllers\API\HrAnalyticsController::class, 'departmentStats']);
     });
 
+    // ========== VALIDATION TP / COMPETENCES ==========
+    Route::prefix('tp')->group(function () {
+        Route::get('/mes-fiches', [\App\Http\Controllers\API\TpValidationApiController::class, 'mesFiches']);
+        Route::post('/seances/{seance}/valider', [\App\Http\Controllers\API\TpValidationApiController::class, 'valider']);
+        Route::get('/mon-carnet', [\App\Http\Controllers\API\TpValidationApiController::class, 'monCarnet']);
+    });
+
     // Test route
     Route::get('/test', function () {
         return response()->json([

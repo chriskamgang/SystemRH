@@ -263,7 +263,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::delete('/{id}', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'destroy'])->name('destroy');
         Route::post('/{id}/activer', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'activer'])->name('activer');
         Route::post('/{id}/desactiver', [App\Http\Controllers\Admin\UniteEnseignementController::class, 'desactiver'])->name('desactiver');
+
+        // Séances TP & Validations
+        Route::get('/{ue}/seances', [App\Http\Controllers\Admin\UeSeanceController::class, 'show'])->name('seances.show');
+        Route::get('/{ue}/seances/edit', [App\Http\Controllers\Admin\UeSeanceController::class, 'edit'])->name('seances.edit');
+        Route::put('/{ue}/seances', [App\Http\Controllers\Admin\UeSeanceController::class, 'update'])->name('seances.update');
     });
+
+    // Tableau de bord compétences TP
+    Route::get('/tp-competences', [App\Http\Controllers\Admin\UeSeanceController::class, 'dashboard'])->name('tp-competences.dashboard');
+    Route::get('/tp-competences/etudiant/{student}', [App\Http\Controllers\Admin\UeSeanceController::class, 'carnetEtudiant'])->name('tp-competences.carnet');
 
     // Rapport sur la paie
     Route::prefix('payroll')->name('payroll.')->group(function () {

@@ -347,8 +347,8 @@
                 <p class="px-4 pt-5 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Enseignement</p>
 
                 @if($can('ue'))
-                <div x-data="{ open: {{ request()->routeIs('admin.unites-enseignement.*') ? 'true' : 'false' }} }">
-                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-2.5 mb-1 rounded-lg text-sm hover:bg-gray-800 {{ request()->routeIs('admin.unites-enseignement.*') ? 'bg-blue-600' : '' }}">
+                <div x-data="{ open: {{ request()->routeIs('admin.unites-enseignement.*') || request()->routeIs('admin.tp-competences.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="flex items-center justify-between w-full px-4 py-2.5 mb-1 rounded-lg text-sm hover:bg-gray-800 {{ request()->routeIs('admin.unites-enseignement.*') || request()->routeIs('admin.tp-competences.*') ? 'bg-blue-600' : '' }}">
                         <div class="flex items-center">
                             <i class="fas fa-book w-5"></i>
                             <span class="ml-3">Unites d'Enseignement</span>
@@ -367,6 +367,9 @@
                         </a>
                         <a href="{{ route('admin.unites-enseignement.import') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-xs {{ request()->routeIs('admin.unites-enseignement.import') ? 'bg-gray-700' : '' }}">
                             <i class="fas fa-file-import w-4"></i><span class="ml-2">Importer</span>
+                        </a>
+                        <a href="{{ route('admin.tp-competences.dashboard') }}" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-800 text-xs {{ request()->routeIs('admin.tp-competences.*') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-clipboard-check w-4"></i><span class="ml-2">Compétences TP</span>
                         </a>
                     </div>
                 </div>

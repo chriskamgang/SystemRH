@@ -20,6 +20,9 @@
             <a href="{{ route('admin.unites-enseignement.export-attributions', request()->query()) }}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm font-semibold">
                 <i class="fas fa-file-pdf mr-2"></i> Imprimer Attributions
             </a>
+            <a href="{{ route('admin.tp-competences.dashboard') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-sm font-semibold">
+                <i class="fas fa-clipboard-check mr-2"></i> Compétences TP
+            </a>
         </div>
 
         <!-- Recherche Employé type "Mise en avant" -->
@@ -189,6 +192,9 @@
                                             <i class="fas fa-eye text-sm"></i>
                                         </a>
                                     @endif
+                                    <a href="{{ route('admin.unites-enseignement.seances.show', $ue->id) }}" class="p-1.5 text-gray-400 hover:text-indigo-600 transition" title="Séances TP">
+                                        <i class="fas fa-clipboard-list text-sm"></i>
+                                    </a>
                                     <a href="{{ route('admin.unites-enseignement.edit', $ue->id) }}" class="p-1.5 text-gray-400 hover:text-yellow-600 transition" title="Modifier">
                                         <i class="fas fa-edit text-sm"></i>
                                     </a>
