@@ -282,6 +282,7 @@ class ImportCpbdTeachers extends Command
                 'specialite' => $teacher['qualification'],
                 'date_embauche' => $teacher['hire_date'],
                 'company_id' => $companyId,
+                'role_id' => 4, // employe
                 'is_active' => true,
                 'qr_token' => Str::uuid()->toString(),
             ]);
@@ -342,6 +343,7 @@ class ImportCpbdTeachers extends Command
                 'sexe' => $sexeMap[$person['gender'] ?? ''] ?? null,
                 'specialite' => $person['role'],
                 'company_id' => $companyId,
+                'role_id' => 4, // employe
                 'is_active' => true,
                 'qr_token' => Str::uuid()->toString(),
             ]);
