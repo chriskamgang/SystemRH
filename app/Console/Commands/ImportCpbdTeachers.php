@@ -215,9 +215,9 @@ class ImportCpbdTeachers extends Command
         $counter = User::withoutGlobalScopes()->where('company_id', $companyId)->count();
 
         $typeMap = [
-            'V' => 'vacataire',
+            'V' => 'enseignant_vacataire',
             'SP' => 'semi_permanent',
-            'P' => 'permanent',
+            'P' => 'enseignant_titulaire',
         ];
 
         $sexeMap = [
@@ -338,7 +338,7 @@ class ImportCpbdTeachers extends Command
                 'email' => $person['email'],
                 'password' => $defaultPassword,
                 'phone' => $person['phone'],
-                'employee_type' => 'permanent',
+                'employee_type' => 'administratif',
                 'sexe' => $sexeMap[$person['gender'] ?? ''] ?? null,
                 'specialite' => $person['role'],
                 'company_id' => $companyId,
