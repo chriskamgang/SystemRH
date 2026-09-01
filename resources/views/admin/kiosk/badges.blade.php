@@ -42,7 +42,13 @@
     {{-- Actions en masse --}}
     <div class="bg-white rounded-lg shadow">
         <div class="p-6 border-b flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-800">Employes ({{ $employees->total() }})</h3>
+            <h3 class="text-lg font-semibold text-gray-800">
+                Employes ({{ $employees->total() }})
+                <span id="selection-count" class="ml-2 text-sm font-normal text-blue-600 hidden">
+                    — <span id="count-value">0</span> selectionne(s)
+                    <button onclick="clearSelection()" class="ml-1 text-xs text-red-500 hover:text-red-700 underline">Vider</button>
+                </span>
+            </h3>
             <div class="flex gap-2">
                 <button onclick="generateSelected()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm">
                     <i class="fas fa-qrcode mr-1"></i>Generer QR (selection)
@@ -153,31 +159,106 @@
 
 @push('scripts')
 <script>
-    document.getElementById('select-all').addEventListener('change', function() {
-        document.querySelectorAll('.employee-checkbox').forEach(cb => cb.checked = this.checked);
+    // Stockage des IDs sélectionnés en sessionStorage
+    const STORAGE_KEY = 'badge_selected_ids';
+
+    function getStoredIds() {
+        try {
+            return new Set(JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]'));
+        } catch { return new Set(); }
+    }
+
+    function saveIds(ids) {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
+        updateCounter();
+    }
+
+    function updateCounter() {
+        const ids = getStoredIds();
+        const countEl = document.getElementById('selection-count');
+        const valueEl = document.getElementById('count-value');
+        if (ids.size > 0) {
+            countEl.classList.remove('hidden');
+            valueEl.textContent = ids.size;
+        } else {
+            countEl.classList.add('hidden');
+        }
+    }
+
+    function clearSelection() {
+        sessionStorage.removeItem(STORAGE_KEY);
+        document.querySelectorAll('.employee-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all').checked = false;
+        updateCounter();
+    }
+
+    // Au chargement : restaurer les checkboxes de la page courante
+    document.addEventListener('DOMContentLoaded', function() {
+        const stored = getStoredIds();
+        document.querySelectorAll('.employee-checkbox').forEach(cb => {
+            if (stored.has(cb.value)) cb.checked = true;
+        });
+        updateSelectAllState();
+        updateCounter();
     });
 
-    function getSelectedIds() {
-        return Array.from(document.querySelectorAll('.employee-checkbox:checked')).map(cb => cb.value);
+    // Quand on coche/décoche une checkbox
+    document.querySelectorAll('.employee-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const ids = getStoredIds();
+            if (this.checked) {
+                ids.add(this.value);
+            } else {
+                ids.delete(this.value);
+            }
+            saveIds(ids);
+            updateSelectAllState();
+        });
+    });
+
+    // Select all : ne concerne que la page courante
+    document.getElementById('select-all').addEventListener('change', function() {
+        const ids = getStoredIds();
+        document.querySelectorAll('.employee-checkbox').forEach(cb => {
+            cb.checked = this.checked;
+            if (this.checked) {
+                ids.add(cb.value);
+            } else {
+                ids.delete(cb.value);
+            }
+        });
+        saveIds(ids);
+    });
+
+    function updateSelectAllState() {
+        const checkboxes = document.querySelectorAll('.employee-checkbox');
+        const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+        document.getElementById('select-all').checked = allChecked;
+    }
+
+    // Récupérer tous les IDs stockés (toutes pages confondues)
+    function getAllSelectedIds() {
+        return [...getStoredIds()];
     }
 
     function generateSelected() {
-        const ids = getSelectedIds();
+        const ids = getAllSelectedIds();
         if (ids.length === 0) { alert('Selectionnez au moins un employe.'); return; }
         const form = document.getElementById('bulk-form-generate');
+        form.querySelectorAll('input[name="user_ids[]"]').forEach(el => el.remove());
         ids.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden'; input.name = 'user_ids[]'; input.value = id;
             form.appendChild(input);
         });
+        sessionStorage.removeItem(STORAGE_KEY);
         form.submit();
     }
 
     function downloadSelected() {
-        const ids = getSelectedIds();
+        const ids = getAllSelectedIds();
         if (ids.length === 0) { alert('Selectionnez au moins un employe.'); return; }
         const form = document.getElementById('bulk-form-download');
-        // Reset hidden inputs
         form.querySelectorAll('input[name="user_ids[]"], input[name="per_page"]').forEach(el => el.remove());
         ids.forEach(id => {
             const input = document.createElement('input');
@@ -187,6 +268,7 @@
         const perPage = document.createElement('input');
         perPage.type = 'hidden'; perPage.name = 'per_page'; perPage.value = document.getElementById('badges-per-page').value;
         form.appendChild(perPage);
+        sessionStorage.removeItem(STORAGE_KEY);
         form.submit();
     }
 </script>
