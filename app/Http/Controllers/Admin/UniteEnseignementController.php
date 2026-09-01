@@ -108,11 +108,11 @@ class UniteEnseignementController extends Controller
             'nom_matiere' => 'required|string|max:255',
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
-            'semestre' => 'nullable|integer|between:1,9',
+            'semestre' => 'nullable|integer|between:1,10',
             'niveau' => 'nullable|string|max:255',
             'taux_horaire' => 'nullable|numeric|min:0',
             'activer_immediatement' => 'boolean',
-            'type_ue' => 'nullable|in:specialite,tronc_commun',
+            'type_ue' => 'nullable|in:specialite,tronc_commun,tronc_commun_general,tronc_commun_partiel',
             'groupes' => 'nullable|array',
             'groupes.*' => 'string|max:50',
         ]);
@@ -178,10 +178,10 @@ class UniteEnseignementController extends Controller
             'nom_matiere' => 'required|string|max:255',
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'nullable|string|max:20',
-            'semestre' => 'nullable|integer|between:1,9',
+            'semestre' => 'nullable|integer|between:1,10',
             'niveau' => 'nullable|string|max:255',
             'taux_horaire' => 'nullable|numeric|min:0',
-            'type_ue' => 'nullable|in:specialite,tronc_commun',
+            'type_ue' => 'nullable|in:specialite,tronc_commun,tronc_commun_general,tronc_commun_partiel',
             'groupes' => 'nullable|array',
             'groupes.*' => 'string|max:50',
         ]);
@@ -205,7 +205,7 @@ class UniteEnseignementController extends Controller
         ]);
 
         // Si tronc commun, la spécialité est null
-        if (($data['type_ue'] ?? 'specialite') === 'tronc_commun') {
+        if (($data['type_ue'] ?? 'specialite') !== 'specialite') {
             $data['specialite'] = null;
         } else {
             $data['groupes'] = null;
@@ -213,8 +213,14 @@ class UniteEnseignementController extends Controller
 
         $ue->update($data);
 
+        if ($ue->enseignant_id) {
+            return redirect()
+                ->route('admin.vacataires.unites', $ue->enseignant_id)
+                ->with('success', 'Unité d\'enseignement modifiée avec succès');
+        }
+
         return redirect()
-            ->route('admin.vacataires.unites', $ue->enseignant_id)
+            ->route('admin.unites-enseignement.catalog')
             ->with('success', 'Unité d\'enseignement modifiée avec succès');
     }
 
@@ -394,13 +400,13 @@ class UniteEnseignementController extends Controller
             'specialite' => 'nullable|string|max:255',
             'niveau' => 'nullable|string|max:255',
             'taux_horaire' => 'nullable|numeric|min:0',
-            'type_ue' => 'nullable|in:specialite,tronc_commun',
+            'type_ue' => 'nullable|in:specialite,tronc_commun,tronc_commun_general,tronc_commun_partiel',
             'groupes' => 'nullable|array',
             'groupes.*' => 'string|max:50',
         ]);
 
         // Si tronc commun, la spécialité est null (concerne plusieurs spécialités)
-        if (($validated['type_ue'] ?? 'specialite') === 'tronc_commun') {
+        if (($validated['type_ue'] ?? 'specialite') !== 'specialite') {
             $validated['specialite'] = null;
         } else {
             $validated['groupes'] = null;

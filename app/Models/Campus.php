@@ -60,6 +60,11 @@ class Campus extends Model
         return $this->hasMany(Department::class);
     }
 
+    public function salles()
+    {
+        return $this->hasMany(Salle::class);
+    }
+
     public function attendances()
     {
         return $this->hasMany(Attendance::class);

@@ -36,14 +36,19 @@
                         <span class="text-sm">Spécialité</span>
                     </label>
                     <label class="flex items-center cursor-pointer">
-                        <input type="radio" name="type_ue" value="tronc_commun" {{ old('type_ue', $ue->type_ue) === 'tronc_commun' ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
-                        <span class="text-sm">Tronc commun</span>
+                        <input type="radio" name="type_ue" value="tronc_commun_general" {{ in_array(old('type_ue', $ue->type_ue), ['tronc_commun', 'tronc_commun_general']) ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
+                        <span class="text-sm">Tronc commun général</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="type_ue" value="tronc_commun_partiel" {{ old('type_ue', $ue->type_ue) === 'tronc_commun_partiel' ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
+                        <span class="text-sm">Tronc commun partiel</span>
                     </label>
                 </div>
             </div>
 
             <!-- Groupes (pour UE tronc commun) -->
-            <div id="groupesField" class="{{ old('type_ue', $ue->type_ue) === 'tronc_commun' ? '' : 'hidden' }}">
+            @php $typeUe = old('type_ue', $ue->type_ue ?? 'specialite'); @endphp
+            <div id="groupesField" class="{{ in_array($typeUe, ['tronc_commun', 'tronc_commun_general', 'tronc_commun_partiel']) ? '' : 'hidden' }}">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Spécialités concernées</label>
                 <div class="flex flex-wrap gap-2 mb-3">
                     <button type="button" onclick="document.querySelectorAll('.spec-checkbox').forEach(c=>c.checked=true)" class="px-3 py-1 text-xs font-bold bg-gray-800 text-white rounded hover:bg-gray-900">Tout cocher</button>
@@ -73,7 +78,7 @@
                         onchange="onNiveauChange()"
                     >
                         <option value="">Sélectionner</option>
-                        @foreach(['BTS 1', 'BTS 2', 'Licence 1', 'Licence 2', 'Licence 3', 'Master 1', 'Master 2'] as $niv)
+                        @foreach(['BTS 1', 'BTS 2', 'HND 1', 'HND 2', 'Bachelor', 'Licence 1', 'Licence 2', 'Licence 3', 'Master 1', 'Master 2'] as $niv)
                             <option value="{{ $niv }}" {{ old('niveau', $ue->niveau) == $niv ? 'selected' : '' }}>{{ $niv }}</option>
                         @endforeach
                     </select>
@@ -110,7 +115,7 @@
                 @if($ue->vacataire)
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Taux vacataire (BTS)
+                        Taux vacataire (BTS/HND)
                     </label>
                     <div class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
                         {{ number_format($ue->vacataire->hourly_rate, 0, ',', ' ') }} FCFA/h
@@ -234,10 +239,7 @@
                         id="semestre"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 @error('semestre') border-red-500 @enderror"
                     >
-                        <option value="">Aucun</option>
-                        @for($i = 1; $i <= 9; $i++)
-                            <option value="{{ $i }}" {{ old('semestre', $ue->semestre) == $i ? 'selected' : '' }}>Semestre {{ $i }}</option>
-                        @endfor
+                        <option value="">Sélectionner un niveau d'abord</option>
                     </select>
                     @error('semestre')
                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -261,8 +263,39 @@
 @push('scripts')
 <script>
 function toggleTypeUe() {
-    const isTc = document.querySelector('input[name="type_ue"][value="tronc_commun"]').checked;
+    const selected = document.querySelector('input[name="type_ue"]:checked').value;
+    const isTc = selected === 'tronc_commun_general' || selected === 'tronc_commun_partiel';
     document.getElementById('groupesField').classList.toggle('hidden', !isTc);
+}
+
+const semestresParNiveau = {
+    'BTS 1': [1, 2], 'BTS 2': [3, 4],
+    'HND 1': [1, 2], 'HND 2': [3, 4],
+    'Bachelor': [5, 6],
+    'Licence 1': [1, 2], 'Licence 2': [3, 4], 'Licence 3': [5, 6],
+    'Master 1': [7, 8], 'Master 2': [9],
+};
+
+function updateSemestres() {
+    const niveau = document.getElementById('niveau').value;
+    const select = document.getElementById('semestre');
+    const oldVal = '{{ old("semestre", $ue->semestre ?? "") }}';
+    select.innerHTML = '';
+
+    const semestres = semestresParNiveau[niveau];
+    if (!semestres) {
+        select.innerHTML = '<option value="">Sélectionner un niveau d\'abord</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value="">Choisir le semestre</option>';
+    semestres.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = 'Semestre ' + s;
+        if (oldVal == s) opt.selected = true;
+        select.appendChild(opt);
+    });
 }
 
 const tauxVacataire = {{ $ue->vacataire->hourly_rate ?? 0 }};
@@ -272,6 +305,7 @@ const tauxParNiveau = {
 };
 
 function onNiveauChange() {
+    updateSemestres();
     const niveau = document.getElementById('niveau').value.toLowerCase();
     const tauxInput = document.getElementById('taux_horaire');
     const hint = document.getElementById('tauxHoraireHint');
@@ -282,15 +316,15 @@ function onNiveauChange() {
         return;
     }
 
-    if (niveau.includes('licence')) {
+    if (niveau.includes('licence') || niveau.includes('bachelor')) {
         tauxInput.value = tauxParNiveau.licence;
         hint.textContent = 'Taux Licence pré-rempli. Modifiable.';
     } else if (niveau.includes('master')) {
         tauxInput.value = tauxParNiveau.master;
         hint.textContent = 'Taux Master pré-rempli. Modifiable.';
-    } else if (niveau.includes('bts')) {
+    } else if (niveau.includes('bts') || niveau.includes('hnd')) {
         tauxInput.value = '';
-        hint.textContent = 'BTS : taux du vacataire (' + new Intl.NumberFormat('fr-FR').format(tauxVacataire) + ' FCFA/h)';
+        hint.textContent = 'BTS/HND : taux du vacataire (' + new Intl.NumberFormat('fr-FR').format(tauxVacataire) + ' FCFA/h)';
     }
 
     calculerMontantMax();
@@ -307,6 +341,9 @@ function calculerMontantMax() {
         montantMaxValue.textContent = new Intl.NumberFormat('fr-FR').format(montantMax) + ' FCFA';
     }
 }
+
+// Initialiser les semestres au chargement
+updateSemestres();
 </script>
 @endpush
 @endsection

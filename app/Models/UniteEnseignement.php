@@ -129,7 +129,7 @@ class UniteEnseignement extends Model
     // Filtre les UE tronc commun qui concernent une spécialité donnée
     public function scopeTroncCommunPourSpecialite($query, $specialite)
     {
-        return $query->where('type_ue', 'tronc_commun')
+        return $query->whereIn('type_ue', ['tronc_commun', 'tronc_commun_general', 'tronc_commun_partiel'])
             ->whereJsonContains('groupes', $specialite);
     }
 
@@ -139,10 +139,16 @@ class UniteEnseignement extends Model
         return $query->where(function ($q) use ($specialite) {
             $q->where('specialite', $specialite)
               ->orWhere(function ($q2) use ($specialite) {
-                  $q2->where('type_ue', 'tronc_commun')
+                  $q2->whereIn('type_ue', ['tronc_commun', 'tronc_commun_general', 'tronc_commun_partiel'])
                      ->whereJsonContains('groupes', $specialite);
               });
         });
+    }
+
+    // Vérifie si l'UE est un tronc commun (général ou partiel)
+    public function isTroncCommun(): bool
+    {
+        return in_array($this->type_ue, ['tronc_commun', 'tronc_commun_general', 'tronc_commun_partiel']);
     }
 
     // Filtre par année académique

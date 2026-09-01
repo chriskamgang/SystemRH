@@ -138,9 +138,9 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-600 uppercase">
-                                @if($ue->type_ue === 'tronc_commun')
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                        TC
+                                @if(in_array($ue->type_ue, ['tronc_commun', 'tronc_commun_general', 'tronc_commun_partiel']))
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold {{ $ue->type_ue === 'tronc_commun_partiel' ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-indigo-50 text-indigo-700 border border-indigo-100' }}">
+                                        {{ $ue->type_ue === 'tronc_commun_partiel' ? 'TCP' : 'TCG' }}
                                     </span>
                                     @if($ue->groupes)
                                         <span class="text-[10px] text-gray-400">{{ implode(', ', $ue->groupes) }}</span>

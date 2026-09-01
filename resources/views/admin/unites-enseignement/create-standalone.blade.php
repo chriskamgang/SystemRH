@@ -29,10 +29,8 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Semestre</label>
-                    <select name="semestre" class="w-full px-4 py-2 border rounded-lg">
-                        <option value="">Aucun</option>
-                        <option value="1" {{ old('semestre') == '1' ? 'selected' : '' }}>Semestre 1</option>
-                        <option value="2" {{ old('semestre') == '2' ? 'selected' : '' }}>Semestre 2</option>
+                    <select name="semestre" id="semestre" class="w-full px-4 py-2 border rounded-lg">
+                        <option value="">Sélectionner un niveau d'abord</option>
                     </select>
                 </div>
                 <!-- Type UE -->
@@ -44,8 +42,12 @@
                             <span class="text-sm">Spécialité</span>
                         </label>
                         <label class="flex items-center cursor-pointer">
-                            <input type="radio" name="type_ue" value="tronc_commun" {{ old('type_ue') === 'tronc_commun' ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
-                            <span class="text-sm">Tronc commun</span>
+                            <input type="radio" name="type_ue" value="tronc_commun_general" {{ old('type_ue') === 'tronc_commun_general' ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
+                            <span class="text-sm">Tronc commun général</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="type_ue" value="tronc_commun_partiel" {{ old('type_ue') === 'tronc_commun_partiel' ? 'checked' : '' }} onchange="toggleTypeUe()" class="mr-2">
+                            <span class="text-sm">Tronc commun partiel</span>
                         </label>
                     </div>
                 </div>
@@ -76,7 +78,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Niveau</label>
                     <select name="niveau" id="niveau" class="w-full px-4 py-2 border rounded-lg" onchange="onNiveauChange()">
                         <option value="">Sélectionner un niveau</option>
-                        @foreach(['BTS 1', 'BTS 2', 'Licence 1', 'Licence 2', 'Licence 3', 'Master 1', 'Master 2'] as $niv)
+                        @foreach(['BTS 1', 'BTS 2', 'HND 1', 'HND 2', 'Bachelor', 'Licence 1', 'Licence 2', 'Licence 3', 'Master 1', 'Master 2'] as $niv)
                             <option value="{{ $niv }}" {{ old('niveau') == $niv ? 'selected' : '' }}>{{ $niv }}</option>
                         @endforeach
                     </select>
@@ -90,7 +92,7 @@
                     <input type="number" name="taux_horaire" id="taux_horaire" value="{{ old('taux_horaire') }}" placeholder="Auto selon niveau" step="100" min="0" class="w-full px-4 py-2 border rounded-lg @error('taux_horaire') border-red-500 @enderror">
                     @error('taux_horaire')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                     <p class="text-xs text-gray-500 mt-1" id="tauxHoraireHint">
-                        Licence/Master : taux spécifique. BTS : taux du vacataire.
+                        Licence/Master : taux spécifique. BTS/HND : taux du vacataire.
                     </p>
                 </div>
             </div>
@@ -105,7 +107,8 @@
 @push('scripts')
 <script>
 function toggleTypeUe() {
-    const isTc = document.querySelector('input[name="type_ue"][value="tronc_commun"]').checked;
+    const selected = document.querySelector('input[name="type_ue"]:checked').value;
+    const isTc = selected === 'tronc_commun_general' || selected === 'tronc_commun_partiel';
     document.getElementById('specialiteField').classList.toggle('hidden', isTc);
     document.getElementById('groupesField').classList.toggle('hidden', !isTc);
 }
@@ -119,12 +122,43 @@ const tauxParNiveau = {
     'master': {{ \App\Models\Setting::get('taux_horaire_master', 7500) }},
 };
 
+const semestresParNiveau = {
+    'BTS 1': [1, 2], 'BTS 2': [3, 4],
+    'HND 1': [1, 2], 'HND 2': [3, 4],
+    'Bachelor': [5, 6],
+    'Licence 1': [1, 2], 'Licence 2': [3, 4], 'Licence 3': [5, 6],
+    'Master 1': [7, 8], 'Master 2': [9],
+};
+
+function updateSemestres() {
+    const niveau = document.getElementById('niveau').value;
+    const select = document.getElementById('semestre');
+    const oldVal = '{{ old("semestre", "") }}';
+    select.innerHTML = '';
+
+    const semestres = semestresParNiveau[niveau];
+    if (!semestres) {
+        select.innerHTML = '<option value="">Sélectionner un niveau d\'abord</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value="">Choisir le semestre</option>';
+    semestres.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = 'Semestre ' + s;
+        if (oldVal == s) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
 function onNiveauChange() {
+    updateSemestres();
     const niveau = document.getElementById('niveau').value.toLowerCase();
     const tauxInput = document.getElementById('taux_horaire');
     const hint = document.getElementById('tauxHoraireHint');
 
-    if (niveau.includes('licence')) {
+    if (niveau.includes('licence') || niveau.includes('bachelor')) {
         tauxInput.value = tauxParNiveau.licence;
         hint.textContent = 'Taux Licence pré-rempli (' + new Intl.NumberFormat('fr-FR').format(tauxParNiveau.licence) + ' FCFA/h). Modifiable.';
         hint.className = 'text-xs text-blue-600 mt-1';
@@ -132,13 +166,13 @@ function onNiveauChange() {
         tauxInput.value = tauxParNiveau.master;
         hint.textContent = 'Taux Master pré-rempli (' + new Intl.NumberFormat('fr-FR').format(tauxParNiveau.master) + ' FCFA/h). Modifiable.';
         hint.className = 'text-xs text-purple-600 mt-1';
-    } else if (niveau.includes('bts')) {
+    } else if (niveau.includes('bts') || niveau.includes('hnd')) {
         tauxInput.value = '';
-        hint.textContent = 'BTS : le taux horaire du vacataire sera utilisé.';
+        hint.textContent = 'BTS/HND : le taux horaire du vacataire sera utilisé.';
         hint.className = 'text-xs text-green-600 mt-1';
     } else {
         tauxInput.value = '';
-        hint.textContent = 'Licence/Master : taux spécifique. BTS : taux du vacataire.';
+        hint.textContent = 'Licence/Master : taux spécifique. BTS/HND : taux du vacataire.';
         hint.className = 'text-xs text-gray-500 mt-1';
     }
 }
