@@ -392,11 +392,11 @@ class UniteEnseignementController extends Controller
     public function storeStandalone(Request $request)
     {
         $validated = $request->validate([
-            'code_ue' => 'required|string|max:50|unique:unites_enseignement,code_ue',
+            'code_ue' => 'required|string|max:50',
             'nom_matiere' => 'required|string|max:255',
             'volume_horaire_total' => 'required|numeric|min:0.5|max:999',
             'annee_academique' => 'required|string|max:20',
-            'semestre' => 'nullable|integer|in:1,2',
+            'semestre' => 'nullable|integer|between:1,10',
             'specialite' => 'nullable|string|max:255',
             'niveau' => 'nullable|string|max:255',
             'taux_horaire' => 'nullable|numeric|min:0',
