@@ -343,14 +343,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::prefix('leaves')->name('leaves.')->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\LeaveController::class, 'index'])->name('index');
         Route::get('/balances', [App\Http\Controllers\Admin\LeaveController::class, 'balances'])->name('balances');
+        Route::post('/recalculate-balances', [App\Http\Controllers\Admin\LeaveController::class, 'recalculateBalances'])->name('recalculate-balances');
         Route::get('/assign', [App\Http\Controllers\Admin\LeaveController::class, 'assignForm'])->name('assign');
         Route::post('/assign', [App\Http\Controllers\Admin\LeaveController::class, 'assign'])->name('assign.store');
         Route::get('/bulk-assign', [App\Http\Controllers\Admin\LeaveController::class, 'bulkAssignForm'])->name('bulk-assign');
         Route::post('/bulk-assign', [App\Http\Controllers\Admin\LeaveController::class, 'bulkAssign'])->name('bulk-assign.store');
+        Route::get('/holidays', [App\Http\Controllers\Admin\LeaveController::class, 'holidays'])->name('holidays');
+        Route::post('/holidays', [App\Http\Controllers\Admin\LeaveController::class, 'storeHoliday'])->name('holidays.store');
+        Route::delete('/holidays/{id}', [App\Http\Controllers\Admin\LeaveController::class, 'destroyHoliday'])->name('holidays.destroy');
+        Route::post('/holidays/seed-cameroon', [App\Http\Controllers\Admin\LeaveController::class, 'seedCameroonHolidays'])->name('holidays.seed-cameroon');
+        Route::post('/calculate-days', [App\Http\Controllers\Admin\LeaveController::class, 'calculateDays'])->name('calculate-days');
         Route::delete('/{id}/cancel', [App\Http\Controllers\Admin\LeaveController::class, 'cancel'])->name('cancel');
         Route::get('/{id}', [App\Http\Controllers\Admin\LeaveController::class, 'show'])->name('show');
+        Route::get('/{id}/letter', [App\Http\Controllers\Admin\LeaveController::class, 'downloadLetter'])->name('letter');
         Route::post('/{id}/approve', [App\Http\Controllers\Admin\LeaveController::class, 'approve'])->name('approve');
         Route::post('/{id}/reject', [App\Http\Controllers\Admin\LeaveController::class, 'reject'])->name('reject');
+        Route::post('/{id}/manager-approve', [App\Http\Controllers\Admin\LeaveController::class, 'managerApprove'])->name('manager-approve');
+        Route::post('/{id}/manager-reject', [App\Http\Controllers\Admin\LeaveController::class, 'managerReject'])->name('manager-reject');
         Route::post('/update-balance', [App\Http\Controllers\Admin\LeaveController::class, 'updateBalance'])->name('update-balance');
     });
 

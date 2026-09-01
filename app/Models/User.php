@@ -56,6 +56,9 @@ class User extends Authenticatable
         'is_super_admin',
         'company_id',
         'qr_token',
+        'date_embauche',
+        'sexe',
+        'nombre_enfants_charge',
     ];
 
     /**

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToCompany;
+use App\Services\LeaveCalculationService;
 
 class LeaveRequest extends Model
 {
@@ -14,6 +15,7 @@ class LeaveRequest extends Model
         'company_id',
         'user_id',
         'type',
+        'family_event_type',
         'start_date',
         'end_date',
         'days_count',
@@ -23,6 +25,13 @@ class LeaveRequest extends Model
         'reviewed_by',
         'reviewed_at',
         'review_comment',
+        'interim_name',
+        'interim_function',
+        'interim_tasks',
+        'manager_status',
+        'manager_reviewed_by',
+        'manager_reviewed_at',
+        'manager_comment',
     ];
 
     protected function casts(): array
@@ -31,6 +40,7 @@ class LeaveRequest extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'reviewed_at' => 'datetime',
+            'manager_reviewed_at' => 'datetime',
         ];
     }
 
@@ -41,16 +51,27 @@ class LeaveRequest extends Model
         'paternity' => 'Congé paternité',
         'unpaid' => 'Congé sans solde',
         'family_event' => 'Événement familial',
+        'work_accident' => 'Accident du travail',
         'other' => 'Autre',
     ];
 
+    public const FAMILY_EVENT_TYPES = [
+        'marriage' => 'Mariage du salarié (3j)',
+        'birth' => 'Naissance d\'un enfant (3j)',
+        'death_spouse' => 'Décès du conjoint (3j)',
+        'death_parent' => 'Décès d\'un parent (3j)',
+        'death_child' => 'Décès d\'un enfant (3j)',
+        'child_marriage' => 'Mariage d\'un enfant (2j)',
+    ];
+
     public const DEFAULT_BALANCES = [
-        'annual' => 30,
-        'sick' => 15,
-        'maternity' => 90,
-        'paternity' => 10,
-        'unpaid' => 0, // illimité
-        'family_event' => 10,
+        'annual' => 18, // Sera recalculé par LeaveCalculationService
+        'sick' => 180, // 6 mois max
+        'maternity' => 98, // 14 semaines
+        'paternity' => 3,
+        'unpaid' => 0,
+        'family_event' => 10, // max 10j/an
+        'work_accident' => 0, // selon arrêt médical
         'other' => 0,
     ];
 
@@ -64,6 +85,11 @@ class LeaveRequest extends Model
         return $this->belongsTo(User::class, 'reviewed_by')->withoutGlobalScopes();
     }
 
+    public function managerReviewer()
+    {
+        return $this->belongsTo(User::class, 'manager_reviewed_by')->withoutGlobalScopes();
+    }
+
     public function isPending(): bool
     {
         return $this->status === 'pending';
@@ -74,9 +100,49 @@ class LeaveRequest extends Model
         return $this->status === 'approved';
     }
 
+    public function isAwaitingManager(): bool
+    {
+        return $this->status === 'pending' && $this->manager_status === 'pending';
+    }
+
+    public function isAwaitingRH(): bool
+    {
+        return $this->status === 'pending' && $this->manager_status === 'approved';
+    }
+
     public function getTypeLabel(): string
     {
-        return self::TYPES[$this->type] ?? $this->type;
+        $label = self::TYPES[$this->type] ?? $this->type;
+        if ($this->type === 'family_event' && $this->family_event_type) {
+            $eventLabel = LeaveCalculationService::FAMILY_EVENT_TYPES[$this->family_event_type]['label'] ?? '';
+            if ($eventLabel) {
+                $label .= ' - ' . $eventLabel;
+            }
+        }
+        return $label;
+    }
+
+    public function getStatusLabel(): string
+    {
+        if ($this->status === 'pending') {
+            if ($this->manager_status === 'pending') {
+                return 'En attente du supérieur';
+            }
+            if ($this->manager_status === 'approved') {
+                return 'En attente RH';
+            }
+            if ($this->manager_status === 'rejected') {
+                return 'Refusé par le supérieur';
+            }
+            return 'En attente';
+        }
+
+        return match ($this->status) {
+            'approved' => 'Approuvé',
+            'rejected' => 'Refusé',
+            'cancelled' => 'Annulé',
+            default => $this->status,
+        };
     }
 
     /**

@@ -5,27 +5,41 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-center">
+    <div class="flex justify-between items-center flex-wrap gap-3">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Demandes de Congé</h2>
             <p class="text-gray-600 mt-1">Gérez les demandes de congé des employés</p>
         </div>
-        <div class="flex gap-3 items-center">
-            <a href="{{ route('admin.leaves.assign') }}" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-semibold">
-                <i class="fas fa-plus mr-2"></i> Assigner un congé
+        <div class="flex gap-2 items-center flex-wrap">
+            <a href="{{ route('admin.leaves.assign') }}" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-semibold">
+                <i class="fas fa-plus mr-1"></i>Assigner
             </a>
-            <a href="{{ route('admin.leaves.bulk-assign') }}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition font-semibold">
-                <i class="fas fa-users mr-2"></i> Congé en masse
+            <a href="{{ route('admin.leaves.bulk-assign') }}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition text-sm font-semibold">
+                <i class="fas fa-users mr-1"></i>En masse
             </a>
-            <a href="{{ route('admin.leaves.balances') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-semibold">
-                <i class="fas fa-calculator mr-2"></i> Soldes
+            <a href="{{ route('admin.leaves.balances') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition text-sm font-semibold">
+                <i class="fas fa-calculator mr-1"></i>Soldes
             </a>
-            @if($pendingCount > 0)
-            <span class="px-4 py-2 bg-orange-100 text-orange-800 rounded-lg font-semibold">
-                {{ $pendingCount }} en attente
-            </span>
-            @endif
+            <a href="{{ route('admin.leaves.holidays') }}" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition text-sm font-semibold">
+                <i class="fas fa-calendar-day mr-1"></i>Jours fériés
+            </a>
         </div>
+    </div>
+
+    <!-- Compteurs -->
+    <div class="grid grid-cols-3 gap-4">
+        <a href="{{ route('admin.leaves.index', ['status' => 'awaiting_manager']) }}" class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center hover:bg-purple-100 transition">
+            <p class="text-2xl font-bold text-purple-700">{{ $awaitingManagerCount }}</p>
+            <p class="text-sm text-purple-600">En attente du supérieur</p>
+        </a>
+        <a href="{{ route('admin.leaves.index', ['status' => 'awaiting_rh']) }}" class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center hover:bg-blue-100 transition">
+            <p class="text-2xl font-bold text-blue-700">{{ $awaitingRhCount }}</p>
+            <p class="text-sm text-blue-600">En attente RH</p>
+        </a>
+        <a href="{{ route('admin.leaves.index', ['status' => 'pending']) }}" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center hover:bg-yellow-100 transition">
+            <p class="text-2xl font-bold text-yellow-700">{{ $pendingCount }}</p>
+            <p class="text-sm text-yellow-600">Total en attente</p>
+        </a>
     </div>
 
     <!-- Filtres -->
@@ -40,7 +54,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
                 <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Tous</option>
-                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>En attente</option>
+                    <option value="awaiting_manager" {{ request('status') == 'awaiting_manager' ? 'selected' : '' }}>En attente du supérieur</option>
+                    <option value="awaiting_rh" {{ request('status') == 'awaiting_rh' ? 'selected' : '' }}>En attente RH</option>
+                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Tous en attente</option>
                     <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approuvé</option>
                     <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejeté</option>
                     <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Annulé</option>
@@ -97,34 +113,25 @@
                         {{ $leave->days_count }} j
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        @if($leave->status === 'pending')
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">En attente</span>
-                        @elseif($leave->status === 'approved')
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Approuvé</span>
-                        @elseif($leave->status === 'rejected')
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Rejeté</span>
-                        @else
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Annulé</span>
-                        @endif
+                        @php
+                            $colors = [
+                                'pending' => 'bg-yellow-100 text-yellow-800',
+                                'approved' => 'bg-green-100 text-green-800',
+                                'rejected' => 'bg-red-100 text-red-800',
+                                'cancelled' => 'bg-gray-100 text-gray-800',
+                            ];
+                        @endphp
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $colors[$leave->status] ?? 'bg-gray-100 text-gray-800' }}">
+                            {{ $leave->getStatusLabel() }}
+                        </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {{ $leave->created_at->format('d/m/Y') }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <a href="{{ route('admin.leaves.show', $leave->id) }}" class="text-blue-600 hover:text-blue-800 mr-3">
+                        <a href="{{ route('admin.leaves.show', $leave->id) }}" class="text-blue-600 hover:text-blue-800">
                             <i class="fas fa-eye"></i> Voir
                         </a>
-                        @if($leave->isPending())
-                        <form action="{{ route('admin.leaves.approve', $leave->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="text-green-600 hover:text-green-800 mr-2" onclick="return confirm('Approuver cette demande ?')">
-                                <i class="fas fa-check"></i>
-                            </button>
-                        </form>
-                        <button onclick="openRejectModal({{ $leave->id }})" class="text-red-600 hover:text-red-800">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        @endif
                     </td>
                 </tr>
                 @empty
@@ -140,34 +147,4 @@
         </div>
     </div>
 </div>
-
-<!-- Modal de rejet -->
-<div id="rejectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Rejeter la demande</h3>
-        <form id="rejectForm" method="POST">
-            @csrf
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Motif du refus *</label>
-                <textarea name="comment" rows="3" required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Expliquez la raison du refus..."></textarea>
-            </div>
-            <div class="flex justify-end gap-3">
-                <button type="button" onclick="closeRejectModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Annuler</button>
-                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Rejeter</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-function openRejectModal(leaveId) {
-    document.getElementById('rejectForm').action = '/admin/leaves/' + leaveId + '/reject';
-    document.getElementById('rejectModal').classList.remove('hidden');
-}
-function closeRejectModal() {
-    document.getElementById('rejectModal').classList.add('hidden');
-}
-</script>
 @endsection

@@ -10,9 +10,18 @@
             <h2 class="text-2xl font-bold text-gray-800">Soldes de Congés - {{ $year }}</h2>
             <p class="text-gray-600 mt-1">Gérez les quotas de congé par employé</p>
         </div>
-        <a href="{{ route('admin.leaves.index') }}" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition font-semibold">
-            <i class="fas fa-arrow-left mr-2"></i> Demandes
-        </a>
+        <div class="flex gap-2">
+            <form method="POST" action="{{ route('admin.leaves.recalculate-balances') }}">
+                @csrf
+                <input type="hidden" name="year" value="{{ $year }}">
+                <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-semibold" onclick="return confirm('Recalculer les quotas annuels de tous les employés pour {{ $year }} ?')">
+                    <i class="fas fa-sync-alt mr-1"></i>Recalculer quotas {{ $year }}
+                </button>
+            </form>
+            <a href="{{ route('admin.leaves.index') }}" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition font-semibold text-sm">
+                <i class="fas fa-arrow-left mr-1"></i>Demandes
+            </a>
+        </div>
     </div>
 
     <!-- Filtres -->
@@ -54,6 +63,13 @@
                     <td class="px-4 py-3 whitespace-nowrap">
                         <div class="font-medium text-gray-900">{{ $user->full_name }}</div>
                         <div class="text-xs text-gray-500">{{ $user->employee_id }}</div>
+                        @if($user->quota_annuel > 18)
+                        <div class="text-xs text-blue-600" title="Base 18 + {{ $user->quota_breakdown['bonus_anciennete'] }}j ancienneté + {{ $user->quota_breakdown['bonus_mere'] }}j mère">
+                            Quota: {{ $user->quota_annuel }}j
+                            @if($user->quota_breakdown['bonus_anciennete'] > 0)(+{{ $user->quota_breakdown['bonus_anciennete'] }} anc.)@endif
+                            @if($user->quota_breakdown['bonus_mere'] > 0)(+{{ $user->quota_breakdown['bonus_mere'] }} mère)@endif
+                        </div>
+                        @endif
                     </td>
                     @foreach(\App\Models\LeaveRequest::TYPES as $key => $label)
                     @php

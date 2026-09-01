@@ -231,6 +231,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('leaves')->group(function () {
         Route::get('/', [\App\Http\Controllers\API\LeaveController::class, 'index']);
         Route::get('/balances', [\App\Http\Controllers\API\LeaveController::class, 'balances']);
+        Route::get('/form-data', [\App\Http\Controllers\API\LeaveController::class, 'formData']);
         Route::post('/', [\App\Http\Controllers\API\LeaveController::class, 'store']);
         Route::post('/{id}/cancel', [\App\Http\Controllers\API\LeaveController::class, 'cancel']);
     });
