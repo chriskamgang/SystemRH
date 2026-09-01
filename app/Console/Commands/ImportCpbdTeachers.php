@@ -221,8 +221,8 @@ class ImportCpbdTeachers extends Command
         ];
 
         $sexeMap = [
-            'm' => 'masculin',
-            'f' => 'feminin',
+            'm' => 'M',
+            'f' => 'F',
         ];
 
         foreach ($this->teachers as $teacher) {
