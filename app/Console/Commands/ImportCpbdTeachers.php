@@ -286,7 +286,8 @@ class ImportCpbdTeachers extends Command
                 'qr_token' => Str::uuid()->toString(),
             ]);
 
-            $this->info("OK: {$employeeId} - {$teacher['first_name']} {$teacher['last_name']} ({$typeMap[$teacher['type']] ?? 'V'})");
+            $typeName = $typeMap[$teacher['type']] ?? 'V';
+            $this->info("OK: {$employeeId} - {$teacher['first_name']} {$teacher['last_name']} ({$typeName})");
             $created++;
         }
 
