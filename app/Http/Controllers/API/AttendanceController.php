@@ -108,9 +108,9 @@ class AttendanceController extends Controller
      */
     private function findAnyActiveCheckIn($user)
     {
-        // Chercher aujourd'hui + hier (pour les gardes de nuit cross-minuit)
+        // Chercher jusqu'à 7 jours en arrière pour attraper les check-ins orphelins
         $attendances = Attendance::where('user_id', $user->id)
-            ->where('timestamp', '>=', today()->subDay())
+            ->where('timestamp', '>=', today()->subDays(7))
             ->with('campus')
             ->orderBy('timestamp', 'desc')
             ->get();
@@ -340,9 +340,9 @@ class AttendanceController extends Controller
         $shift = $this->detectShift($now, $campus);
 
         // Vérifier s'il y a un check-in actif sur N'IMPORTE QUEL campus et N'IMPORTE QUEL shift
-        // Inclure la veille pour les gardes de nuit (cross-minuit)
+        // Remonter jusqu'à 7 jours pour attraper les check-ins orphelins oubliés
         $recentAttendances = Attendance::where('user_id', $user->id)
-            ->where('timestamp', '>=', today()->subDay())
+            ->where('timestamp', '>=', today()->subDays(7))
             ->with('campus')
             ->get();
 
@@ -357,23 +357,24 @@ class AttendanceController extends Controller
                 // Si le check-in date d'un jour PRECEDENT, le clôturer automatiquement (demi-journée)
                 // au lieu de bloquer l'employé (rattrapage si le cron auto-checkout n'a pas tourné)
                 if ($checkIn->timestamp->toDateString() < today()->toDateString()) {
-                    // Gardes de nuit cross-minuit : ne pas auto-clôturer si c'est la nuit dernière
-                    if ($checkIn->shift === 'night' && $checkIn->timestamp->isYesterday()) {
-                        // Garde de nuit commencée hier soir, encore potentiellement en cours
-                        $checkInShift = 'night';
-                        $shiftLabels = ['morning' => 'matin', 'evening' => 'soir', 'night' => 'garde de nuit'];
-                        $shiftLabel = $shiftLabels[$checkInShift];
+                    // Gardes de nuit cross-minuit : ne bloquer que si c'est la nuit dernière (encore en cours)
+                    if ($checkIn->shift === 'night' && $checkIn->timestamp->isYesterday() && now()->hour < 8) {
+                        // Garde de nuit commencée hier soir, potentiellement encore en cours (avant 8h)
                         $activeCampusName = $checkIn->campus ? $checkIn->campus->name : 'un autre campus';
                         return response()->json([
                             'message' => "Vous avez une garde de nuit active sur {$activeCampusName}. Veuillez d'abord faire le check-out.",
                             'existing_checkin' => $checkIn->load('campus'),
                             'active_campus' => $activeCampusName,
-                            'shift' => $checkInShift,
+                            'shift' => 'night',
                         ], 400);
                     }
 
-                    $endTime = $checkIn->shift === 'evening' ? '21:00:00' : '17:00:00';
-                    $checkoutTimestamp = Carbon::parse($checkIn->timestamp->toDateString() . ' ' . $endTime);
+                    // Auto-clôturer tous les check-ins orphelins des jours précédents
+                    $endTime = $checkIn->shift === 'evening' ? '21:00:00' : ($checkIn->shift === 'night' ? '06:00:00' : '17:00:00');
+                    $checkoutDate = $checkIn->shift === 'night'
+                        ? $checkIn->timestamp->copy()->addDay()->toDateString()
+                        : $checkIn->timestamp->toDateString();
+                    $checkoutTimestamp = Carbon::parse($checkoutDate . ' ' . $endTime);
 
                     Attendance::create([
                         'user_id' => $checkIn->user_id,
@@ -386,8 +387,8 @@ class AttendanceController extends Controller
                         'longitude' => $checkIn->longitude,
                         'accuracy' => $checkIn->accuracy,
                         'is_half_day' => true,
-                        'device_info' => ['auto_checkout' => true, 'reason' => 'Cloture automatique au check-in du lendemain - demi-journee'],
-                        'notes' => 'Auto-checkout: pas de check-out effectue la veille, demi-journee comptabilisee',
+                        'device_info' => ['auto_checkout' => true, 'reason' => 'Cloture automatique au check-in suivant - demi-journee'],
+                        'notes' => 'Auto-checkout: pas de check-out effectue, demi-journee comptabilisee',
                         'status' => 'valid',
                     ]);
 
@@ -1182,9 +1183,9 @@ class AttendanceController extends Controller
     {
         $user = $request->user();
 
-        // Charger les pointages d'aujourd'hui + hier (pour détecter les check-ins orphelins cross-jour)
+        // Charger les pointages récents (7 jours) pour détecter les check-ins orphelins
         $recentAttendances = Attendance::where('user_id', $user->id)
-            ->where('timestamp', '>=', today()->subDay())
+            ->where('timestamp', '>=', today()->subDays(7))
             ->with(['campus', 'uniteEnseignement'])
             ->get();
 

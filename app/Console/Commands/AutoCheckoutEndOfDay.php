@@ -15,19 +15,19 @@ class AutoCheckoutEndOfDay extends Command
     {
         $this->info('Recherche des check-ins ouverts...');
 
-        // Trouver tous les check-ins sans check-out sur le MEME campus (jours passés)
-        // L'employé doit faire check-out sur le même campus où il a fait check-in
+        // Trouver tous les check-ins sans check-out (jusqu'à 7 jours en arrière)
         $openCheckIns = Attendance::where('type', 'check-in')
             ->where('status', 'valid')
             ->whereDate('timestamp', '<', today())
-            ->whereHas('user') // Ignorer les check-ins dont le user a été supprimé
+            ->where('timestamp', '>=', today()->subDays(7))
+            ->whereHas('user')
             ->get()
             ->filter(function ($checkIn) {
+                // Vérifier qu'il n'y a aucun check-out après ce check-in
                 return !Attendance::where('user_id', $checkIn->user_id)
                     ->where('campus_id', $checkIn->campus_id)
                     ->where('type', 'check-out')
                     ->where('timestamp', '>', $checkIn->timestamp)
-                    ->whereDate('timestamp', $checkIn->timestamp->toDateString())
                     ->exists();
             });
 
