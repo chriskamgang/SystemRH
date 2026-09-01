@@ -100,6 +100,14 @@ class KioskController extends Controller
             });
         }
 
+        if ($request->device_status === 'configured') {
+            $query->whereNotNull('fcm_token')->where('fcm_token', '!=', '');
+        } elseif ($request->device_status === 'not_configured') {
+            $query->where(function ($q) {
+                $q->whereNull('fcm_token')->orWhere('fcm_token', '');
+            });
+        }
+
         $employees = $query->paginate(20);
         $campuses = Campus::where('is_active', true)->orderBy('name')->get();
 
@@ -193,7 +201,12 @@ class KioskController extends Controller
             ];
         }
 
-        $pdf = Pdf::loadView('admin.kiosk.badges-pdf', ['badges' => $badgesData])
+        $perPage = in_array((int) $request->per_page, [8, 10]) ? (int) $request->per_page : 10;
+
+        $pdf = Pdf::loadView('admin.kiosk.badges-pdf', [
+                'badges' => collect($badgesData),
+                'perPage' => $perPage,
+            ])
             ->setPaper('a4', 'portrait');
 
         return $pdf->download('badges-employes.pdf');

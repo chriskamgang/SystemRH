@@ -22,6 +22,14 @@
                     @endforeach
                 </select>
             </div>
+            <div class="min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Appareil mobile</label>
+                <select name="device_status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Tous</option>
+                    <option value="configured" {{ request('device_status') == 'configured' ? 'selected' : '' }}>Telephone configure</option>
+                    <option value="not_configured" {{ request('device_status') == 'not_configured' ? 'selected' : '' }}>Sans telephone configure</option>
+                </select>
+            </div>
             <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
                 <i class="fas fa-search mr-2"></i>Filtrer
             </button>
@@ -39,9 +47,15 @@
                 <button onclick="generateSelected()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm">
                     <i class="fas fa-qrcode mr-1"></i>Generer QR (selection)
                 </button>
-                <button onclick="downloadSelected()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition text-sm">
-                    <i class="fas fa-download mr-1"></i>Telecharger badges (selection)
-                </button>
+                <div class="flex items-center gap-2">
+                    <select id="badges-per-page" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="8">8 / page</option>
+                        <option value="10" selected>10 / page</option>
+                    </select>
+                    <button onclick="downloadSelected()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition text-sm">
+                        <i class="fas fa-download mr-1"></i>Telecharger badges (selection)
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -163,11 +177,16 @@
         const ids = getSelectedIds();
         if (ids.length === 0) { alert('Selectionnez au moins un employe.'); return; }
         const form = document.getElementById('bulk-form-download');
+        // Reset hidden inputs
+        form.querySelectorAll('input[name="user_ids[]"], input[name="per_page"]').forEach(el => el.remove());
         ids.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden'; input.name = 'user_ids[]'; input.value = id;
             form.appendChild(input);
         });
+        const perPage = document.createElement('input');
+        perPage.type = 'hidden'; perPage.name = 'per_page'; perPage.value = document.getElementById('badges-per-page').value;
+        form.appendChild(perPage);
         form.submit();
     }
 </script>
