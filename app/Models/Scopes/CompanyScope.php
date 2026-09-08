@@ -14,9 +14,26 @@ class CompanyScope implements Scope
         // (cas du login, commandes artisan, super admin sans switch)
         $companyId = session('current_company_id');
 
-        if ($companyId) {
-            $builder->where($model->getTable() . '.company_id', $companyId);
+        if (! $companyId) {
+            return;
         }
+
+        // Les comptes de l'espace INSAM BUS n'appartiennent a aucune
+        // entreprise : etudiants et chauffeurs ne sont pas des employes.
+        // Sans cette reserve, une session d'administration RH ouverte
+        // ferait disparaitre ces comptes de toute requete — y compris de
+        // l'authentification mobile, qui echouerait sans rien signaler.
+        if ($model->getTable() === 'users') {
+            $builder->where(function (Builder $requete) use ($model, $companyId) {
+                $requete
+                    ->where($model->getTable() . '.company_id', $companyId)
+                    ->orWhereIn($model->getTable() . '.espace', ['bus', 'mixte']);
+            });
+
+            return;
+        }
+
+        $builder->where($model->getTable() . '.company_id', $companyId);
     }
 
     /**

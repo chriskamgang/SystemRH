@@ -31,7 +31,11 @@ return new class extends Migration
             $table->integer('late_tolerance')->default(15)->comment('Tolérance retard en minutes');
 
             // Jours de travail (format JSON)
-            $table->json('working_days')->default('["monday", "tuesday", "wednesday", "thursday", "friday"]');
+            //
+            // MySQL 8+ refuse une valeur par defaut sur une colonne JSON :
+            // elle est portee par le modele Campus ($attributes), ce qui
+            // vaut aussi pour les insertions passant par Eloquent.
+            $table->json('working_days')->nullable();
 
             $table->boolean('is_active')->default(true);
             $table->timestamps();

@@ -24,8 +24,25 @@ class EmployeeController extends Controller
      */
     public function index(Request $request)
     {
+        // Les employes d'Estuaire RH, et eux seuls.
+        //
+        // `role_id != 1` ecarte les administrateurs, mais MySQL exclut aussi
+        // les lignes ou la colonne est nulle : un employe cree sans role
+        // disparaissait donc de la liste sans que rien ne le signale. On
+        // retient desormais explicitement les roles non-admin et l'absence
+        // de role.
+        //
+        // Les comptes du transport — etudiants et chauffeurs — n'ont rien a
+        // faire ici : ils vivent dans l'espace bus, pas au registre du
+        // personnel.
         $query = User::with(['role', 'campuses'])
-            ->where('role_id', '!=', 1); // Exclure les admins
+            ->where(fn ($q) => $q->where('role_id', '!=', 1)->orWhereNull('role_id'))
+            // Les comptes du transport n'appartiennent pas au registre du
+            // personnel : l'etudiant est inscrit a la scolarite, le
+            // chauffeur au parc. Le tri se fait sur `role_bus` et non sur
+            // `espace` — un etudiant passe en `mixte` des qu'il consulte
+            // son emploi du temps, sans devenir employe pour autant.
+            ->whereNull('role_bus');
 
         // Recherche (insensible à la casse)
         if ($request->has('search') && $request->search) {

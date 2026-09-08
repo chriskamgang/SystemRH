@@ -37,6 +37,11 @@ Route::post('/login', [LoginController::class, 'login']);
 // Admin routes (protected by auth middleware)
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
 
+    // Tout Estuaire RH est ferme a l'administrateur du transport. Le groupe
+    // du bus, declare plus bas, reste hors de cette enveloppe : il porte sa
+    // propre autorisation.
+    Route::middleware('espace:rh')->group(function () {
+
     // === Gestion des entreprises (Super Admin) ===
     Route::prefix('companies')->name('companies.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\CompanyController::class, 'index'])->name('index');
@@ -632,6 +637,62 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
     // ========== ANALYTIQUE RH ==========
     Route::get('/hr-analytics', [App\Http\Controllers\Admin\HrAnalyticsController::class, 'index'])->name('hr-analytics.index');
+
+    }); // fin de l'espace Estuaire RH
+
+    // ========== INSAM BUS : regulation du transport ==========
+    //
+    // Le back-office du transport vit sous le meme toit que celui d'Estuaire
+    // RH : meme session, meme connexion. Seule la barre laterale change, le
+    // menu bascule d'un espace a l'autre.
+    Route::prefix('bus')->name('bus.')->middleware('espace:bus')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\Bus\TableauBordController::class, 'index'])->name('dashboard');
+
+        // --- Flotte ---
+        Route::get('/vehicules', [App\Http\Controllers\Admin\Bus\FlotteController::class, 'bus'])->name('vehicules');
+        Route::post('/vehicules', [App\Http\Controllers\Admin\Bus\FlotteController::class, 'enregistrerBus'])->name('vehicules.store');
+        Route::put('/vehicules/{bus}', [App\Http\Controllers\Admin\Bus\FlotteController::class, 'modifierBus'])->name('vehicules.update');
+        Route::delete('/vehicules/{bus}', [App\Http\Controllers\Admin\Bus\FlotteController::class, 'supprimerBus'])->name('vehicules.destroy');
+
+        Route::get('/chauffeurs', [App\Http\Controllers\Admin\Bus\FlotteController::class, 'chauffeurs'])->name('chauffeurs');
+        Route::post('/chauffeurs', [App\Http\Controllers\Admin\Bus\FlotteController::class, 'enregistrerChauffeur'])->name('chauffeurs.store');
+        Route::put('/chauffeurs/{chauffeur}', [App\Http\Controllers\Admin\Bus\FlotteController::class, 'modifierChauffeur'])->name('chauffeurs.update');
+
+        // --- Reseau ---
+        Route::get('/lignes', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'lignes'])->name('lignes');
+        Route::post('/lignes', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'enregistrerLigne'])->name('lignes.store');
+        Route::put('/lignes/{ligne}', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'modifierLigne'])->name('lignes.update');
+
+        Route::get('/lieux', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'lieux'])->name('lieux');
+        Route::post('/lieux', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'enregistrerLieu'])->name('lieux.store');
+        Route::put('/lieux/{lieu}', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'modifierLieu'])->name('lieux.update');
+
+        Route::get('/parcours', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'parcours'])->name('parcours');
+        Route::post('/parcours', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'enregistrerParcours'])->name('parcours.store');
+        Route::delete('/parcours/{parcours}', [App\Http\Controllers\Admin\Bus\ReseauController::class, 'supprimerParcours'])->name('parcours.destroy');
+
+        // --- Exploitation ---
+        Route::get('/affectations', [App\Http\Controllers\Admin\Bus\ExploitationController::class, 'affectations'])->name('affectations');
+        Route::post('/affectations', [App\Http\Controllers\Admin\Bus\ExploitationController::class, 'enregistrerAffectation'])->name('affectations.store');
+        Route::delete('/affectations/{affectation}', [App\Http\Controllers\Admin\Bus\ExploitationController::class, 'supprimerAffectation'])->name('affectations.destroy');
+
+        Route::get('/tournees', [App\Http\Controllers\Admin\Bus\ExploitationController::class, 'tournees'])->name('tournees');
+
+        // --- Parametres : grille tarifaire et passerelle de paiement ---
+        Route::get('/tarifs', [App\Http\Controllers\Admin\Bus\ParametreController::class, 'tarifs'])->name('tarifs');
+        Route::post('/tarifs', [App\Http\Controllers\Admin\Bus\ParametreController::class, 'enregistrerTarif'])->name('tarifs.store');
+        Route::put('/tarifs/{tarif}', [App\Http\Controllers\Admin\Bus\ParametreController::class, 'modifierTarif'])->name('tarifs.update');
+        Route::delete('/tarifs/{tarif}', [App\Http\Controllers\Admin\Bus\ParametreController::class, 'supprimerTarif'])->name('tarifs.destroy');
+
+        Route::get('/kpay', [App\Http\Controllers\Admin\Bus\ParametreController::class, 'kpay'])->name('kpay');
+        Route::post('/kpay', [App\Http\Controllers\Admin\Bus\ParametreController::class, 'enregistrerKpay'])->name('kpay.store');
+        Route::post('/kpay/tester', [App\Http\Controllers\Admin\Bus\ParametreController::class, 'testerKpay'])->name('kpay.test');
+
+        // --- Etudiants ---
+        Route::get('/etudiants', [App\Http\Controllers\Admin\Bus\EtudiantController::class, 'index'])->name('etudiants');
+        Route::put('/etudiants/{etudiant}/lieu', [App\Http\Controllers\Admin\Bus\EtudiantController::class, 'changerLieu'])->name('etudiants.lieu');
+        Route::get('/abonnements', [App\Http\Controllers\Admin\Bus\EtudiantController::class, 'abonnements'])->name('abonnements');
+    });
 
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');

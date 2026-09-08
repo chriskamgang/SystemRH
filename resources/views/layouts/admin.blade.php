@@ -119,16 +119,57 @@
                 }
             @endphp
             <div class="flex items-center justify-center h-16 bg-gray-800 flex-shrink-0 px-3">
-                @if($currentCompany && $currentCompany->logo)
+                @if(request()->routeIs('admin.bus.*'))
+                    {{-- L'espace transport porte sa propre marque. --}}
+                    <img src="{{ asset('images/logo_bus.png') }}" alt="INSAM BUS" class="w-9 h-9 object-contain">
+                @elseif($currentCompany && $currentCompany->logo)
                     <img src="{{ asset('storage/' . $currentCompany->logo) }}" alt="{{ $currentCompany->name }}" class="w-8 h-8 rounded object-cover">
                 @else
-                    <i class="fas fa-building text-2xl text-blue-500"></i>
+                    <img src="{{ asset('images/estuare_rh.png') }}" alt="Estuaire RH" class="w-8 h-8 object-contain">
                 @endif
-                <span class="ml-3 text-lg font-bold truncate">{{ $currentCompany->name ?? 'Estuaire RH' }}</span>
+                <span class="ml-3 text-lg font-bold truncate">
+                    {{ request()->routeIs('admin.bus.*') ? 'INSAM BUS' : ($currentCompany->name ?? 'Estuaire RH') }}
+                </span>
             </div>
+
+            {{-- Bascule entre les deux univers.
+                 La session reste la meme : changer d'espace n'est pas se
+                 reconnecter, seul le menu change. --}}
+            @php
+                $surBus = request()->routeIs('admin.bus.*');
+                // La bascule n'a de sens que pour qui dispose des deux
+                // espaces : l'administrateur du transport n'y verrait qu'un
+                // bouton le renvoyant d'ou il vient.
+                $peutBasculer = auth()->user()->accedeAuBus() && auth()->user()->accedeAuRh();
+            @endphp
+            @if($peutBasculer)
+            <div class="flex-shrink-0 px-3 py-3 bg-gray-800/60 border-b border-gray-700">
+                <div class="grid grid-cols-2 gap-1.5 p-1 bg-gray-900/70 rounded-lg">
+                    <a href="{{ route('admin.dashboard') }}"
+                       class="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition
+                              {{ $surBus ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'bg-blue-600 text-white shadow' }}">
+                        <i class="fas fa-building"></i>
+                        <span>RH</span>
+                    </a>
+                    <a href="{{ route('admin.bus.dashboard') }}"
+                       class="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition
+                              {{ $surBus ? 'bg-amber-600 text-white shadow' : 'text-gray-400 hover:text-white hover:bg-gray-700' }}">
+                        <i class="fas fa-bus"></i>
+                        <span>BUS</span>
+                    </a>
+                </div>
+            </div>
+            @endif
 
             <!-- Navigation -->
             @php
+                // L'espace affiche suit l'URL avant la session : un lien
+                // direct vers une page du transport doit ouvrir le menu du
+                // transport, meme si la derniere connexion visait les RH.
+                $espaceActif = request()->routeIs('admin.bus.*')
+                    ? 'bus'
+                    : session('espace_admin', 'rh');
+
                 $u = auth()->user();
                 $isSuperAdmin = $u->isSuperAdmin();
                 $isAdmin = $u->isAdmin();
@@ -155,6 +196,10 @@
                 }
             @endphp
             <nav class="flex-1 overflow-y-auto mt-4 px-4 pb-24">
+
+                @if($espaceActif === 'bus')
+                    @include('admin.bus.partials.menu')
+                @else
 
                 {{-- ========== SUPER ADMIN : ENTREPRISES ========== --}}
                 @if(auth()->user()->isSuperAdmin())
@@ -638,6 +683,8 @@
                 </a>
                 @endif
                 @endif {{-- fin !$superAdminWithoutCompany (2 sections: Personnel + Systeme) --}}
+
+                @endif {{-- fin espace RH --}}
             </nav>
 
             <!-- User Info -->

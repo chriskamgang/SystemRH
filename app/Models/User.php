@@ -59,6 +59,17 @@ class User extends Authenticatable
         'date_embauche',
         'sexe',
         'nombre_enfants_charge',
+
+        // --- INSAM BUS ---------------------------------------------------
+        // L'espace transport partage cette table : ses comptes portent un
+        // telephone propre, un role distinct de la hierarchie RH, et un PIN
+        // a la place du mot de passe pour l'etudiant.
+        'telephone_bus',
+        'role_bus',
+        'actif_bus',
+        'photo_path',
+        'pin',
+        'espace',
     ];
 
     /**
@@ -68,6 +79,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'pin',
         'remember_token',
     ];
 
@@ -86,6 +98,13 @@ class User extends Authenticatable
             'is_super_admin' => 'boolean',
             'jours_travail' => 'array',
             'volume_horaire_hebdomadaire' => 'decimal:2',
+
+            // --- INSAM BUS ---
+            'pin' => 'hashed',
+            'pin_bloque_jusqu_a' => 'datetime',
+            'telephone_verified_at' => 'datetime',
+            'actif_bus' => 'boolean',
+            'role_bus' => \App\Enums\RoleUtilisateur::class,
         ];
     }
 
@@ -375,6 +394,42 @@ class User extends Authenticatable
         return $this->role && $this->role->name === 'admin';
     }
 
+    /**
+     * Administrateur du seul espace transport.
+     *
+     * Il regne sur INSAM BUS — flotte, reseau, exploitation, abonnements —
+     * mais n'entre pas dans Estuaire RH : les dossiers du personnel, les
+     * salaires et les conges ne le regardent pas. L'administrateur RH, lui,
+     * ouvre les deux espaces.
+     */
+    public function isAdminBus()
+    {
+        return $this->role && $this->role->name === 'admin_bus';
+    }
+
+    /**
+     * Peut ouvrir le back-office du transport.
+     *
+     * Le super administrateur et l'administrateur RH y accedent au meme
+     * titre que celui du transport : l'acces au bus est le plus large des
+     * deux, pas le plus etroit.
+     */
+    public function accedeAuBus()
+    {
+        return $this->isSuperAdmin() || $this->isAdmin() || $this->isAdminBus();
+    }
+
+    /**
+     * Peut ouvrir le back-office d'Estuaire RH.
+     *
+     * L'administrateur du transport en est exclu : c'est la seule
+     * dissymetrie entre les deux espaces.
+     */
+    public function accedeAuRh()
+    {
+        return ! $this->isAdminBus();
+    }
+
     public function isSuperAdmin()
     {
         return $this->is_super_admin;
@@ -468,5 +523,98 @@ class User extends Authenticatable
             return $this->custom_late_tolerance;
         }
         return $campus ? $campus->late_tolerance : 15; // 15 minutes par défaut
+    }
+
+    // =====================================================================
+    // INSAM BUS
+    //
+    // L'espace transport partage cette table. Ses comptes se distinguent
+    // par la colonne `espace` : un etudiant ou un chauffeur du bus n'a ni
+    // `role_id` ni mot de passe, et n'a rien a faire dans les ecrans RH.
+    // Les portees ci-dessous evitent que l'un ne se melange a l'autre.
+    // =====================================================================
+
+    /** Comptes de l'espace transport (etudiants, chauffeurs, regulation). */
+    public function scopeEspaceBus($query)
+    {
+        return $query->whereIn('espace', ['bus', 'mixte']);
+    }
+
+    /** Comptes de l'espace Estuaire RH — le comportement historique. */
+    public function scopeEspaceRh($query)
+    {
+        return $query->whereIn('espace', ['rh', 'mixte']);
+    }
+
+    public function estDuBus(): bool
+    {
+        return in_array($this->espace, ['bus', 'mixte'], true);
+    }
+
+    public function estDuRh(): bool
+    {
+        return in_array($this->espace, ['rh', 'mixte'], true);
+    }
+
+    // --- Relations metier du transport -----------------------------------
+
+    public function etudiant()
+    {
+        return $this->hasOne(\App\Models\Etudiant::class);
+    }
+
+    public function chauffeur()
+    {
+        return $this->hasOne(\App\Models\Chauffeur::class);
+    }
+
+    public function notificationsApp()
+    {
+        return $this->hasMany(\App\Models\NotificationApp::class);
+    }
+
+    /** Appareils mobiles ou l'utilisateur est connecte, pour le push FCM. */
+    public function appareils()
+    {
+        return $this->hasMany(\App\Models\Appareil::class);
+    }
+
+    // --- Connexion par PIN -----------------------------------------------
+
+    // --- Identite cote transport ------------------------------------------
+    //
+    // Le module bus est ecrit sur une table `users` dont le telephone, le
+    // role et l'indicateur d'activite s'appelaient `telephone`, `role` et
+    // `actif`. Ces trois noms etaient deja pris cote RH — `phone`, la
+    // hierarchie `role_id` et `is_active` — donc les colonnes fusionnees
+    // portent le suffixe `_bus`, et les appels du transport ont ete
+    // alignes dessus.
+    //
+    // `role_bus` est converti en RoleUtilisateur par $casts ; il ne faut
+    // surtout pas lui ajouter d'accesseur, qui court-circuiterait le cast.
+
+    protected static function booted(): void
+    {
+        // Un PIN repose — par l'interesse ou par la regulation — remet le
+        // compteur d'essais a zero : sans cela, un compte reinitialise
+        // apres cinq erreurs resterait ferme avec son nouveau code.
+        static::saving(function (self $utilisateur) {
+            if ($utilisateur->isDirty('pin') && filled($utilisateur->pin)) {
+                $utilisateur->pin_essais = 0;
+                $utilisateur->pin_bloque_jusqu_a = null;
+            }
+        });
+    }
+
+    /** Un etudiant qui n'a pas encore choisi son PIN doit le faire. */
+    public function aUnPin(): bool
+    {
+        return filled($this->pin);
+    }
+
+    /** Nom affiche cote transport, ou les champs sont nom / prenom. */
+    public function getNomCompletAttribute(): string
+    {
+        return trim("{$this->first_name} {$this->last_name}");
     }
 }

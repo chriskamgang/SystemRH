@@ -30,6 +30,17 @@ class Campus extends Model
         'night_late_tolerance',
     ];
 
+    /**
+     * Valeurs par defaut a la creation.
+     *
+     * `working_days` etait porte par le schema, mais MySQL 8+ refuse une
+     * valeur par defaut sur une colonne JSON : elle vit desormais ici, ou
+     * elle s'applique a toute creation passant par Eloquent.
+     */
+    protected $attributes = [
+        'working_days' => '["monday", "tuesday", "wednesday", "thursday", "friday"]',
+    ];
+
     protected $casts = [
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
