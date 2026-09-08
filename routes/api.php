@@ -213,6 +213,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ues-disponibles-maintenant', [\App\Http\Controllers\API\UeScheduleApiController::class, 'uesDisponiblesMaintenant']);
     });
 
+    // ========== EVALUATION DES COURS (etudiants) ==========
+    //
+    // L'etudiant note les UE qu'il suit. Le controleur verifie a chaque
+    // appel qu'il s'agit bien des siennes : la route est ouverte a tout
+    // compte authentifie, l'appartenance ne se deduit pas du jeton.
+    Route::prefix('evaluations-cours')->group(function () {
+        Route::get('/', [\App\Http\Controllers\API\EvaluationCoursController::class, 'index']);
+        Route::post('/{uniteEnseignement}', [\App\Http\Controllers\API\EvaluationCoursController::class, 'store']);
+    });
+
     // ========== PORTEFEUILLE (Wallet) ==========
     Route::get('wallet', [\App\Http\Controllers\API\WalletController::class, 'index']);
     Route::post('wallet/transfer', [\App\Http\Controllers\API\WalletController::class, 'transfer']);
