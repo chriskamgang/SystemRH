@@ -21,10 +21,11 @@ use Illuminate\Support\Str;
  * Chaque feuille donne, pour une ligne : le chauffeur et son telephone,
  * puis la liste ordonnee des stationnements avec leur horaire de passage.
  * Les horaires sont notes « 6h10 - 6h15 / 7h15 » : la plage est l'arret
- * du premier tour (arrivee - depart), le nombre isole apres la barre est
- * le passage du second tour. On ne retient ici que l'heure de DEPART du
- * premier tour, seule valeur qui ordonne le parcours ; la duree entre
- * deux etapes est calculee depuis ces heures (`minutes_depuis_depart`).
+ * du premier tour (arrivee - depart), les nombres isoles apres la barre
+ * sont les passages des tours suivants. L'heure de DEPART du premier tour
+ * ordonne le parcours et donne l'ecart entre etapes
+ * (`minutes_depuis_depart`) ; les tours suivants sont conserves tels
+ * quels dans `passages_suivants`.
  *
  * Les coordonnees GPS ne figurent pas sur les feuilles : elles ont ete
  * recherchees a partir des quartiers de Bafoussam. Celles marquees
@@ -101,8 +102,10 @@ class ReseauBusInsamSeeder extends Seeder
     /**
      * Les neuf feuilles de service.
      *
-     * `etapes` : [nom du lieu, heure de depart du premier tour]. Le
-     * dernier element est le terminus (campus), qui clot le tour.
+     * `etapes` : [nom du lieu, heure de depart du premier tour, passages
+     * des tours suivants]. Le dernier element est le terminus (campus),
+     * qui clot le tour. Le troisieme champ est omis quand la feuille ne
+     * note qu'un seul passage a cet arret.
      */
     private const LIGNES = [
         [
@@ -117,17 +120,20 @@ class ReseauBusInsamSeeder extends Seeder
                 ['Mboo', '06:50'],
                 ['Ancien Centre Climatique', '06:55'],
                 ['INO', '07:00'],
-                ['Entrée de la ville', '07:10'],
-                ['Carrefour Nzamengou', '07:15'],
-                ['Total Tamdja', '07:20'],
-                ['Stade municipal', '07:25'],
+                ['Entrée de la ville', '07:15', ['08:00']],
+                ['Carrefour Nzamengou', '07:20', ['07:55']],
+                // Accolade sur la feuille : Total Tamdja, le stade
+                // municipal et le 1er passage a l'Eveche se suivent sans
+                // horaire de second tour.
+                ['Total Tamdja', '07:25'],
+                ['Stade municipal', '07:30'],
                 ['Éveché', '07:30'],
                 // La feuille note 7h25 pour le 2e passage a l'Eveche, soit
                 // avant le 1er : incoherence du releve, conservee telle
                 // quelle. L'ordre du parcours vient du rang de la ligne,
                 // pas de l'heure, donc le trajet reste correct.
-                ['Éveché', '07:25'],
-                ['Campus C', '07:45'],
+                ['Éveché', '07:25', ['08:00']],
+                ['Campus C', '07:45', ['08:15']],
             ],
         ],
         [
@@ -135,12 +141,12 @@ class ReseauBusInsamSeeder extends Seeder
             'nom' => 'Kamkop (Kabirou) — Campus C',
             'chauffeurs' => [['nom' => 'KABIROU', 'tel' => '692958111']],
             'etapes' => [
-                ['Mairie rurale', '06:15'],
-                ['Entrée Domicile Tankou', '06:20'],
-                ['Entrée École Normale', '06:25'],
-                ['Marché B', '06:35'],
-                ['Feu rouge', '06:40'],
-                ['Campus C', '06:55'],
+                ['Mairie rurale', '06:15', ['07:15']],
+                ['Entrée Domicile Tankou', '06:20', ['07:20']],
+                ['Entrée École Normale', '06:25', ['07:25']],
+                ['Marché B', '06:35', ['07:30']],
+                ['Feu rouge', '06:40', ['07:35']],
+                ['Campus C', '06:55', ['07:50']],
             ],
         ],
         [
@@ -148,11 +154,11 @@ class ReseauBusInsamSeeder extends Seeder
             'nom' => 'Kamkop (Willy) — Campus C',
             'chauffeurs' => [['nom' => 'WILLY', 'tel' => '697243174']],
             'etapes' => [
-                ['Mairie rurale', '06:15'],
-                ['Entrée École Normale', '06:25'],
-                ['Marché B', '06:30'],
-                ['Feu rouge', '06:30'],
-                ['Campus C', '06:50'],
+                ['Mairie rurale', '06:15', ['07:10']],
+                ['Entrée École Normale', '06:25', ['07:15']],
+                ['Marché B', '06:30', ['07:20']],
+                ['Feu rouge', '06:30', ['07:25']],
+                ['Campus C', '06:50', ['07:40']],
             ],
         ],
         [
@@ -160,15 +166,18 @@ class ReseauBusInsamSeeder extends Seeder
             'nom' => 'Kamkop — Tougang — Campus C',
             'chauffeurs' => [['nom' => 'GERAD', 'tel' => '699967091']],
             'etapes' => [
+                // Le second tour de cette feuille ne reprend qu'a partir
+                // du Marche B : les trois premiers arrets ne sont
+                // desservis qu'une fois.
                 ['Mairie rurale', '06:15'],
                 ['Tankou', '06:25'],
                 ['Entrée École Normale', '06:30'],
-                ['Marché B', '06:35'],
-                ['Feu rouge', '06:40'],
+                ['Marché B', '06:35', ['07:50']],
+                ['Feu rouge', '06:40', ['07:55']],
                 // Le bus dessert le campus, pousse jusqu'au stade de
                 // Tougang puis revient : le campus figure deux fois, et
                 // seul le second passage clot le tour.
-                ['Campus C', '07:00'],
+                ['Campus C', '07:00', ['08:10']],
                 ['Stade de Tougang', '07:15'],
                 ['Campus C', '07:35'],
             ],
@@ -178,12 +187,12 @@ class ReseauBusInsamSeeder extends Seeder
             'nom' => 'Kamkop (Bertrand) — Campus C',
             'chauffeurs' => [['nom' => 'Bertrand', 'tel' => '653909603']],
             'etapes' => [
-                ['Mairie rurale', '06:15'],
-                ['Tankou', '06:25'],
-                ['Entrée École Normale', '06:30'],
-                ['Marché B', '06:35'],
-                ['Feu rouge', '06:40'],
-                ['Campus C', '07:00'],
+                ['Mairie rurale', '06:15', ['07:20']],
+                ['Tankou', '06:25', ['07:25']],
+                ['Entrée École Normale', '06:30', ['07:30']],
+                ['Marché B', '06:35', ['07:35']],
+                ['Feu rouge', '06:40', ['07:40']],
+                ['Campus C', '07:00', ['07:55']],
             ],
         ],
         [
@@ -194,12 +203,13 @@ class ReseauBusInsamSeeder extends Seeder
             // profit de « Total Tamdja » : on suit la correction du
             // chauffeur. Le lieu reste en fin de parcours, ou il sert de
             // point de depose apres le campus.
+            // Seule feuille a trois tours.
             'etapes' => [
-                ['Total Tamdja', '06:30'],
-                ['Carrefour Armée', '06:30'],
-                ['Éveché', '06:40'],
-                ['Campus C', '06:55'],
-                ['Tabot d’en haut', '07:10'],
+                ['Total Tamdja', '06:30', ['07:45', '07:55']],
+                ['Carrefour Armée', '06:30', ['07:20', '08:00']],
+                ['Éveché', '06:40', ['07:25', '08:05']],
+                ['Campus C', '06:55', ['07:40', '08:10']],
+                ['Tabot d’en haut', '07:10', ['07:50']],
             ],
         ],
         [
@@ -207,11 +217,13 @@ class ReseauBusInsamSeeder extends Seeder
             'nom' => 'SOCADA — Explosif — Campus C',
             'chauffeurs' => [['nom' => 'FOTSO', 'tel' => '695457290']],
             'etapes' => [
+                // Le second passage au carrefour Explosif a ete barre sur
+                // la feuille : le tour suivant demarre a Saint Thomas.
                 ['Carrefour Explosif', '06:10'],
-                ['Carrefour Saint Thomas', '06:20'],
-                ['Carrefour Socada', '06:30'],
-                ['Finance', '06:40'],
-                ['Campus C', '06:55'],
+                ['Carrefour Saint Thomas', '06:20', ['07:10']],
+                ['Carrefour Socada', '06:30', ['07:15']],
+                ['Finance', '06:40', ['07:20']],
+                ['Campus C', '06:55', ['07:40']],
             ],
         ],
         [
@@ -219,17 +231,19 @@ class ReseauBusInsamSeeder extends Seeder
             'nom' => 'Kamkop (Oumarou) — Campus C',
             'chauffeurs' => [['nom' => 'OUMAROU', 'tel' => '678884757']],
             'etapes' => [
+                // Le second tour ne reprend qu'a la Mairie rurale : les
+                // trois premiers arrets ne sont desservis qu'une fois.
                 ['Camoco', '06:20'],
                 ['Tradex', '06:25'],
                 ['Palace', '06:30'],
                 // « Entree Ecole Normale » avait ete ecrit ici puis barre
                 // au profit de « Mairie rurale » ; l'ecole reste desservie
                 // dix minutes plus tard.
-                ['Mairie rurale', '06:40'],
-                ['Entrée École Normale', '06:50'],
-                ['Marché B', '06:55'],
-                ['Feu rouge', '07:00'],
-                ['Campus C', '07:20'],
+                ['Mairie rurale', '06:40', ['07:35']],
+                ['Entrée École Normale', '06:50', ['07:40']],
+                ['Marché B', '06:55', ['07:45']],
+                ['Feu rouge', '07:00', ['07:45']],
+                ['Campus C', '07:20', ['08:00']],
             ],
         ],
         [
@@ -237,13 +251,14 @@ class ReseauBusInsamSeeder extends Seeder
             'nom' => 'Kamkop (Nsim) — Campus C',
             'chauffeurs' => [['nom' => 'NSIM', 'tel' => '678170820']],
             'etapes' => [
+                // Le second tour ne reprend qu'a la Mairie rurale.
                 ['Ta\'aba', '06:15'],
                 ['Ancien Dépôt Guinness', '06:20'],
-                ['Mairie rurale', '06:25'],
-                ['Entrée École Normale', '06:30'],
-                ['Marché B', '06:40'],
-                ['Feu rouge', '06:45'],
-                ['Campus C', '07:00'],
+                ['Mairie rurale', '06:25', ['07:20']],
+                ['Entrée École Normale', '06:30', ['07:25']],
+                ['Marché B', '06:40', ['07:30']],
+                ['Feu rouge', '06:45', ['07:35']],
+                ['Campus C', '07:00', ['07:50']],
             ],
         ],
     ];
@@ -312,13 +327,21 @@ class ReseauBusInsamSeeder extends Seeder
             ->map(fn (array $c) => "{$c['nom']} ({$this->formatTelephone($c['tel'])})")
             ->implode(', ');
 
+        // Le nombre de tours se lit sur la feuille : c'est l'arret le
+        // mieux renseigne qui donne le compte, les premiers arrets
+        // n'etant pas toujours redesservis au tour suivant.
+        $tours = 1 + max(array_map(
+            fn (array $etape) => count($etape[2] ?? []),
+            $etapes
+        ));
+
         return Ligne::updateOrCreate(
             ['code' => $feuille['code']],
             [
                 'nom' => $feuille['nom'],
                 'description' => "Relevé sur feuille de service manuscrite. Chauffeur(s) : {$contacts}.",
                 'duree_trajet_minutes' => max($duree, 1),
-                'tours_prevus_par_jour' => 2,
+                'tours_prevus_par_jour' => $tours,
                 'actif' => true,
             ]
         );
@@ -343,7 +366,9 @@ class ReseauBusInsamSeeder extends Seeder
         $depart = $feuille['etapes'][0][1];
         $dernier = count($feuille['etapes']) - 1;
 
-        foreach ($feuille['etapes'] as $i => [$nomLieu, $heure]) {
+        foreach ($feuille['etapes'] as $i => $etape) {
+            [$nomLieu, $heure] = $etape;
+
             if (! isset($lieux[$nomLieu])) {
                 $this->command?->warn("Lieu inconnu, étape ignorée : {$nomLieu}");
 
@@ -356,6 +381,7 @@ class ReseauBusInsamSeeder extends Seeder
                 'ordre' => $i + 1,
                 'est_terminus' => $i === $dernier,
                 'minutes_depuis_depart' => $this->minutesEntre($depart, $heure),
+                'passages_suivants' => $etape[2] ?? null,
             ]);
         }
     }
